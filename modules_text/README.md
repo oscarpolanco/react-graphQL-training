@@ -99,3 +99,130 @@ Now create the following `pages` that we will use on the application. Use the sa
 |   `sell.js`   |   `SellPage`    |
 
 Another thing that we need to know about `Next js` is that out of the box do `server-side rendering` this means that when you do a `view source` of your page; it will show all the `HTML` then `React` will come and `rehydrate` it to have all the `React` functionality. `Next js` can also be `statically render` which means; that on build time you can pre-render pages so they load really quickly because the `HTML` of those pages will be already available.
+
+## Creating a Page Layout component
+
+Almost all the time; we need to add a `layout` for all pages on our application but as you see on `Next js` the highest that you can get is the `pages` that we create on the `page` directory. So we will need some kind of component that we can use on every `page` that will allow us to add some `layouts` like a `navbar` that will be used across all `pages` on the application.
+
+### Creating a page layout component
+
+- On your editor go to the `components` directory
+- Create a file called `Page.js`
+- On this newly created file export a function call `Page`
+  `export default function Page() {}`
+- On the `Page` function return the following
+  ```js
+  export default function Page() {
+    return (
+      <div>
+        <h2>I am a page component</h2>
+      </div>
+    );
+  }
+  ```
+- Now go to the `index` file on the `page` directory
+- Import the `Page` component
+  `import Page from '../components/Page';`
+- Use the `Page` component on the return statement on the `IndexPage` component
+  ```js
+  export default function IndexPage() {
+    return (
+      <Page>
+        <p>Hello</p>
+      </Page>
+    );
+  }
+  ```
+- On your terminal go to the `frontend` directory
+- Run your local server in your terminal using: `npm run dev`
+- Go to `http://localhost:7777`
+- You should see the `Page` component message
+
+Now; why you can see the `Page` component message without the `index` page message? This is because we are just the message without sending the actual `children` that we send on the `IndexPage` component. In order to render the `children` of a component you need to do the following:
+
+- On the `Page` component add an argument call `props`
+  `export default function Page(props) {...}`
+- Bellow the `h2` message use the `props` object with it `children` property
+  ```js
+  export default function Page(props) {
+    return (
+      <div>
+        <h2>I am a page component</h2>
+        {props.children}
+      </div>
+    );
+  }
+  ```
+- Go to your browser and you should see both messages of the `Page` and `IndexPage` components
+- We can use `es6` to use the `children` object directly with the `spread operator`
+  ```js
+  export default function Page({ children }) {
+    return (
+      <div>
+        <h2>I am a page component</h2>
+        {children}
+      </div>
+    );
+  }
+  ```
+
+But with this approach we will need to manually put the `Page` component and wrap the content of the pages on it; luckily there is a way around this using some special files of `Next js` that will allow us to have access to the highest level of the page.
+
+### Accessing the highest page levels
+
+- On your editor; go to the `pages` directory and create a new file call `_app.js`
+- Inside of this newly created file export a function import the `Page` component
+  `import Page from '../components/Page';`
+- Then export a function call `MyApp`
+  `export default function MyApp() {}`
+- As arguments of the `MyApp` function add `Component` and `pageProps`(This is `Next js` specific)
+  `export default function MyApp({ Component, pageProps }) {}`
+- Then return the `Page` component with the `Component` as a child and `pageProps` as a `prop` of `Component`
+  ```js
+  export default function MyApp({ Component, pageProps }) {
+    return (
+      <Page>
+        <Component {...pageProps} />
+      </Page>
+    );
+  }
+  ```
+- Go to your terminal and restart the local server(This is one of the few times that we need to restart the local server because we change something)
+- On your browser go to `http://localhost:7777`
+- You should see a double `Page` component message on the page
+- Go back to your editor and remove the `Page` component from the `index` file
+- On your browser and you should see that you have the `Page` component message and the `IndexPage` component message
+- Go to other of the pages and you should see the same effect as the `index` page
+- Now on your editor create a file called `_document.js` on your `pages` directory
+- Import `Document` from `next/document`
+  `import Document from 'next/document';`
+- Export a `class` call `MyDocument` that extends from `Document`(This is one of the few places that we will use `class` base components because there is not any `API` for `function` base components)
+  `export default class MyDocument extends Document {}`
+- Create a function call `render`(The `classes` on `React` have a `render` method)
+  ```js
+  export default class MyDocument extends Document {
+    render() {}
+  }
+  ```
+- Import the following components
+  `import Document, { Html, NextScript, Main } from 'next/document';`
+- On the `render` method return the following:
+  ```js
+  export default class MyDocument extends Document {
+    render() {
+      return (
+        <Html lang="en">
+          <body>
+            <Main />
+            <NextScript />
+          </body>
+        </Html>
+      );
+    }
+  }
+  ```
+- On your terminal restart your local server
+- Go to your browser and refresh the page
+- Inspect the page and check the `HTML` tag and should have the `lang` you added
+
+We will not use the `_document` file yet but we need it because we need to have access to some elements at the top of the page.
