@@ -226,3 +226,129 @@ But with this approach we will need to manually put the `Page` component and wra
 - Inspect the page and check the `HTML` tag and should have the `lang` you added
 
 We will not use the `_document` file yet but we need it because we need to have access to some elements at the top of the page.
+
+### Creating our Header and Nav component
+
+We already have a `Page` component and this will wrap all the components that need to be on all pages like the `header`; `footer` or `navigation bar`. In the case of this section we will begin with the components that belong to the `header` of our pages like it show next:
+
+- On your editor go to the `component` directory
+- Create a file called `Header.js`
+- Inside of the newly created file; export a function call `Header`
+  `export default function Header() {}`
+- Then return a `header` tag with some content
+  ```js
+  export default function Header() {
+    return (
+      <header>
+        <h2>Hello Im a header</h2>
+      </header>
+    );
+  }
+  ```
+- Go to your `Page` component
+- Import the `Header` component
+  `import Header from './Header';`
+- Use the `Header` component on the `Page` component(Since is the first thing of the page we put it on the top of the `return`)
+  ```js
+  export default function Page({ children }) {
+    return (
+      <div>
+        <Header />
+        <h2>I am a page component</h2>
+        {children}
+      </div>
+    );
+  }
+  ```
+- On your terminal; run your local server using: `npm run dev`
+- Go to `http://localhost:7777` on your browser
+- You should see the `Header` component message on the page
+- Now we can go back to the `Header` component to add the initial markup that we need. We will have a `logo`; a `navbar` and a `search` on the `header`. Add the following to the `header` component:
+  ```js
+  export default function Header() {
+    return (
+      <header>
+        <div className="bar"></div>
+        <div className="sub-bar">
+          <p>Search</p>
+        </div>
+      </header>
+    );
+  }
+  ```
+  Need to add the exact classes so you don't have any issue with the styles later
+- As you may know; the logo almost always is a link to the homepage so we need to add an element that help us with that; in this case; an anchor tag
+  ```js
+  export default function Header() {
+    return (
+      <header>
+        <div className="bar">
+          <a href="/">Sick fits</a>
+        </div>
+        <div className="sub-bar">
+          <p>Search</p>
+        </div>
+      </header>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Click on the `Slick fits` link
+- You should see how the page redirect to the correct place and refresh it
+
+#### Navigate the app throw links
+
+On our application, we want to be able to move page to page as quickly as possible and the `anchor` doesn't help us with that because it refreshes the page every time but `Next` can help us with this by using a `Link` component. `Next` use a combination of `HTML 5 push state` that changes the `URL` as well as the ability to trigger and rerender pages when that `URL` has changed. In order to use that `Next` feature I do the following:
+
+- On the `Header` component import the `Link` component from `next/link'`
+  `import Link from 'next/link';`
+- Sustitute the `anchor` tag with the `Link` component
+  `<Link href="/">Sick fits</Link>`
+- Go to your browser and refresh the page
+- Click on the `Slick fits` link
+- You should be able to navigate to the correct place and should not se a page reload(The correct page content should be displaying)
+
+At the end for internal app navigation use the `Link` component and for external(so a link to another page) use an `anchor` tag
+
+### Creating a Nav component
+
+- On your editor; go to the `components` directory and create a new file call `Nav.js`
+- Import the `Link` component from `next/link'`
+  `import Link from 'next/link';`
+- Inside of the newly created file; export a function call `Nav`
+  `export default function Nav() {}`
+- Return the following content
+  ```js
+  export default function Nav() {
+    return (
+      <nav>
+        <Link href="/products">product</Link>
+        <Link href="/sell">sell</Link>
+        <Link href="/orders">orders</Link>
+        <Link href="/account">account</Link>
+      </nav>
+    );
+  }
+  ```
+- Go back to the `Header` component
+- Import the `Nav` component
+  `import Nav from './Nav';`
+- Put the `Nav` component at the end of the content of the `header` tag
+  ```js
+  export default function Header() {
+    return (
+      <header>
+        <div className="bar">
+          <Link href="/">Sick fits</Link>
+        </div>
+        <div className="sub-bar">
+          <p>Search</p>
+        </div>
+        <Nav />
+      </header>
+    );
+  }
+  ```
+- Go back to your browser and refresh the page
+- You should see the `Nav` component links
+- Click on the links and you should navigate the page
