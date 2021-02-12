@@ -352,3 +352,133 @@ At the end for internal app navigation use the `Link` component and for external
 - Go back to your browser and refresh the page
 - You should see the `Nav` component links
 - Click on the links and you should navigate the page
+
+## Module 3: CSS and styled-components
+
+We need to begin to add some styling to our pages. There are a lot of ways to add `CSS` to our `React` project; on this project, we will use `scope CSS` using the `styled-components` package. The idea of `styled-components` is that you define your `CSS` in components and those things we can scope it really easy and you can use `js` values inside of those components.
+
+### Using styled components
+
+- On your editor go to the `components` directory
+- Go to the `Header` component file
+- Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- We are going to style the logo first; before the `Header` component function creates a constant call `Logo`(with uppercase because will be a component) and use the `styled` object with the `h1` property(This property will tell that is an `h1` element that we are going to render) and use `back tips` after the `h1`.
+  ```js
+  const Logo = styled.h1``;
+  ```
+  This definition will scope the style that we add to the element that we use the component
+- Add a `background` to the `Logo`
+  ```js
+  const Logo = styled.h1`
+    background: red;
+  `;
+  ```
+- Now go to the `Header` function and use the `Logo` component to wrap the `Link` component that represent the logo
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">
+          <Logo>
+            <Link href="/">Sick fits</Link>
+          </Logo>
+        </div>
+        ...
+    );
+  }
+  ```
+- Go to your terminal
+- On the `frontend` directory; run your local server using: `npm run dev`
+- In the `browser`; go to `http://localhost:7777`
+- You should see a `red` background on the `slick fits` link
+- Use the inspector on the `slick fits` link
+- You should see that the link are inside of an `h1` element with a `class` generated automatically by the `styled-components` library
+- Check the `style` section of the `browser` console and you should see the `background` that you add
+- Now lets style the `anchor` tag(Then `Link` component render an `anchor` tag); Add a rule for the `anchors` to make the `color` white
+  ```js
+  const Logo = styled.h1`
+    background: red;
+    a {
+      color: white;
+    }
+  `;
+  ```
+- Go to your browser; you should see that the `slick fits` link is with the `color` white and the other links of the page shouldn't have the white color because the `color` style is scope to the `h1`
+- Now add the following to the `Logo` styles
+  ```js
+  const Logo = styled.h1`
+    font-size: 4rem;
+    margin-left: 2rem;
+    position: relative;
+    z-index: 2;
+    background: red;
+    transform: skew(-7deg);
+    a {
+      color: white;
+    }
+  `;
+  ```
+  - `font-size: 4rem;`: Update the size of the letters on the `h1` using a `rem` value. The `rem` value will take many times the `font-size` defined in the `root` element of the page. In this case `4` times the `font-size` value of the `root`
+  - `margin-left: 2rem;`: Using the `rem` value add some `margin` at the link to move it to the left
+  - `position: relative;`: The `position` property of an element sets the position of that element in the document. In this case, we have a `relative` position; that means the element will be positioned according to the normal flow of the document
+  - `z-index: 2;`: The `z-index` property sets the order position of the elements. The elements with the smaller values will be overlapping for the elements with values bigger than him
+  - `transform: skew(-7deg);`: The `transform` property allows you to rotate, scale, skew, or translate an element. In this case, we `skew` the `h1` content by `-7 degrees`
+- Its the `anchor` turn; at the following:
+  ```js
+  const Logo = styled.h1`
+    ... a {
+      color: white;
+      text-decoration: none;
+      text-transform: uppercase;
+      padding: 0.5rem 1rem;
+    }
+  `;
+  ```
+  - `text-decoration: none;`: Eliminate the highlight os the `anchor` text on hover
+  - `text-transform: uppercase;`: Put the `anchor` text to uppercase
+  - `padding: 0.5rem 1rem;`: The add some space at the top/bottom and the left/right side with some `rem` values
+
+For example; if this logo's style is going to be used in other places we will create the `Logo` component on the `style` directory on the `components` folder. It already provided some styles that are going to be used on this application. Now let's continue adding some more styles.
+
+- Bellow the logo's styles create another `styled component` call `HeaderStyles` that should represent a `header` tag
+  ```js
+  const HeaderStyles = styled.header``;
+  ```
+- Add the following styles to the `bar` class
+  ```js
+  const HeaderStyles = styled.header`
+    .bar {
+      border-bottom: 1px solid var(--black, black);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      justify-content: space-between;
+      align-items: center;
+    }
+  `;
+  ```
+  - `border-bottom: 1px solid var(--black, black);`: This will add a `black` borderline of `1px` bellow the `slick fits` logo. Later we will create a `CSS variable` for the `black` color(a little bit different from the black color); that is why we use `var` on this property and the `black` color as a fallback if the variable doesn't exist
+  - `display: grid;`: The `display` property defines whether an element is treated as a block or inline-block and the layout that is going to use; in this case will use `grid` that divide the page into major regions or defining a relationship in terms of size, position and layer between the elements
+  - `grid-template-columns: auto 1fr;`: the `grid-template-columns` define the column in the function of the `grid column` that is a vertical track of the `CSS grid layout` with space between to vertical `grid` lines. In this case, will add 2 columns; one with the maximum size that the item can be and the other use `1 frame` that will represent `1 fraction` of the available space
+  - `justify-content: space-between;`: Distribute the space between elements
+  - `align-items: center;`: Aling the items to the center of the container
+- Now is the turn of the `.sub-bar` class:
+  ```js
+  const HeaderStyles = styled.header`
+    .bar {
+      border-bottom: 1px solid var(--black, black);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sub-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      border-bottom: 1px solid var(--black, black);
+    }
+  `;
+  ```
+- Substitute the `header` tag with the `HeaderStyles` component
+- Go to your browser and refresh the page
+- You should see all the style changes that you just made
