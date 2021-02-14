@@ -482,3 +482,238 @@ For example; if this logo's style is going to be used in other places we will cr
 - Substitute the `header` tag with the `HeaderStyles` component
 - Go to your browser and refresh the page
 - You should see all the style changes that you just made
+
+### Global styles, typography, and layout styles
+
+On applications we don't only use `scope CSS`; we use global styles to handle some of the styles that will be the same across all the pages so you have a base before you start building the website with things such as like colors; fonts; sizing some basic stuff. In our case, we already have a `Page` component that can help us to add some of these styles and `styled-components` have `createGlobalStyle` component that adds this kind of style on our top component page.
+
+#### Using the GlobalStyles component
+
+- On your editor go to the `Page.js` file in the `components` directory
+- Import `createGlobalStyle` from `styled-components`
+  `import styled, { createGlobalStyle } from 'styled-components';`
+- Create a constant call `GlobalStyles` that will use `createGlobalStyle` to add some style
+  ```js
+  const GlobalStyles = createGlobalStyle``;
+  ```
+- First; we are going to define some variables to be available across all the `HTML`(you can use the `:root` pseudo selector the difference is that you could reuse that CSS inside of a stand-alone SVG element)
+  ```js
+  const GlobalStyles = createGlobalStyle`
+      html {}
+    `;
+  ```
+- Add the following variables
+  ```js
+  const GlobalStyles = createGlobalStyle`
+      html {
+        --red: #ff0000;
+        --black: #393939;
+        --grey: #3A3A3A;
+        --gray: var(--grey);
+        --lightGrey: #e1e1e1;
+        --lightGray: var(--lightGrey);
+        --offWhite: #ededed;
+        --maxWidth: 1000px;
+        --bs: 0 12px 24px 0 rgba(0,0,0,0.09);
+      }
+    `;
+  ```
+  - We add 2 variables for the `grey` color because some English speakers use `gray` instead of `grey` and the value of the `gray` variable fallback to the `grey` value (with the `ligthGrey` is the same case)
+  - The `bs` variable stands for `box-shadow` and we use it because if we change a little bit the `box-shadow` on some element it will make your app see a little bad and will be difficult to find out why is happening
+- Use the `GlobalStyles` style component before the `Header` component
+  ```js
+  export default function Page({ children }) {
+    return (
+      <div>
+        <GlobalStyles />
+        <Header />
+        <h2>I am a page component</h2>
+      </div>
+    );
+  }
+  ```
+- On your terminal; start your local server using: `npm run dev`
+- In the `browser`; go to `http://localhost:7777`
+- Now on the `Page` component update the `black` variable to another `color`
+- Then go back to your browser and refresh the page
+- You should see that the lines update it `color`
+- Go back to your editor and change back the `black` variable value
+
+#### Add fonts to the global styles
+
+- On the `GlobalStyles` component add the following
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {
+      font-family: 'radnika_next';
+      src: url('/static/radnikanext-medium-webfont.woff2')
+      format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    html {...}
+  `;
+  ```
+  - Is already provide on the `public/static` folder is the `font` file that we are going to use and make reference on the `src` property
+- Add the `body` tag on `GlobalStyles`
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {
+      font-family: 'radnika_next';
+      src: url('/static/radnikanext-medium-webfont.woff2')
+      format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    html {...}
+    body {}
+  `;
+  ```
+- On the `body` add the following `font-size`
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {
+      font-family: 'radnika_next';
+      src: url('/static/radnikanext-medium-webfont.woff2')
+      format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    html {...}
+    body {
+      font-family: 'radnika_next', ---apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans' 'Helvetica Neue', sans-serif;
+    }
+  `;
+  ```
+  Need to add the `font` that we recently create first.
+
+#### Finish with the global styles
+
+- On the `html` rule add the following
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {
+      ...
+      box-sizing: border-box;
+    }
+    body {...}
+  `;
+  ```
+  The `box-sizing` property set how the total width and height of an element is calculated. In our case the elements will use `border-box` where the width and height of the element will include the content, padding, border but not include the margin.
+- Add the following rule for all elements
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {
+      ...
+      box-sizing: border-box;
+    }
+  
+    body {...}
+  
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+  `;
+  ```
+
+  This will target all elements on the site and make sure that when we add `padding` and `border` to those elements it takes away from the size instead of grown it; this will help us with some horizontal scroll issues.
+
+- On the `body` add the following
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {
+      ...
+      box-sizing: border-box;
+    }
+  
+    body {
+      font-family: 'radnika_next', ---apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      padding: 0;
+      margin: 0;
+      font-size: 1.5rem;
+      line-height: 2;
+    }
+  
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+  `;
+  ```
+
+  This will reset all the default spaces that can be on the `body` and add some general rules for the fonts.
+
+- Next; we will add some general styles for the `anchors`
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {...}
+  
+    body {...}
+  
+    *, *:before, *:after {...}
+    a {
+      text-decoration: none;
+      color: var(--black);
+    }
+  
+    a:hover {
+      text-decoration: underline;
+    }
+  `;
+  ```
+
+- Then; we need to select the `buttons` to apply the `font-family` because setting the `font-family` on the `body` doesn't apply to the `buttons`
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {...}
+  
+    body {...}
+  
+    *, *:before, *:after {...}
+    a {...}
+  
+    a:hover {...}
+  
+    button {
+      font-family: 'radnika_next', ---apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+  `;
+  ```
+
+- Import `styled` from `styled-components`
+  `import styled, { createGlobalStyle } from 'styled-components';`
+- Now we want to apply some styling to the `children` of the `Page` component; so bellow of `GlobalStyles` create a `styled component` call `InnerStyles` that will represent a `div`
+  ```js
+  const InnerStyles = styled.div``;
+  ```
+- Add the following
+  ```js
+  const InnerStyles = styled.div`
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 2rem;
+  `;
+  ```
+  This will add a `max-with` to all `children` content; centralize it and add some spacing on each side of the `children` content.
+- On the `Page` function remove the `h2` message and wrap the `children` with `InnerStyles`
+  ```js
+  export default function Page({ children }) {
+    return (
+      <div>
+        <GlobalStyles />
+        <Header />
+        <InnerStyles>{children}</InnerStyles>
+      </div>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see an update on the page styles
