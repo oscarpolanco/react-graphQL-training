@@ -717,3 +717,59 @@ On applications we don't only use `scope CSS`; we use global styles to handle so
   ```
 - Go to your browser and refresh the page
 - You should see an update on the page styles
+
+### Visualizing Router changes
+
+If for some reason you have a slow internet connection that makes your browser load the page slowly; you will need a visual indication for the user to know that the page is still loading. To achieve this visual indication we are going to use the [nprogess library](https://ricostacruz.com/nprogress/).
+
+#### Implementing nprogress
+
+- First; go to the `_document` file on the `page` directory
+- Import the `Head` component from `next/documen`
+  `import Document, { Html, Head, NextScript, Main } from 'next/document';`
+- Use the `Head` component before the `body` tag
+  ```js
+  export default class MyDocument extends Document {
+    render() {
+      return (
+        <Html lang="en">
+          <Head />
+          <body>
+            <Main />
+            <NextScript />
+          </body>
+        </Html>
+      );
+    }
+  }
+  ```
+- Now; go to the `_app.js` file in the `page` directory
+- The `nprogress` package will ship all the styles that you need when you install it just need to import it like this:
+  `import 'nprogress/nprogress.css';`
+- Go to your terminal and the `frontend` directory
+- Start your local server using: `npm start`
+- Go to your browser and on to the [homepage](http://localhost:7777/)
+- You should see at the top of the page the `loading` bar each time you refresh the page
+
+#### Using our custom styles for nprogress and activate it on router change
+
+- Import `NProgress` from `nprogress`
+  `import NProgress from 'nprogress';`
+- We are going to start the` nprogress` process as soon as the link start and finish it when the page transition and to do this we need to have access to some events that are on the `router` of `next js` so import `Router` from `next/router`
+  `import Router from 'next/router';`
+- Now we need to subscribe to the `routeChangeStart` event and send the function that we need to `start nprogress`
+  `Router.events.on('routeChangeStart', () => NProgress.start());`
+- Go to your browser and click on one of the links
+- You should see the `nprogress` bar staring
+- Go back to the editor and subscribe to the `routeChangeComplete` event so we can finish the `nprogress` process with the `done` function
+  `Router.events.on('routeChangeComplete', () => NProgress.done());`
+- Go back to your browser and click one of the links
+- You should see the `nprogess` complete process when you change the page
+- Then we to add the `error` event in to finish the `nprogress` process in case of an error
+  `Router.events.on('routeChangeError', () => NProgress.done());`
+- Finally, we need to add our custom styles(we already have a `nprogress` custom `CSS` in the `styles` directory); so remove the import of the default styles for `nprogress`
+- Import the following `css` file
+  `import '../components/styles/nprogress.css';`
+- Go to your browser
+- Click on one of the links
+- You should see the new styles when the page is loading
