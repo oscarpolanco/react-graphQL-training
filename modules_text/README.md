@@ -773,3 +773,115 @@ If for some reason you have a slow internet connection that makes your browser l
 - Go to your browser
 - Click on one of the links
 - You should see the new styles when the page is loading
+
+### Fixing styled-components flicker on server render
+
+Since we are using `styled-components` you see that a `class` with a set of characters set by the `styled component` package but as you may remember `next js` do `server-side rendering` out of the box; this will cause a `warning` that could appear on the console that said: `Prop 'className' did no match. Server: "XXXX" Element: "yyyyy"`. This is because the `server` renders the element one way and the browser renders the same element with a difference in this time the `className` so we need to be consistent when you render an element. Another issue that you may have is when you open or reload a page; you will see that the page renders for a second without styles so it those a flicker effect when finally the styles are available. To fix this we use the following process:
+
+- First; go to the `_document.js` file in the `pages` directory
+- Add the following method before the `render` function
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps() {}
+
+    render() {...}
+  }
+  ```
+
+  To work with `server-side rendering` and `styled-components` we will need to use one of `next js` hooks call `getInitialProps`; that will wait until this method is resolved to send the data to the browser.
+
+- Add a `renderPage` argument that is the result of destructuring an object
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {}
+
+    render() {...}
+  }
+  ```
+
+- Import `ServerStyleSheet` from `styled-components`
+  `import { ServerStyleSheet } from 'styled-components';`
+
+  The basic idea is that when your app renders on the `server`, you can create a `ServerStyleSheet` and add a provider to your `React` tree which accepts styles via a `context API`.
+
+- Create a constant call `sheet` that will be an instance of `ServerStyleSheet`
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+    }
+
+    render() {...}
+  }
+  ```
+
+- Now create a constant call `page` that will have the `renderPage` function as its value
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage();
+    }
+
+    render() {...}
+  }
+  ```
+
+- The `renderPage` function receive the following
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage((App) => (props) => sheet.collectStyles(<App {...props} />);
+    }
+
+    render() {...}
+  }
+  ```
+
+  The `renderPage` function is a `callback` that runs the actual `React` rendering logic and it receives our `App` with all its `props` and finally we send the `sheet` object. The `collectStyles` function will go throw every component that needs to be rendered on the page and will see if there are any `styled-components` on those components then collect every `CSS` that it needs and send it out to the `server`.
+
+- Then; create a constant call `styleTags` with the `getStyleElement` from the `sheet` object as it value
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage((App) => (props) => sheet.collectStyles(<App {...props} />);
+      const styleTags = sheet.getStyleElement();
+    }
+
+    render() {...}
+  }
+  ```
+
+  The `getStyleElement` method will return a string of multiple `styles` tag that you need to take into account when you adding the `CSS` string to your `HTML` output.
+
+- Finally; return an object spreading the `page` object and with the `styleTags` object
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage((App) => (props) => sheet.collectStyles(<App {...props} />);
+      const styleTags = sheet.getStyleElement();
+      return { ...page, styleTags };
+    }
+
+    render() {...}
+  }
+  ```
+
+- Go to your terminal
+- On your `frontend` directory; start your local server using: `npm run dev`(If you already have the server running you need to restart the server)
+- Go to your browser
+- Everything should work as expected
+
+#### Note:
+
+If you continue with the issues that we defined at the beginning of this section you will probably need to delete the `.next` folder that is at the root of the `frontend` directory

@@ -10,6 +10,7 @@ Fullstack React and GraphQL training.
 
 - [React](https://reactjs.org/) on the client-side of the application
 - [Next.js](https://nextjs.org/) on the client-side of the application
+- [Styled Components](https://styled-components.com/) for the styles of the application
 
 ## Pages
 
