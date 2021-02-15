@@ -352,3 +352,536 @@ At the end for internal app navigation use the `Link` component and for external
 - Go back to your browser and refresh the page
 - You should see the `Nav` component links
 - Click on the links and you should navigate the page
+
+## Module 3: CSS and styled-components
+
+We need to begin to add some styling to our pages. There are a lot of ways to add `CSS` to our `React` project; on this project, we will use `scope CSS` using the `styled-components` package. The idea of `styled-components` is that you define your `CSS` in components and those things we can scope it really easy and you can use `js` values inside of those components.
+
+### Using styled components
+
+- On your editor go to the `components` directory
+- Go to the `Header` component file
+- Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- We are going to style the logo first; before the `Header` component function creates a constant call `Logo`(with uppercase because will be a component) and use the `styled` object with the `h1` property(This property will tell that is an `h1` element that we are going to render) and use `back tips` after the `h1`.
+  ```js
+  const Logo = styled.h1``;
+  ```
+  This definition will scope the style that we add to the element that we use the component
+- Add a `background` to the `Logo`
+  ```js
+  const Logo = styled.h1`
+    background: red;
+  `;
+  ```
+- Now go to the `Header` function and use the `Logo` component to wrap the `Link` component that represent the logo
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">
+          <Logo>
+            <Link href="/">Sick fits</Link>
+          </Logo>
+        </div>
+        ...
+    );
+  }
+  ```
+- Go to your terminal
+- On the `frontend` directory; run your local server using: `npm run dev`
+- In the `browser`; go to `http://localhost:7777`
+- You should see a `red` background on the `slick fits` link
+- Use the inspector on the `slick fits` link
+- You should see that the link are inside of an `h1` element with a `class` generated automatically by the `styled-components` library
+- Check the `style` section of the `browser` console and you should see the `background` that you add
+- Now lets style the `anchor` tag(Then `Link` component render an `anchor` tag); Add a rule for the `anchors` to make the `color` white
+  ```js
+  const Logo = styled.h1`
+    background: red;
+    a {
+      color: white;
+    }
+  `;
+  ```
+- Go to your browser; you should see that the `slick fits` link is with the `color` white and the other links of the page shouldn't have the white color because the `color` style is scope to the `h1`
+- Now add the following to the `Logo` styles
+  ```js
+  const Logo = styled.h1`
+    font-size: 4rem;
+    margin-left: 2rem;
+    position: relative;
+    z-index: 2;
+    background: red;
+    transform: skew(-7deg);
+    a {
+      color: white;
+    }
+  `;
+  ```
+  - `font-size: 4rem;`: Update the size of the letters on the `h1` using a `rem` value. The `rem` value will take many times the `font-size` defined in the `root` element of the page. In this case `4` times the `font-size` value of the `root`
+  - `margin-left: 2rem;`: Using the `rem` value add some `margin` at the link to move it to the left
+  - `position: relative;`: The `position` property of an element sets the position of that element in the document. In this case, we have a `relative` position; that means the element will be positioned according to the normal flow of the document
+  - `z-index: 2;`: The `z-index` property sets the order position of the elements. The elements with the smaller values will be overlapping for the elements with values bigger than him
+  - `transform: skew(-7deg);`: The `transform` property allows you to rotate, scale, skew, or translate an element. In this case, we `skew` the `h1` content by `-7 degrees`
+- Its the `anchor` turn; at the following:
+  ```js
+  const Logo = styled.h1`
+    ... a {
+      color: white;
+      text-decoration: none;
+      text-transform: uppercase;
+      padding: 0.5rem 1rem;
+    }
+  `;
+  ```
+  - `text-decoration: none;`: Eliminate the highlight os the `anchor` text on hover
+  - `text-transform: uppercase;`: Put the `anchor` text to uppercase
+  - `padding: 0.5rem 1rem;`: The add some space at the top/bottom and the left/right side with some `rem` values
+
+For example; if this logo's style is going to be used in other places we will create the `Logo` component on the `style` directory on the `components` folder. It already provided some styles that are going to be used on this application. Now let's continue adding some more styles.
+
+- Bellow the logo's styles create another `styled component` call `HeaderStyles` that should represent a `header` tag
+  ```js
+  const HeaderStyles = styled.header``;
+  ```
+- Add the following styles to the `bar` class
+  ```js
+  const HeaderStyles = styled.header`
+    .bar {
+      border-bottom: 1px solid var(--black, black);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      justify-content: space-between;
+      align-items: center;
+    }
+  `;
+  ```
+  - `border-bottom: 1px solid var(--black, black);`: This will add a `black` borderline of `1px` bellow the `slick fits` logo. Later we will create a `CSS variable` for the `black` color(a little bit different from the black color); that is why we use `var` on this property and the `black` color as a fallback if the variable doesn't exist
+  - `display: grid;`: The `display` property defines whether an element is treated as a block or inline-block and the layout that is going to use; in this case will use `grid` that divide the page into major regions or defining a relationship in terms of size, position and layer between the elements
+  - `grid-template-columns: auto 1fr;`: the `grid-template-columns` define the column in the function of the `grid column` that is a vertical track of the `CSS grid layout` with space between to vertical `grid` lines. In this case, will add 2 columns; one with the maximum size that the item can be and the other use `1 frame` that will represent `1 fraction` of the available space
+  - `justify-content: space-between;`: Distribute the space between elements
+  - `align-items: center;`: Aling the items to the center of the container
+- Now is the turn of the `.sub-bar` class:
+  ```js
+  const HeaderStyles = styled.header`
+    .bar {
+      border-bottom: 1px solid var(--black, black);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sub-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      border-bottom: 1px solid var(--black, black);
+    }
+  `;
+  ```
+- Substitute the `header` tag with the `HeaderStyles` component
+- Go to your browser and refresh the page
+- You should see all the style changes that you just made
+
+### Global styles, typography, and layout styles
+
+On applications we don't only use `scope CSS`; we use global styles to handle some of the styles that will be the same across all the pages so you have a base before you start building the website with things such as like colors; fonts; sizing some basic stuff. In our case, we already have a `Page` component that can help us to add some of these styles and `styled-components` have `createGlobalStyle` component that adds this kind of style on our top component page.
+
+#### Using the GlobalStyles component
+
+- On your editor go to the `Page.js` file in the `components` directory
+- Import `createGlobalStyle` from `styled-components`
+  `import styled, { createGlobalStyle } from 'styled-components';`
+- Create a constant call `GlobalStyles` that will use `createGlobalStyle` to add some style
+  ```js
+  const GlobalStyles = createGlobalStyle``;
+  ```
+- First; we are going to define some variables to be available across all the `HTML`(you can use the `:root` pseudo selector the difference is that you could reuse that CSS inside of a stand-alone SVG element)
+  ```js
+  const GlobalStyles = createGlobalStyle`
+      html {}
+    `;
+  ```
+- Add the following variables
+  ```js
+  const GlobalStyles = createGlobalStyle`
+      html {
+        --red: #ff0000;
+        --black: #393939;
+        --grey: #3A3A3A;
+        --gray: var(--grey);
+        --lightGrey: #e1e1e1;
+        --lightGray: var(--lightGrey);
+        --offWhite: #ededed;
+        --maxWidth: 1000px;
+        --bs: 0 12px 24px 0 rgba(0,0,0,0.09);
+      }
+    `;
+  ```
+  - We add 2 variables for the `grey` color because some English speakers use `gray` instead of `grey` and the value of the `gray` variable fallback to the `grey` value (with the `ligthGrey` is the same case)
+  - The `bs` variable stands for `box-shadow` and we use it because if we change a little bit the `box-shadow` on some element it will make your app see a little bad and will be difficult to find out why is happening
+- Use the `GlobalStyles` style component before the `Header` component
+  ```js
+  export default function Page({ children }) {
+    return (
+      <div>
+        <GlobalStyles />
+        <Header />
+        <h2>I am a page component</h2>
+      </div>
+    );
+  }
+  ```
+- On your terminal; start your local server using: `npm run dev`
+- In the `browser`; go to `http://localhost:7777`
+- Now on the `Page` component update the `black` variable to another `color`
+- Then go back to your browser and refresh the page
+- You should see that the lines update it `color`
+- Go back to your editor and change back the `black` variable value
+
+#### Add fonts to the global styles
+
+- On the `GlobalStyles` component add the following
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {
+      font-family: 'radnika_next';
+      src: url('/static/radnikanext-medium-webfont.woff2')
+      format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    html {...}
+  `;
+  ```
+  - Is already provide on the `public/static` folder is the `font` file that we are going to use and make reference on the `src` property
+- Add the `body` tag on `GlobalStyles`
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {
+      font-family: 'radnika_next';
+      src: url('/static/radnikanext-medium-webfont.woff2')
+      format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    html {...}
+    body {}
+  `;
+  ```
+- On the `body` add the following `font-size`
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {
+      font-family: 'radnika_next';
+      src: url('/static/radnikanext-medium-webfont.woff2')
+      format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    html {...}
+    body {
+      font-family: 'radnika_next', ---apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans' 'Helvetica Neue', sans-serif;
+    }
+  `;
+  ```
+  Need to add the `font` that we recently create first.
+
+#### Finish with the global styles
+
+- On the `html` rule add the following
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {
+      ...
+      box-sizing: border-box;
+    }
+    body {...}
+  `;
+  ```
+  The `box-sizing` property set how the total width and height of an element is calculated. In our case the elements will use `border-box` where the width and height of the element will include the content, padding, border but not include the margin.
+- Add the following rule for all elements
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {
+      ...
+      box-sizing: border-box;
+    }
+  
+    body {...}
+  
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+  `;
+  ```
+
+  This will target all elements on the site and make sure that when we add `padding` and `border` to those elements it takes away from the size instead of grown it; this will help us with some horizontal scroll issues.
+
+- On the `body` add the following
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {
+      ...
+      box-sizing: border-box;
+    }
+  
+    body {
+      font-family: 'radnika_next', ---apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      padding: 0;
+      margin: 0;
+      font-size: 1.5rem;
+      line-height: 2;
+    }
+  
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+  `;
+  ```
+
+  This will reset all the default spaces that can be on the `body` and add some general rules for the fonts.
+
+- Next; we will add some general styles for the `anchors`
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {...}
+  
+    body {...}
+  
+    *, *:before, *:after {...}
+    a {
+      text-decoration: none;
+      color: var(--black);
+    }
+  
+    a:hover {
+      text-decoration: underline;
+    }
+  `;
+  ```
+
+- Then; we need to select the `buttons` to apply the `font-family` because setting the `font-family` on the `body` doesn't apply to the `buttons`
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    html {...}
+  
+    body {...}
+  
+    *, *:before, *:after {...}
+    a {...}
+  
+    a:hover {...}
+  
+    button {
+      font-family: 'radnika_next', ---apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+  `;
+  ```
+
+- Import `styled` from `styled-components`
+  `import styled, { createGlobalStyle } from 'styled-components';`
+- Now we want to apply some styling to the `children` of the `Page` component; so bellow of `GlobalStyles` create a `styled component` call `InnerStyles` that will represent a `div`
+  ```js
+  const InnerStyles = styled.div``;
+  ```
+- Add the following
+  ```js
+  const InnerStyles = styled.div`
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 2rem;
+  `;
+  ```
+  This will add a `max-with` to all `children` content; centralize it and add some spacing on each side of the `children` content.
+- On the `Page` function remove the `h2` message and wrap the `children` with `InnerStyles`
+  ```js
+  export default function Page({ children }) {
+    return (
+      <div>
+        <GlobalStyles />
+        <Header />
+        <InnerStyles>{children}</InnerStyles>
+      </div>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see an update on the page styles
+
+### Visualizing Router changes
+
+If for some reason you have a slow internet connection that makes your browser load the page slowly; you will need a visual indication for the user to know that the page is still loading. To achieve this visual indication we are going to use the [nprogess library](https://ricostacruz.com/nprogress/).
+
+#### Implementing nprogress
+
+- First; go to the `_document` file on the `page` directory
+- Import the `Head` component from `next/documen`
+  `import Document, { Html, Head, NextScript, Main } from 'next/document';`
+- Use the `Head` component before the `body` tag
+  ```js
+  export default class MyDocument extends Document {
+    render() {
+      return (
+        <Html lang="en">
+          <Head />
+          <body>
+            <Main />
+            <NextScript />
+          </body>
+        </Html>
+      );
+    }
+  }
+  ```
+- Now; go to the `_app.js` file in the `page` directory
+- The `nprogress` package will ship all the styles that you need when you install it just need to import it like this:
+  `import 'nprogress/nprogress.css';`
+- Go to your terminal and the `frontend` directory
+- Start your local server using: `npm start`
+- Go to your browser and on to the [homepage](http://localhost:7777/)
+- You should see at the top of the page the `loading` bar each time you refresh the page
+
+#### Using our custom styles for nprogress and activate it on router change
+
+- Import `NProgress` from `nprogress`
+  `import NProgress from 'nprogress';`
+- We are going to start the` nprogress` process as soon as the link start and finish it when the page transition and to do this we need to have access to some events that are on the `router` of `next js` so import `Router` from `next/router`
+  `import Router from 'next/router';`
+- Now we need to subscribe to the `routeChangeStart` event and send the function that we need to `start nprogress`
+  `Router.events.on('routeChangeStart', () => NProgress.start());`
+- Go to your browser and click on one of the links
+- You should see the `nprogress` bar staring
+- Go back to the editor and subscribe to the `routeChangeComplete` event so we can finish the `nprogress` process with the `done` function
+  `Router.events.on('routeChangeComplete', () => NProgress.done());`
+- Go back to your browser and click one of the links
+- You should see the `nprogess` complete process when you change the page
+- Then we to add the `error` event in to finish the `nprogress` process in case of an error
+  `Router.events.on('routeChangeError', () => NProgress.done());`
+- Finally, we need to add our custom styles(we already have a `nprogress` custom `CSS` in the `styles` directory); so remove the import of the default styles for `nprogress`
+- Import the following `css` file
+  `import '../components/styles/nprogress.css';`
+- Go to your browser
+- Click on one of the links
+- You should see the new styles when the page is loading
+
+### Fixing styled-components flicker on server render
+
+Since we are using `styled-components` you see that a `class` with a set of characters set by the `styled component` package but as you may remember `next js` do `server-side rendering` out of the box; this will cause a `warning` that could appear on the console that said: `Prop 'className' did no match. Server: "XXXX" Element: "yyyyy"`. This is because the `server` renders the element one way and the browser renders the same element with a difference in this time the `className` so we need to be consistent when you render an element. Another issue that you may have is when you open or reload a page; you will see that the page renders for a second without styles so it those a flicker effect when finally the styles are available. To fix this we use the following process:
+
+- First; go to the `_document.js` file in the `pages` directory
+- Add the following method before the `render` function
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps() {}
+
+    render() {...}
+  }
+  ```
+
+  To work with `server-side rendering` and `styled-components` we will need to use one of `next js` hooks call `getInitialProps`; that will wait until this method is resolved to send the data to the browser.
+
+- Add a `renderPage` argument that is the result of destructuring an object
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {}
+
+    render() {...}
+  }
+  ```
+
+- Import `ServerStyleSheet` from `styled-components`
+  `import { ServerStyleSheet } from 'styled-components';`
+
+  The basic idea is that when your app renders on the `server`, you can create a `ServerStyleSheet` and add a provider to your `React` tree which accepts styles via a `context API`.
+
+- Create a constant call `sheet` that will be an instance of `ServerStyleSheet`
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+    }
+
+    render() {...}
+  }
+  ```
+
+- Now create a constant call `page` that will have the `renderPage` function as its value
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage();
+    }
+
+    render() {...}
+  }
+  ```
+
+- The `renderPage` function receive the following
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage((App) => (props) => sheet.collectStyles(<App {...props} />);
+    }
+
+    render() {...}
+  }
+  ```
+
+  The `renderPage` function is a `callback` that runs the actual `React` rendering logic and it receives our `App` with all its `props` and finally we send the `sheet` object. The `collectStyles` function will go throw every component that needs to be rendered on the page and will see if there are any `styled-components` on those components then collect every `CSS` that it needs and send it out to the `server`.
+
+- Then; create a constant call `styleTags` with the `getStyleElement` from the `sheet` object as it value
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage((App) => (props) => sheet.collectStyles(<App {...props} />);
+      const styleTags = sheet.getStyleElement();
+    }
+
+    render() {...}
+  }
+  ```
+
+  The `getStyleElement` method will return a string of multiple `styles` tag that you need to take into account when you adding the `CSS` string to your `HTML` output.
+
+- Finally; return an object spreading the `page` object and with the `styleTags` object
+
+  ```js
+  export default class MyDocument extends Document {
+    static getInitialProps({ renderPage }) {
+      const sheet = new ServerStyleSheet();
+      const page = renderPage((App) => (props) => sheet.collectStyles(<App {...props} />);
+      const styleTags = sheet.getStyleElement();
+      return { ...page, styleTags };
+    }
+
+    render() {...}
+  }
+  ```
+
+- Go to your terminal
+- On your `frontend` directory; start your local server using: `npm run dev`(If you already have the server running you need to restart the server)
+- Go to your browser
+- Everything should work as expected
+
+#### Note:
+
+If you continue with the issues that we defined at the beginning of this section you will probably need to delete the `.next` folder that is at the root of the `frontend` directory
