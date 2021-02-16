@@ -885,3 +885,60 @@ Since we are using `styled-components` you see that a `class` with a set of char
 #### Note:
 
 If you continue with the issues that we defined at the beginning of this section you will probably need to delete the `.next` folder that is at the root of the `frontend` directory
+
+## Module 4: Server-side graphQL development
+
+At this point we are going to enter to the `backend` side of the project that will use `keystone` that will help us to create all `items`; `schemas` and saving information but we need a `database` first to store all the information that `keystone` will help us to manage. `Keystone` is a layer that sits on top of a number of different `database` like `MongoDB`, `Postgres` or `Prisma` in our case we will use `MongoDB`.
+
+### Setting up mongoDB
+
+You can install and run `MongoDB` on your local machine but we will use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) that will easily set up everything that we need to get `MongoDB` in our project. `Mongo Atlas` will give you a nice `UI` to manage your database and when it comes to deploying our application to the internet we need to host your `database` somewhere publicly and you can use `mongo Atlas` for this. Here is the process to set up `MongoDB` on `MongoDB atlas`:
+
+- Create an account [here](https://www.mongodb.com/cloud/atlas/register)
+- To begin is best to create a new `organization` so you can segment all your work of your project so on the left top corner click on the `organization` dropdown
+- Then click on view on `view all organization`
+- Click on the `Create new organization` button at the right
+- Fill the `Name your organization` input
+- Make sure that the `MongoDB atlas` is check
+- Then click `next`
+- Make sure that your valid mail is the `organization` owner
+- After that click on `Create Organization`
+- Now that the `organization` is created; we need to create a `project`(this is our actual database). Click on the `New Project` button at the right
+- Add the name of your project on the `Name your Project` input
+- Click on the `next` button
+- Make sure that your valid email is the `project` owner
+- After that click on `Create Project`
+- You should be on a page with a `Create Cluster` button. Click on it
+- Then click on the `create a cluster` button in the `shared cluster` side that is `free`
+- Now choose `aws` in the `Cloud Provider & Region`
+- And `N.Virginia(us-east-1)` on the `recomended region`
+- On the `Cluster Name` section; add your `cluster` name
+- Now click on the `Create Cluster` button(The process will take a couple of minutes)
+- After the creation process of the `cluster` finish; we need to connect to it. Click on the `connect` button below the `cluster` name
+- By default `Mongo Atlas` will allow only some specific `IP` addresses to prevent malicious connections to your database. In this case, we will allow every `IP` because it will be our local environment(Do not share with anyone). So click on `Allow access from anywhere`
+- Add a description and click on `Add IP Address`
+- Then `create` and user; Add the `Username`
+- Add a `password` for the user(I recommend using the `autogenerate secure password` button)
+- Click on show and store in someplace in your local machine the `password`(So we can easily use it in a little bit)
+- Click on `Create Database User`
+- Now we need to `choose a connection` method. In our case, we will select `Connect your application`
+- Copy the `URL` that is provided(Store it for a second and continue with the next section)
+
+#### Setting the .env file on the backend
+
+We will need some `secret` information on our project including the `connection string` of our database and we do not want that this information is in any part that is publicly available like our version controller; this is why we need to create a `.env` file that will only exist on our local machine(Is add to the `.gitignore` so it will not be tracked by `git`). These are the steps to add the first value of the `.env` file.
+
+- On your editor go to the `backend` directory
+- Create a file on the root of the `backend` directory called `.env`
+- Add the following in the `.env` file
+  ```bash
+  DATABASE_URL=
+  ```
+- Remember the `URL` that you get from `MongoDB atlas`. Paste it on `DATABASE_URL`
+- Substitute the `<password>` with the actual `password` that you store in your local machine in the section before
+- Delete where you store the `password` that you store in your local machine
+- Substitute `<dbname>` with the database name
+- Then you are set with the string connection; now we need to test the connection and for this, we are going to use `MongoDB compass`(This tool is mentioned at the beginning of this document). Open `MongoDB compass`
+- Add the `connection string` that you just add on the `.env` file in `MongoDB compass `
+- Click on `connect`
+- You should connect with `MongoDB Atlas` without issues(We don't have any data yet)
