@@ -942,3 +942,223 @@ We will need some `secret` information on our project including the `connection 
 - Add the `connection string` that you just add on the `.env` file in `MongoDB compass `
 - Click on `connect`
 - You should connect with `MongoDB Atlas` without issues(We don't have any data yet)
+
+### An intro to GraphQL
+
+`GraphQL` is a specification for requesting and pushing data to and from a `server`. `GraphQL` is not a library itself; is like an idea or conjunction of ideas/specifications that the developers of some tools on top of the `database` layer like `Keystone`.
+
+On `graphQL` you will use `query` or `mutation` to ethear pull in `data`(this are the `queries`) and update or create `data`(this are the `mutation`). `GraphQL` have it own syntax; here is a little example:
+
+```js
+query {
+  allProducts {
+    name
+    description
+    price
+  }
+}
+```
+
+On a `query` you need to specify every `field` that you want to `query`; in this case from `allProducts` we `query`: the `name`; the `description` and the `price` of the products; this will bring the define information of `all products`. Seeing these `queries` you may notice that you no longer need to create a bunch of `rest` endpoints that specify like `all products` and others for `products` with just the `name` and `description`.
+
+Another useful thing is that you can do multiple `queries` on one call like the following
+
+```js
+query {
+  allProducts {
+    name
+    description
+    price
+  }
+  allUsers {
+    name
+    email
+  }
+}
+```
+
+On the same `request` you will have all the `products` and a list of all `users`.
+
+Also, the `queries` are relational; this means that you can get a list of the `item` that you want and all `data` related to it; like the following example:
+
+```js
+query {
+  allUsers {
+    name
+    email
+    cart {
+      id
+      product{
+        name
+        description
+      }
+    }
+  }
+}
+```
+
+Every `user` has a `cart` that is related to it and the `cart` has a `product` related. So this will give you every `user` with its `cart` and the `products` that are in the `user's cart`. As long as you make the relation in whatever you working with you can write `queries` like this.
+
+The `mutations` are a little bit different:
+
+```js
+mutation {
+  requestReset(email: "example@test.com")
+  message
+}
+```
+
+This will try to reset your `password` and this type of `request` will be attached to our `React` application to trigger it. With the `mutation` examples later you will have a better understanding of this.
+
+### Setting up Keystone and Typescript
+
+Now we are going to begin setting up `Keystone` for our `backend` side of the application. An important thing to know before we begin is that this part of the application will be on [typescript](https://www.typescriptlang.org/) because this side of the application will not be a lot different than using just regular `.js` files and we will have the `IntelliSense and `code`highlighting benefit that we have used`typescript`.
+
+When we are working on the `backend` side of the application all the files will have the `.ts` extension. Every configuration that we need for `typescript` is already done on the initial files.
+
+#### Setting Keystone config file
+
+- On your editor go to the `backend` directory
+- In the root of the `backend` directory create a file called `keystone.ts`
+- Import `dotenv/config`
+  `import 'dotenv/config';`
+
+  The `dotenv` package will take all the `environment variables` that you create before and make them available inside of the `keystone.ts` file.
+
+- Now create a constant call `databaseUrl` and use the `DATABASE_URL` as it value
+  `const databaseUrl = process.env.DATABASE_URL;`
+
+  To access the value of an `environment variable` you need to access the `process.env` object
+
+- Add the following fallback to `databaseUrl`
+  `const databaseUrl = process.env.DATABASE_URL || 'mongodb://localhost/keystone-sick-fits-tutorial';`
+
+  This is in case someone has a local `MongoDB` installation(just need to substitute with the string of your local)
+
+- Now we are going to create some `session` config; because we are going to be `login` to the `keystone` backend and in order to authenticate the users in the `frontend` of our application we are going to use `session`. Create an object call `sessionConfig`
+  `const sessionConfig = {}`
+- Create a property call `maxAge` with the following value
+  ```js
+  const sessionConfig = {
+    maxAge: 60 * 60 * 24 * 360,
+  };
+  ```
+  The `maxAge` property will define how much time; the `cookie` will be alive on the browser. The values represent:
+  `60` seconds in a minute _ `60` minutes in an hour _ `24` hours in a day \* `360` on a year
+- Then we need to add the `secret` property but first, go to the `.env` file and create `COOKIE_SECRET` with a random string as its value
+  `COOKIE_SECRET=my_random_string`
+- Go back to the `keystone.ts` file
+- Add the `secret` property to the `sessionConfig` using the `COOKIE_SECRET` as it value
+  ```js
+  const sessionConfig = {
+    maxAge: 60 * 60 * 24 * 360,
+    secret: process.env.COOKIE_SECRET,
+  };
+  ```
+  This `secret` will use the `string` that you use to create a `cookie` and that `string` should not be available to the public to prevent reverse engineering on your `cookies`
+- At the top of the file import `config` and `createSchema` from `@keystone-next/keystone/schema`
+  `import { config, createSchema } from '@keystone-next/keystone/schema';`
+
+  In the future, `keystone-next` will be updated to `keystone` or `keystonejs` on the future
+
+- At the bottom of the file export the `config` function that receive an `config` object
+  `export default config({});`
+- Add a `server` object inside of the `config` configuration object
+  ```js
+  export default config({
+    server: {},
+  });
+  ```
+- Go to the `.env` file and create a `environment variable` call `FRONTEND_URL` with the url of our `React` application
+  `FRONTEND_URL="http://localhost:7777"`
+- Get back to the `keystone.ts` file and on the `sever` object add a `cors` property with an array as it value and on that array add the `FRONTEND_URL` environment variable
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+    },
+  });
+  ```
+  Because we are running as a `backend` on a different `port` that the one we run the `frontend`; we need to specify the `url` to allow the data to flow between `backend` and `frontend`
+- Then add a `credentials` property as `true`
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+      credentials: true,
+    },
+  });
+  ```
+  That means that we will pass the `cookie` that we added before
+- Bellow the `server` object; add the `db` object
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+      credentials: true,
+    },
+    db: {},
+  });
+  ```
+- Inside of the `db` object add the `adapter` property with a value of `mongoose`
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+      credentials: true,
+    },
+    db: {
+      adapter: 'mongoose',
+    },
+  });
+  ```
+- After the `adapter` we need to add the `URL` property with out `database URL` that is available on the `database URL` constant that we created before
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+      credentials: true,
+    },
+    db: {
+      adapter: 'mongoose',
+      url: databaseUrl,
+    },
+  });
+  ```
+- Now we need to create our `data types` that `keystone` refer it as a `lists`(list of products; list of items; etc...) so bellow the `db` object create a `lists` property with the `createSchema` function as it value(for now send a empty object as a parameter; later we are going to add the `data types`)
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+      credentials: true,
+    },
+    db: {
+      adapter: 'mongoose',
+      url: databaseUrl,
+    },
+    lists: createSchema({}),
+  });
+  ```
+- Finally add the `ui` object below to the `lists` with the following value
+  ```js
+  export default config({
+    server: {
+      origin: [process.env.FRONTEND_URL],
+      credentials: true,
+    },
+    db: {
+      adapter: 'mongoose',
+      url: databaseUrl,
+    },
+    lists: createSchema({}),
+    ui: {
+      isAccessAllowed: () => true,
+    },
+  });
+  ```
+  This will tell if do you allow access to the `keystone` UI because sometimes you want the users to manage all data from the `frontend` of the application
+- Now on your terminal go to the `backend` directory
+- Install all dependencies using: `npm install`
+- Run your local server using: `npm run dev`
+- On your browser go to `http://localhost:3000/`
+- You should see a `dashboard` with nothing on it but without errors
