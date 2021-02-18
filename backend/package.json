@@ -10,6 +10,9 @@
   },
   "eslintConfig": {
     "extends": "wesbos/typescript.js",
+    "parserOptions": {
+      "project": "./backend/tsconfig.json"
+    },
     "rules": {
       "@typescript-eslint/no-unsafe-assignment": 0
     }
