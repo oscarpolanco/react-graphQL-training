@@ -1162,3 +1162,61 @@ When we are working on the `backend` side of the application all the files will 
 - Run your local server using: `npm run dev`
 - On your browser go to `http://localhost:3000/`
 - You should see a `dashboard` with nothing on it but without errors
+
+### Creating our first User data type
+
+Now that we have `keystone` up and running; we can create our first `data type`. Every time we are creating a `data type`; we are going to be writing something called a `schema` and the `schema` is a description of what our data will look like(our fields; all the relationship; etc... ).
+
+#### Creating the User schema
+
+- On your editor go to the `backend/folder/` directory
+- Create a file called `User.ts`
+- Import `list` from `@keystone-next/keystone/schema`
+  `import { list } from '@keystone-next/keystone/schema';`
+- Import `text` and `password` from `@keystone-next/fields`
+  `import { text, password } from '@keystone-next/fields';`
+- Export a constant call `User` that it value is the `list` function
+  `export const User = list({});`
+- On the object that recive `list`; add a property call `fields` that have an object as it value
+  ```js
+  export const User = list({
+    fields: {},
+  });
+  ```
+  Here we will define all `fields` that part of a `user`
+- Now we need to specify each `field` and let `keystone` know how it will store the data as well witch editor interface it will give us. For this, we need to import from the `keystone` package each type of `field` like we already did at the beginning of the steps. Then on the `fields` object; add a property call `name` with the `text` function as its value and `text` will receive an object with the `isRequired` property set as `true`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+    },
+  });
+  ```
+  This will add an input field on the `UI` and will store the data as a string
+- Add the following properties
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+    },
+  });
+  ```
+- In order to use the `User schema` we need to added to the `keystone.ts` config file. So on your editor import the `User` schema
+  `import { User } from './schemas/User';`
+- Go to the `lists` property and add the `User` schema
+  ```js
+  export default config({
+    server: {...},
+    db: {...},
+    lists: createSchema({
+      User,
+    }),
+    ui: {...},
+  });
+  ```
+- Every time you make an update on `keystone` you need to restart your local server; so on your terminal go to the `backend` directory
+- Restart your local server using `npm run dev`
+- Go to `http://localhost:3000/`
+- You should see the `Users` option in the `dashboard`(DO NOT ADD ANY DATA YET)
