@@ -1220,3 +1220,140 @@ Now that we have `keystone` up and running; we can create our first `data type`.
 - Restart your local server using `npm run dev`
 - Go to `http://localhost:3000/`
 - You should see the `Users` option in the `dashboard`(DO NOT ADD ANY DATA YET)
+
+### Adding auth to our application
+
+Before to continue creating more `data types` we need to set a `login` for our user so not anyone has access to the `keystone` UI.
+
+#### Steps to set auth on keystone
+
+- On your editor go to the `keystone.ts` file in the `backend` directory
+- Import `createAuth` from `@keystone-next/auth`
+  `import { createAuth } from '@keystone-next/auth';`
+- Create a constant call `withAuth` that is the result of destructuring the value that `createAuth` returns(The `createAuth` function recive a configuration object)
+  `const { withAuth } = createAuth({});`
+- Now we will add the `listKey` an the configuration object. This will set the `schema` responsible to be the `user`; in our case the `User` schema
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+  });
+  ```
+- We also need to set which field of the `schema` will identify the `user`; in our case the `email`
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+    identityField: 'email',
+  });
+  ```
+- Then we need to specify the `secret` field that will ask to each `user` to succefully login; in our case will be associate with the `password` field
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+    identityField: 'email',
+    secretField: 'password',
+  });
+  ```
+- At this moment we don't have any `users` to log in so at the moment that we add the `auth` configuration we won't be able to access but the `createAuth` have a property call `initFirstItem` that will help us to exacly that
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+    identityField: 'email',
+    secretField: 'password',
+    initFirstItem: {},
+  });
+  ```
+- Now we need to specify the `fields` that we want to `init` with
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+    identityField: 'email',
+    secretField: 'password',
+    initFirstItem: {
+      fields: ['name', 'email', 'password'],
+    },
+  });
+  ```
+- Then; use the `withAuth` method to wrap the `config` that we export at the bottom
+  ```js
+  export default withAuth(
+    config({
+      ...
+    })
+  );
+  ```
+- Import `withItemData` and `statelessSessions` from `@keystone-next/keystone/session`
+  `import { withItemData, statelessSessions } from '@keystone-next/keystone/session';`
+- We need to set a `session` because when a `user` successfully log in a `cookie` will be created to mantain the `session` until the `user` logout or the `cookie` expires. At the bottom of the `config` object add a `session` property that recive the `withItemData` method
+  ```js
+  export default withAuth(
+    config({
+      ...
+      session: withItemData()
+    })
+  );
+  ```
+- The `withItemData` method will recive the `statelessSessions`(with the `sessionConfig` as it argument) and a object
+  ```js
+  export default withAuth(
+    config({
+      ...
+      session: withItemData(statelessSessions(sessionConfig), {})
+    })
+  );
+  ```
+- On the second argument of the `withItemData` method; we will need to add a property that is called `User` with an `id` value
+  ```js
+  export default withAuth(
+    config({
+      ...
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: 'id'
+      })
+    })
+  );
+  ```
+  This will add the `id` or any other data that we `query` in this object with the `session`. This will help us later when we need to set permissions
+- Now we need to modify the `UI` property that at this moment will allow anybody to access the `UI`. Delete the `true` that is return on the function and add a function that receive the actual `session` whit the following content
+  ```js
+  export default withAuth(
+    config({
+      ...
+      ui: {
+        isAccessAllowed: ({ session }) => {
+          console.log(session);
+          return !!session?.data
+        },
+      }
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: 'id'
+      })
+    })
+  );
+  ```
+  This will return `true` if there is a `session` and have `data` that will allow the `user` to see the `UI`
+- On your terminal; go to the `backend` directory
+- Start your local `server` using: `npm run dev`
+- On your browser go to `http://localhost:3000/`
+- A `get stared` page will be shown
+- Fill in the information to create a `user`
+- Click on the `Get stared` button
+- Go to your terminal and see that the `session` object. As you can see the user id`is present on the`session`; this `data`that we require is actually a`graphQL` query
+- Go back to the `keystone.ts` file
+- Update the `isAccessAllowed` value like this
+  ```js
+  export default withAuth(
+    config({
+      ...
+      ui: {
+        isAccessAllowed: ({ session }) => !!session?.data,
+      }
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: 'id'
+      })
+    })
+  );
+  ```
+
+##### Note
+
+For now, will be a `linter` warning on the `isAccessAllowed` property; you can ignore it for now and we take care of it later.
