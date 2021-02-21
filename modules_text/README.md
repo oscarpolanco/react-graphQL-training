@@ -1357,3 +1357,155 @@ Before to continue creating more `data types` we need to set a `login` for our u
 ##### Note
 
 For now, will be a `linter` warning on the `isAccessAllowed` property; you can ignore it for now and we take care of it later.
+
+### Creating products data type
+
+We continue with the creation of our `data types` in this case the `products`. In the future, we will add `data` for the `products` on the `frontend` not only via the `keystone us.
+
+#### Steps to create the products data type
+
+- On your editor; go to the `backend/schema/` directory
+- Create a new file call `Products.ts`
+- On this newly create file; import `list` from `@keystone-next/keystone/schema`
+  `import { list } from '@keystone-next/keystone/schema';`
+- Export a constant call `Products` using the `list` method as it value
+  `export const Product = list({});`
+- Add a `field` property on the `list` configuration object
+  ```js
+  export const Product = list({
+    fields: {},
+  });
+  ```
+- Import `text` from `@keystone-next/fields`
+  `import { integer, select, text } from '@keystone-next/fields';`
+- On the `fields` object add a property call `name` that has the following content
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+    },
+  });
+  ```
+  This will add an `input` for the `name` on the `keystone` UI and a `name` field on the `database`
+- Add a `description` property with the following content
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+    },
+  });
+  ```
+  By default `text` will add an `input` so we need to specify the `ui` property to choose which element we want to use for the `field`
+- Now we need to add an `status` dropdown because when we still working on the `product` creation; we don't want to show it on the `frontend` so for this we need the `select` method. Import `select` from `@keystone-next/fields`
+  `import { select, text } from '@keystone-next/fields';`
+- Bellow the `description` add a `status` property with the following content
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      status: select({
+        options: [
+          { label: 'Draft', value: 'DRAFT' },
+          { label: 'Available', value: 'AVAILABLE' },
+          { label: 'Unavailable', value: 'UNAVAILABLE' },
+        ],
+        defaultValue: 'DRAFT',
+      }),
+    },
+  });
+  ```
+  This will add a `dropdown` that by default has the `draft` option choose
+- We can still add some more `ui` options; in this case we want to `display` a `select box` element instead of a `dropdown`
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      status: select({
+        options: [
+          { label: 'Draft', value: 'DRAFT' },
+          { label: 'Available', value: 'AVAILABLE' },
+          { label: 'Unavailable', value: 'UNAVAILABLE' },
+        ],
+        defaultValue: 'DRAFT',
+        ui: {
+          displayMode: 'segmented-control',
+        },
+      }),
+    },
+  });
+  ```
+- Also we don't want this element show on the creation process so we need to hide it on the `create view`
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      status: select({
+        options: [
+          { label: 'Draft', value: 'DRAFT' },
+          { label: 'Available', value: 'AVAILABLE' },
+          { label: 'Unavailable', value: 'UNAVAILABLE' },
+        ],
+        defaultValue: 'DRAFT',
+        ui: {
+          displayMode: 'segmented-control',
+          createView: { fieldMode: 'hidden' },
+        },
+      }),
+    },
+  });
+  ```
+- The last thing we need is a `price` for each `product`. We are going to use an `integer` to generate the `input` so import `integer` from `@keystone-next/fields`
+  `import { integer, select, text } from '@keystone-next/fields';`
+- Bellow the `status` add a `price` property with the following content
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      status: select({
+        options: [
+          { label: 'Draft', value: 'DRAFT' },
+          { label: 'Available', value: 'AVAILABLE' },
+          { label: 'Unavailable', value: 'UNAVAILABLE' },
+        ],
+        defaultValue: 'DRAFT',
+        ui: {
+          displayMode: 'segmented-control',
+          createView: { fieldMode: 'hidden' },
+        },
+      }),
+      price: integer(),
+    },
+  });
+  ```
+  One thing of the `price` is that will be the `price` on `cents` because doing this way; we never have to deal with `decimals` or `rounding numbers
+- Now go to the `keystone.ts` file
+- Import the `Product` schema
+  `import { Product } from './schemas/Product';`
+- You should see that the `status` element is not on the `creation form`
+- Create a product
+- You should see the `product` created with the correct information and the `status` element is on the view with the `Draft` option as its default(DO NOT create a lot of `products` in the future we are going to add some test data)

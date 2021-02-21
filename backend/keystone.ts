@@ -5,6 +5,7 @@ import {
   statelessSessions,
 } from '@keystone-next/keystone/session';
 import { User } from './schemas/User';
+import { Product } from './schemas/Product';
 import 'dotenv/config';
 
 const databaseUrl =
@@ -41,6 +42,7 @@ export default withAuth(
     lists: createSchema({
       // Schema items go in
       User,
+      Product,
     }),
     ui: {
       // Show the UI only for people who pass this test
