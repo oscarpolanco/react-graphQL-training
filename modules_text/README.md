@@ -1509,3 +1509,114 @@ We continue with the creation of our `data types` in this case the `products`. I
 - You should see that the `status` element is not on the `creation form`
 - Create a product
 - You should see the `product` created with the correct information and the `status` element is on the view with the `Draft` option as its default(DO NOT create a lot of `products` in the future we are going to add some test data)
+
+### Uploading product images
+
+We add the `products` data type and each `product` will need an `image` associate with it so we will work with a new data type exclusively in charge of `images` and with the help of [cloudinary](https://cloudinary.com/). `Cloudinary` is a service that will help us to store images and some other features such as; resize images depending on width and height; change the type of file or get down the quality for smaller images; etc.
+
+#### Adding a product image data type
+
+We could just make a `field` on our `product` call `image` but we actually going to create a data type called `productImage` then we will have a relation with the products; this strategy will allow us in the future relate many `products` with one `image` or make a gallery with the `images`. Here are the steps
+
+- First, on your browser create a [cloudinary](https://cloudinary.com/) account
+- Click on the `Media Library` tab at the top
+- Click on the `new folder` icon
+- Create a folder called `sickfits`
+- Get back to your editor and go to the `backend` directory
+- On the `.env` file add the following
+  ```bash
+  CLOUDINARY_CLOUD_NAME=
+  CLOUDINARY_KEY=
+  CLOUDINARY_SECRET=
+  ```
+- Go to the [cloudinary](https://cloudinary.com/) dashboard and grad the `cloud name`; `APU key` and `API secret`. Add those on the `environment variables` that you added before
+- Now on the `schema` directory create a file call `ProductImage.ts`
+- Import `dotenv/config`
+  `import 'dotenv/config';`
+- Create a constant call `cloudinary` that will store the `cloudinary` configuration values
+  `export const cloudinary = {};`
+- Use `process.env` to get the `environment variables` that you added before
+  ```js
+  export const cloudinary = {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_KEY,
+    apiSecret: process.env.CLOUDINARY_SECRET,
+    folder: 'sickfits',
+  };
+  ```
+- Import `list` from `@keystone-next/keystone/schema`
+  `import { list } from '@keystone-next/keystone/schema';`
+- Export a constant call `ProductImage` that will have the `list` method as it value
+  `export const ProductImage = list({});`
+- Add the `fields` property on the configuration object of `list`
+  ```js
+  export const ProductImage = list({
+    fields: {},
+  });
+  ```
+- Import `cloudinaryImage` from `@keystone-next/cloudinary`
+  `import { cloudinaryImage } from '@keystone-next/cloudinary';`
+- On the `fileds` object add an `image` property that use the `cloudinaryImage` method as it value
+  ```js
+  export const ProductImage = list({
+    fields: {
+      image: cloudinaryImage({}),
+    },
+  });
+  ```
+- Send `cloudinary` and the `label` property with a string of `source` to the `cloudinaryImage` configuration object
+  ```js
+  export const ProductImage = list({
+    fields: {
+      image: cloudinaryImage({
+        cloudinary,
+        label: 'Source',
+      }),
+    },
+  });
+  ```
+- Import `text` from `@keystone-next/fields`
+  `import { text } from '@keystone-next/fields';`
+- Bellow the `image` field add a `alt` field that will use the `text` method
+  ```js
+  export const ProductImage = list({
+    fields: {
+      image: cloudinaryImage({
+        cloudinary,
+        label: 'Source',
+      }),
+      alText: text(),
+    },
+  });
+  ```
+- Now to the `keystone.ts` file
+- Import the `ProductImage` schema
+  `import { ProductImage } from './schemas/ProductImage';`
+- Add to the `list` the `ProductImage` schema in the config
+  ```js
+  export default withAuth(
+    config({
+      ...
+      lists: createSchema({
+        // Schema items go in
+        User,
+        Product,
+        ProductImage,
+      }),
+      ...
+    })
+  );
+  ```
+- Go to your terminal and to the `backend` directory
+- Start your local server using `npm run dev`
+- Go to `http://localhost:3000/`
+- You should see the `Products Images` data type on the `keystone` dashboard
+- Click on the `Products Images` option
+- Click on `Create Product Image`
+- Upload an image and add an `alt` text
+- Click on `Create Product Image`
+- You should see that your `product image` is created
+- Go to your [cloudinary](https://cloudinary.com/) account
+- Click on the `Media Library` tab
+- Click on the `sickfit` folder
+- The image that you recently uploaded via `keystone` should be there
