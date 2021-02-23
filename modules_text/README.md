@@ -1620,3 +1620,266 @@ We could just make a `field` on our `product` call `image` but we actually going
 - Click on the `Media Library` tab
 - Click on the `sickfit` folder
 - The image that you recently uploaded via `keystone` should be there
+
+### Creating two-way data relationship in keystone
+
+The `relationship` between `data types` on `keystone` is very easy to do where we can for the example given a `product image`; know which `products` are related to it and if we have a given `product` we can easily know which `product image` is related to that `product` in other words for any given `data` you can get all `data` related to that.
+
+#### Steps to create a two-way relationship
+
+- On your editor; go to the `ProductImage` file on the `backend/schema` directory
+- Import `relationship` from `@keystone-next/fields`
+  `import { relationship, text } from '@keystone-next/fields';`
+- Create a new `field` call `product` that use the `relationship` method
+  ```js
+  export const ProductImage = list({
+    fields: {
+      image: cloudinaryImage({
+        cloudinary,
+        label: 'Source',
+      }),
+      altText: text(),
+      product: relationship({}),
+    },
+  });
+  ```
+- Create a `ref` property with the following content
+  ```js
+  export const ProductImage = list({
+    fields: {
+      image: cloudinaryImage({
+        cloudinary,
+        label: 'Source',
+      }),
+      altText: text(),
+      product: relationship({ ref: 'Product.photo' }),
+    },
+  });
+  ```
+  Here we said that we are going to make a `relationship` between with the `Product` schema and it `photo` field(We will add the `photo` field in a moment)
+- Go to the `Product` file on the `schema` directory
+- Import `relationship` from `@keystone-next/fields`
+  `import { relationship, text } from '@keystone-next/fields';`
+- Add a `field` call `photo` using the `relationship` method as it value
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({}),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+- Add a `ref` property to the `photo` field that reference to the `product` field of the `ProductImage` schema
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({ ref: 'ProductImage.product', }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+- We need some more options to display the relation nicely so add a `ui` property bellow the `ref` property
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({
+        ref: 'ProductImage.product',
+        ui: {}
+      }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+- Add a `displayMode` property with `cards` as it value on the `ui` object
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({
+        ref: 'ProductImage.product',
+        ui: {
+          displayMode: 'cards',
+        }
+      }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+  This is because you want to display the `image` and the `alt text` instead a `dropdown` with all `images`
+- Add a `cardFields` with an array of the `fields` that you need in this case `image` and `altText`
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({
+        ref: 'ProductImage.product',
+        ui: {
+          displayMode: 'cards',
+          cardFields: ['image', 'altText'],
+        }
+      }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+  When we edit a `product` we will have a nice `ui` that will help us to `create` or `edit` an `image` not add an actual `field` on the `ProductImage` schema. This will help us to work on the same `view`
+- Add a property call `inlineCreate`
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({
+        ref: 'ProductImage.product',
+        ui: {
+          displayMode: 'cards',
+          cardFields: ['image', 'altText'],
+          inlineCreate: {}
+        }
+      }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+- Add the `fields` you want to edit in the `inlineCreate` in this case `image` and `altText`
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({
+        ref: 'ProductImage.product',
+        ui: {
+          displayMode: 'cards',
+          cardFields: ['image', 'altText'],
+          inlineCreate: { fields: ['image', 'altText']  }
+        }
+      }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+- And finally create a propety call `inlineEdit` with the same `fields` that we want to edit
+  ```js
+  export const Product = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({
+        ui: {
+          displayMode: 'textarea',
+        },
+      }),
+      photo: relationship({
+        ref: 'ProductImage.product',
+        ui: {
+          displayMode: 'cards',
+          cardFields: ['image', 'altText'],
+          inlineCreate: { fields: ['image', 'altText']  }
+          inlineEdit: { fields: ['image', 'altText'] },
+        }
+      }),
+      status: select({...}),
+      price: integer(),
+    },
+  });
+  ```
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to `http://localhost:3000/`
+- Click on the `Product` options
+- Click on the test `product` that you created before
+- You should see a `create product image` button
+- Click on that button
+- Upload an `image`
+- Add an `alt text`
+- Click on the `create product image` button
+- You should successfully create a `product image`
+- Click on the `Save Changes` button
+- Click on the `Product Images` option at the left
+- You should see your new `product image`
+- At this moment is difficult to see which is the correct image so click on the `with 1 columns` dropdown
+- Choose all options that you want
+- You should see more detailed information on the list and you should
+
+#### Adding default values to the list of items
+
+We added the values to the `ProductImage` list via the `keystone` UI but we actually can add default values on the `schema`. Follow the next steps:
+
+- Go to the `ProductImage` file
+- Bellow of the `fields` property add a `ui` property
+  ```js
+  export const ProductImage = list({
+    fields: {...},
+    ui: {},
+    },
+  });
+  ```
+- Add a property call `listView`
+  ```js
+  export const ProductImage = list({
+    fields: {...},
+    ui: {
+      listView: {}
+    },
+    },
+  });
+  ```
+- Inside of the `listView` property add a `initialColumns` property with an array with all fields that you want to show on the list
+  ```js
+  export const ProductImage = list({
+    fields: {...},
+    ui: {
+      listView: {
+        initialColumns: ['image', 'altText', 'product'],
+      }
+    },
+    },
+  });
+  ```
+- Restart your local server
+- Go to `http://localhost:3000/`
+- Click on the `Product Images` option at the left
+- You should see the list of `product images` with all de default columns
