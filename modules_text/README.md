@@ -1883,3 +1883,126 @@ We added the values to the `ProductImage` list via the `keystone` UI but we actu
 - Go to `http://localhost:3000/`
 - Click on the `Product Images` option at the left
 - You should see the list of `product images` with all de default columns
+
+### Inserting seed data
+
+Before continuing with the project; we will need `data` to test the features that we work but we don't want the creation process manually because it will take too long so in this section we will help a little with this. We will have some `seed` data that we will add via a `script`.
+
+If you take a look at the `backend` directory you will find a `seed-data` folder that has a `data.js` file(that have the fixed values of the items) and the `index.ts` file that is in charge of adding the `data` to `mongo`. THe `insertSeedData` function will receive a `keystone` object and we will use it adapter to directly send the `data` to `mongo`(no `GraphQL`) then we loop over every single `product` and inside the loop, we will create the `image` and the `product` with it relationship.
+
+#### Using the keystone configuration to inject data
+
+- On your editor; go to the `keystone.ts` file on the `backend/schema/` directory
+- In the `db` property of the `config` object add a `async` function call `onConnect`
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {
+        adapter: 'mongoose',
+        url: databaseUrl,
+        async onConnect() {}
+      },
+      ...
+    })
+  );
+  ```
+- Add a `console.log` as a part of the `onConnect` function
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {
+        adapter: 'mongoose',
+        url: databaseUrl,
+        async onConnect() {
+          console.log('connected to the database');
+        }
+      },
+      ...
+    })
+  );
+  ```
+- On to your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- You should see the log that you put on the `onConnect` function as soon as `keystone` connects with the database
+- We will inject all the `data` that we need directly to the `database` using this `onConnect` function but first the `onConnect` function recive the complete `keystone` object so added as a parameter like this:
+  ```js
+  export default withAuth(
+   config({
+     server: {...},
+     db: {
+       adapter: 'mongoose',
+       url: databaseUrl,
+       async onConnect(keystone) {
+         console.log('connected to the database');
+       }
+      },
+     ...
+   })
+  );
+  ```
+- Import `insertSeedData` from `./seed-data`
+  `import { insertSeedData } from './seed-data';`
+- Add the `insertSeedData` using the `keystone` object as a parameter and it will be a `async` function
+  ```js
+  export default withAuth(
+   config({
+     server: {...},
+     db: {
+       adapter: 'mongoose',
+       url: databaseUrl,
+       async onConnect(keystone) {
+         console.log('connected to the database');
+         await insertSeedData(keystone);
+       }
+      },
+     ...
+   })
+  );
+  ```
+- We don't want to do this every time so we will add a condition that will check if the `user` send a parameter call `--seed-data`
+  ```js
+  export default withAuth(
+   config({
+     server: {...},
+     db: {
+       adapter: 'mongoose',
+       url: databaseUrl,
+       async onConnect(keystone) {
+          console.log('connected to the database');
+          if (process.argv.includes('--seed-data')) {
+            await insertSeedData(keystone);
+          }
+       }
+      },
+     ...
+   })
+  );
+  ```
+  If you see the `package.json` on the `backend` directory; you will see that the `seed-data` use the same `keystone` command as `dev` just with the `--seed-data` parameter
+- Go back to your terminal and kill the local server process
+- Run the `npm run seed-data` command
+- Then run again your local server using `npm run dev`
+- On your browser; go to `http://localhost:3000/`
+- Click on the `Product Images`option at the left
+- You should see more images add to your list
+- Probably you will see that you can't see the `images` but do not worry about this at this moment because the `image` URL that we use the account change its name from `wesbostutorial` to `wesbos` but this will not be an issue because is not change on the `API explore`. To check this; click on the 3 `dots` at the side of your `user` name at the left
+- Click on `API Explore`
+- Write the following query:
+  ```js
+  query {
+    allProductImages {
+      id
+      image {
+        publicUrl
+        publicUrlTransformed
+      }
+    }
+  }
+  ```
+  From all `ProductImages` give me the `id` and the `image` and from the `image` give me the `publicURL` and the `publicUrlTransformed`
+- Click on the `play` button
+- You should see the result of the `query` at the right
+- Copy one of the `url` that you get on another `tab`
+- You should see that an image is showing up
