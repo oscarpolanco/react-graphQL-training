@@ -2006,3 +2006,135 @@ If you take a look at the `backend` directory you will find a `seed-data` folder
 - You should see the result of the `query` at the right
 - Copy one of the `url` that you get on another `tab`
 - You should see that an image is showing up
+
+## Module 5: Client side React + GraphQL development
+
+At this point, we have our `backend` side setup and have test data on it so we can get back to the `frontend` side of the application to begin to use the `data` available.
+
+### Setting up Apollo client
+
+As we start to pull in data from the `API` into the `frontend` side of our application we need some source of tool that help us to make the `queries`; `cache` data; evict those `items` from the `data`; handle `mutation`; give us the `data` that comes back from the `server`; handle `errors` or file `uploads`; all this kind of stuff, in other words, we need a tool that talks with `graphQL` and manage all the `data` for us and in our case, we are going to use `Apollo Client`.
+
+To setup `Apollo` we need something call `link` that is a standard interface to modify the flow of `graphQL` request and fetching of `graphQL` results; in other words; `Apollo client` is made by a lot of different `links` and each `link` is responsible for handling the outgoing request and get/update `data` as well as responses coming back and other functionalities like `cache`. A lot of the features that we need will be on a package called `apollo-boost` because almost all the time we need just a few of these features so they wrap up on a package so we can easily work with them but one thing that is not done on this package is that they don't handle `image` upload and in other to do this we need to use a 3rd party and as soon that we use this custom feature; we need to create our links that is why the example brings a file called `withData.js` on the `frontend/lib/` directory.
+
+#### Insides about the withData file
+
+When we use `Apollo Client` we need to `create` a `client` and inject to it the `links` that we need. This is the responsibility of the first function that we see which is called `createClient` that returns an instance of the `ApolloClient` object with the configuration that we need.
+
+The first `link` that we see on the `ApolloClient` instance is an `error` handling `link` and all it does is that take 2 different types of `errors` that can possibly happen in your `graphQL` request. You could have a `graphQL` error where you will have an error produced by some information of the `query` that you do that does not match with the `data` on your `API` such as the wrong password or try to `query` a field that doesn't exist. The other type of `error` is the `network` error that happens when your `backend` is down, or `cors` something like that in other words that the `status` is not `200`.
+
+The other `link` is the `Apollo http link`; which is responsible for `fetching` data or making `POST` request and inside of `React`; `Apollo` will give us both `query` and `mutation` hooks that will allow to the `request` but if you check on [Apollo documentation](https://www.apollographql.com/docs/link/links/http/); the function is called different on the code; this is because we use another package called `apollo-upload-client` that use the `apollo-link-http` and add additional code to upload files the thing that we need. Now getting back to the `links` as you see we use the `createUploadLink` function to create the `Apollo http link` that receive a configuration object with the `URI` property that receives the `URL` of our `graphQL API` as you see it will take the `endpoint` variable that is exported from the `config.js` file in the root of the `frontend` directory and this `URL` is the one that we use before when we were testing the `graphQL API` on `keystone`(The other one is for production). Then we have the `fetchOptions` that will tell the `API` that sends the `credential` alongside the `request` in our case the `cookie` because we will control what a user is allowed to do or allow to see and we need to check is he is logged in. Finally, we need to add the `header` because we are using `server-side rendering` we need all the `headers` and `cookies` on the first request so we can `render` the `logged in` state of the components since the beginning.
+
+The last `link` is the `cache` that will define where you are going to store the cache in our case we are going to be storing this `in memory` in other words in the `browser` also at the end we need to `restore` the initial values that mean that all the `data` that is collected on the `server` then give it to the `hydration` on the `client`.
+
+The last thing that we need to know on this file is the last line; on which we are using the `withApollo` method that allows us to `crawl` all pages and components and look for any `queries` that we have then it will make sure that we have `fetch` all the `data` that we need and it will wait for all `data` to be `fetched` before the `server` send all the `HTML` to the `client`.
+
+#### Using the withData method
+
+Know we need to take the `withData` function and create an instance of `Apollo` then inject it into our application and the file that will help us with this is the `_app.js` file. We will wrap all the application in what is called a `provider` that in `React` is a component that usually lives in a very high place on your application and allows components that are several levels down to have access to the `provider` data. Here are the steps
+
+- On your editor; go to the `_app.js` file on the root of the `frontend` directory
+- Import `ApolloProvider` from `@apollo/client`
+  `import { ApolloProvider } from '@apollo/client';`
+- Wrap the content of the `MyApp` component using the `ApolloProvider`
+  ```js
+  export default function MyApp({ Component, pageProps }) {
+    return (
+      <ApolloProvider>
+        <Page>
+          <Component {...pageProps} />
+        </Page>
+      </ApolloProvider>
+    );
+  }
+  ```
+- The `ApolloProvider` need a `client` property and the value will be the `apollo` object that we will have as an argument of `MyApp`(You may ask yourself; where that `apollo` object came from; in a bit will be explained)
+  ```js
+  export default function MyApp({ Component, pageProps, apollo }) {
+    return (
+      <ApolloProvider client={apollo}>
+        <Page>
+          <Component {...pageProps} />
+        </Page>
+      </ApolloProvider>
+    );
+  }
+  ```
+- Import the `withData` method from the `lib` directory
+  `import withData from '../lib/withData';`
+- Since `MyApp` is the highest component in the application we need to change the `export` statement so we can wrap `MyApp` with the `withData` method that will give us all the `data` that we need. So remove `export default` from the `MyApp` function definition line
+  ```js
+  function MyApp({ Component, pageProps, apollo }) {
+    return (
+      <ApolloProvider client={apollo}>
+        <Page>
+          <Component {...pageProps} />
+        </Page>
+      </ApolloProvider>
+    );
+  }
+  ```
+- Below the `MyApp` function add the export statement using `withData` as a wrapper of the `MyApp` function
+  `export default withData(MyApp);`
+  This will inject the `apollo` object to the `MyApp` function
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to `http://localhost:7777/`
+- Open the browser console
+- You should see that the `Apollo` extension is active(We ask to install this extension at the beginning). This means that the extension detects that `Apollo Client` is present on our application but we still don't have anything to show yet
+- Now get back to the `_app.js` file on your editor
+- At this moment we need to tell `next.js` that we need to go and `fetch` all `queries` that are on all `children` components. Before the `export` use the `getInitialProps` with `MyAPP` and add an `async` function
+  `MyApp.getInitialProps = async function () {}`
+  The `getInitialProps` is a `next.js` specific
+- The props of the function will be the `Component` and `contex`(ctx)
+  `MyApp.getInitialProps = async function ({ Component, ctx }) {}`
+- Create a `let` variable call `pageProps`
+  ```js
+  MyApp.getInitialProps = async function ({ Component, ctx }) {
+    let pageProps = {};
+  };
+  ```
+- Add the following condition
+
+  ```js
+  MyApp.getInitialProps = async function ({ Component, ctx }) {
+    let pageProps = {};
+
+    if (Component.getInitialProps) {
+      pageProps = await Component.getInitialProps(ctx);
+    }
+  };
+  ```
+
+  If any other page has the `getInitialProps` method on them(Thing that will be `true` because the `withData` method add that to the pages) then it will wait, and fetch the `data`
+
+- Then add the following
+
+```js
+MyApp.getInitialProps = async function ({ Component, ctx }) {
+  let pageProps = {};
+
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+
+  pageProps.query = ctx.query;
+};
+```
+
+This will allow us to get any query variables available on a page level
+
+- Finally; we return the `pageProps`
+
+```js
+MyApp.getInitialProps = async function ({ Component, ctx }) {
+  let pageProps = {};
+
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+
+  pageProps.query = ctx.query;
+  return { pageProps };
+};
+```
