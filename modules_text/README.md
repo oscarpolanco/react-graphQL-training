@@ -2138,3 +2138,534 @@ MyApp.getInitialProps = async function ({ Component, ctx }) {
   return { pageProps };
 };
 ```
+
+### Fetching data with hooks and displaying it on the frontend
+
+Since we have set `Apollo`; we can begin to pull in `data` to our `frontend` side of the application. So let begin with that:
+
+- First; on your editor go to the `index.js` file in the `frontend/pages/` directory
+- We want to show the same content as the `product` so update the `index` file as the following:
+  `export { default } from './products';`
+- Delete everything else on the `index` file
+- Now we need a `Product` component that `get` all `products` and loop throw each one of them; so on the `components` directory create a file call `Product.js`
+- Export a function call `Products` with the following content on this newly created file
+  ```js
+  export default function Products() {
+    return (
+      <div>
+        <p>Products!!!</p>
+      </div>
+    );
+  }
+  ```
+- Then go to the `product` file in the `page` directory
+- Import the `Products` component
+  `import Products from '../components/Products';`
+- Use the `Products` component on the `return` of the `ProductPage` component and delete the other elements
+  ```js
+  export default function ProductPage() {
+    return (
+      <div>
+        <Products />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to `http://localhost:7777/`
+- You should see the `Products!!` message on the page
+- Now on your terminal; open a new tab or another terminal
+- In this new tab/window; go to the `backend` directory
+- Start your local server using `npm run dev`
+- Go the [graphQL playground](http://localhost:3000/api/graphql)
+- Write the following `query`
+  ```js
+  query ALL_PRODUCTS_QUERY {
+    allProducts {
+      id
+      name
+      price
+      description
+      photo {
+        id
+        image {
+          publicUrlTransformed
+        }
+      }
+    }
+  }
+  ```
+  This `query` will bring all `products` with it `id`, `name`, `price`, `description`, and `photo`. Since the `photo` is a relation with another type we will need to define the `data` that we need from the other type; in this case; the `id` of the image and the `image` that is the `field` with the information that we need so from there we pull the `publicUrlTransformed`. Finally, you can name your `queries` and for the convention on the name of a `query` we will use all letters uppercase; underscore for spaces and finish the name with `QUERY`
+- Click on the `play` button
+- You should have all `product` information display
+- Copy the `query`
+- Get back to the `Products` component on your editor
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `ALL_PRODUCTS_QUERY` that use `gql` as its content
+  ```js
+  const ALL_PRODUCTS_QUERY = gql``;
+  ```
+  `gql` will turn our `string` to a proper `graphQL` query
+- Paste the `query` on the `gql` backtips
+  ```js
+  const ALL_PRODUCTS_QUERY = gql`
+    query ALL_PRODUCTS_QUERY {
+      allProducts {
+        id
+        name
+        price
+        description
+        photo {
+          id
+          image {
+            publicUrlTransformed
+          }
+        }
+      }
+    }
+  `;
+  ```
+  If you are using `vscode` you can add the `GraphQL` extension to format the `query` correctly. This extension will format any string that uses `gql`
+- In order to `fetch` the `data` we will need a `hook` call `useQuery`; so import `useQuery` from `@apollo/client`
+  `import { useQuery } from '@apollo/client';`
+- The `useQuery` will use the `ALL_PRODUCTS_QUERY` and return the `date`, if there is an `error` and if is still `loading`. So add the following in the `Products` component
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+
+    return (
+      <div>
+        <p>Products!!<p>
+      </div>
+    );
+  }
+  ```
+
+- Since these constants are reactive they will update without re-run the project or have a `callback` function so you can simply use it. Console.log all variables that you just created
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+
+    return (
+      <div>
+        <p>Products!!<p>
+      </div>
+    );
+  }
+  ```
+
+- On your browser; refresh the page
+- Open the browser's console
+- You should see the `data` of all `products`, `undefined` for the `errors`, and `false` for the `loading` state. Since we have `server-side rendering` you will see that the `loading` is always `false` since it made the `query` process on the `server`
+- Click on one of the pages links that aren't `product`
+- `Hard reload` your browser
+- Get back to the `product` page
+- You should see that the `console` runs twice one with `undefined` for the `data` of the `products`, `undefined` for the `errors`, and `true` for the `loading` state. The other log will be the same as the one we see before with the `data`
+- Go back to the `Products` component on your editor
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error.message}</p>;
+
+    return (
+      <div>
+        <p>Products!!<p>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser; go to another page that isn't the `homepage` or `product` page
+- `Hard refresh` the browser so we clean the `Apollo` cache
+- Go back to the `homepage` or `product` page
+- You should see the `loading` message then quickly change to the `Product!!` message
+- Now delete the `console` and the `paragraph
+- Then add a new `div` on the `return` statement and inside of that newly created `div` use the `data` variable to loop throw each item
+
+  ```js
+  export default function Products() {
+  const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+  console.log(data, error, loading);
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  return (
+    <div>
+      <div>
+        {data.allProducts.map((product) => ())}
+      </div>
+  </div>
+  );
+  }
+  ```
+
+- Inside of the `callback` function of the `map`; use the `product` variable to show the `product` name on a `p` tag and the `product` id as the `key` property of this `p` tag
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error.message}</p>;
+
+    return (
+      <div>
+        <div>
+          {data.allProducts.map((product) => (
+            <p key={product.key}>{product.name}</p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- You should see all `products` name
+- Now we need a `grid` for our `items`; so import `styled` from `styled-component`
+  `import styled from 'styled-components';`
+- Before the `Products` function; create a constant call `ProductsListStyles` that have a `styled div` as it value
+  ```js
+  const ProductsListStyles = styled.div``;
+  ```
+- Add the following `css`
+  ```js
+  const ProductsListStyles = styled.div`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 60px;
+  `;
+  ```
+  This will use `grid` to create 2 `columns` and will calculate the size of the `columns` depending on the size of the father container and the `gap` that we define
+- Now we need a singular `product` component to style each individual component. On the `component` directory create a new file call `Product.js`
+- In this newly created file export a function call `Product`
+  `export default function Product() {};`
+- The `Product` component will recive a `product` as it prop
+  `export default function Product({ product }) {};`
+- Return a `p` tag with the name of the `product` as it content
+  ```js
+  export default function Product({ product }) {
+    return <p>{product.name}</p>;
+  }
+  ```
+- Go to the `Products` component and import `Product`
+  `import Product from './Product';`
+- Remove the `product` name on the `map`
+- Use the `Product` component where the `product` name was before and send the `product` variable as it props and adds the `key` property the same as before
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error.message}</p>;
+
+    return (
+      <div>
+        <div>
+          {data.allProducts.map((product) => (
+            <Product key={product.id} product={product} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser; refresh the page
+- You should see the same result as before
+- If you see on the component directory; we have a `styles` directory with some pre done `styles` for us to use but first; go to the `ItemStyles` on that directory and change the name of the constant from `Item` to `ItemStyles` and on the `export` bellow too
+- Go back to the `Product` component and import `ItemStyles`
+  `import ItemStyles from './styles/ItemStyles';`
+- Wrap the `product` name on using the `ItemStyles` component
+  ```js
+  export default function Product({ product }) {
+    return <ItemStyles>{product.name}</ItemStyles>;
+  }
+  ```
+- Remove the `product` name
+- Add an `image` tag using the `product` variable to fill the `image` tag properties
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+      </ItemStyles>
+    );
+  }
+  ```
+  We use `nested` changing(Is the `?`) to prevent that the application gives an error in case we don't have one of those properties
+- Import `Title` from `./styles/Title'`
+  `import Title from './styles/Title';`
+- Import `Link` from `next/link`
+  `import Link from 'next/link';`
+- Add the `Title` component bellow the `image` tag
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title></Title>
+      </ItemStyles>
+    );
+  }
+  ```
+- Use the `Link` component as a child of the `Title` component as is show next
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+      </ItemStyles>
+    );
+  }
+  ```
+  This `URL` will be used for the `product` detail and is not exist for now. In a later section, we are going to handle this `URL`
+- Go to your browser and refresh the page
+- You should see the `images` and `titles` of each `product`
+- One issue is that the `title` is a little big so we need to handle this; on your editor go to the `Page` component
+- We need to change the `font-size` a little bit but in the `GlobalStyles` you see that only the `body` have a `font-size` and is a `rem` value so it will depend on the `font-size` of the `root` that is not defined but by default the value is `16px` if is don't defined. So on the `HTML tag add a `font-size`of`10px`
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    
+    html {
+      ...
+      font-size: 10px;
+    }
+    ...
+  `;
+  ```
+
+  Another way is to put this `font-size` to be `62.5%` so the user can override this value with their browser settings
+
+- Now get back to the `Product` component
+- Now we need the `price`; so import `PriceTag` from `./styles/PriceTag`
+  `import PriceTag from './styles/PriceTag';`
+- Bellow the `Title` component use the `PriceTag` with the `product.price` as it content
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+        <PriceTag>{product.price}</PriceTag>
+      </ItemStyles>
+    );
+  }
+  ```
+- As you may remember we add the `price` of each product on `cents` so we need to `format` the `data` that we recive. For this we are going to create a helper. Go to the `lib` directory
+- Create a file call `formatMoney.js`
+- On this newly created file; export a function call `formatMoney`
+  `export default function formatMoney() {}`
+- On the `formatMoney` function add a constant call `options` with the following
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+  }
+  ```
+- Then create another constant call `formatter` that use the `Intl.NumberFormat` as its content
+
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat();
+    const formatter = Intl.NumberFormat('en-US', options);
+  }
+  ```
+
+- Send `en-US` and the `options` object as it parameters
+
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+  }
+  ```
+
+  This will give users the `US` money format
+
+- Return the `formatter` constant using it `format` function
+
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format();
+  }
+  ```
+
+- Now we need the `amount` that we will give `format`; so on the `formatMoney` function add `amount` as a parameter with a default of `0` and send it to the `format` function at the button
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount);
+  }
+  ```
+
+- Since we are in `cents` we need to divide the `amount` by a `100` in the `format` function
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount / 100);
+  }
+  ```
+
+- Go to the `Product` component and import `formatMoney`
+  `import formatMoney from '../lib/formatMoney';`
+- Wrap the `price` with the `formatMoney` function
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+      </ItemStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that each `product` have its prices on `dollars` not on `cents`
+- Choose one of the `products` and go to `keystone`
+- Update that `product` to finish with `0`. Ex: `3425` to `3400`
+- Go back to the `http://localhost:7777/products`
+- Search that `product` that you update
+- You should see that have a `.00` in his `price`
+- We need to eliminate this `.00`; so go to the `formatMoney` file
+- Bellow the `options` object add the following condition
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    if (amount % 100 === 0) {
+    }
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount / 100);
+  }
+  ```
+
+  This condition will check if the `amount` ends with `0`
+
+- Inside of the condition update the `minimumFractionDigits` to `0`
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    if (amount % 100 === 0) {
+      options.minimumFractionDigits = 0;
+    }
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount / 100);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Search the `product` that has `.00` at the end
+- You should see that the `price` of that `product` doesn't have the `.00`
+- Go back to the `Product` component
+- Add a `description` bellow the `price`
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+      </ItemStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that each `product` have a `description`
+
+### Notes
+
+If you notice when we add the `console.log` for the `useQuery` variables; the logs appear on your terminal as well on your browser console. This is because the first render happens in the server then the re-hydration happens on the browser; this will have this effect and don't worry the `API` is no hit twice because the `withData` will restore the initial values on the components.
