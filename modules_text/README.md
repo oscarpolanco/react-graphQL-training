@@ -2666,6 +2666,53 @@ Since we have set `Apollo`; we can begin to pull in `data` to our `frontend` sid
 - Go to your browser and refresh the page
 - You should see that each `product` have a `description`
 
-### Notes
+#### Notes
 
 If you notice when we add the `console.log` for the `useQuery` variables; the logs appear on your terminal as well on your browser console. This is because the first render happens in the server then the re-hydration happens on the browser; this will have this effect and don't worry the `API` is no hit twice because the `withData` will restore the initial values on the components.
+
+### Fixing and styling the nav
+
+Now that we get the `data` of the `products` on the application we can do a quick fix on the `nav`. Here are the steps for the quick fix:
+
+- On your editor; go to the `Header.js` file in the `frontend/components` directory
+- Move the `Nav` component position to the `bar` container
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">
+          <Logo>
+            <Link href="/">Sick fits</Link>
+          </Logo>
+          <Nav />
+        </div>
+        ...
+      </HeaderStyles>
+    );
+  }
+  ```
+- Now go to the `Nav.js` file
+- Import `NavStyles` from `./styles/NavStyles`
+  `import NavStyles from './styles/NavStyles';`
+- Replace the `nav` element with the `NavStyles` component
+- On your terminal; start your local server using `npm run dev`
+- On your browser; go to `http://localhost:7777/`
+- You should see that the `nav` is at the side of the `logo` and have some more styles
+- Inspect the `nav` element
+- Click on the `ul` element in the `HTML section
+- You see that the `URL` doesn't complete the `height` of its container
+- To fix this; go back to the `Header.js` file
+- In the `HeaderStyles` constant change the `align-items` value from `center` to `stretch`
+
+  ```js
+  const HeaderStyles = styled.header`
+    .bar {
+      ...
+      align-items: stretch;
+    }
+    ...
+  `;
+  ```
+
+- Go back to your browser and refresh the page
+- You will see that the `nav` items have the complete `height` of their container
