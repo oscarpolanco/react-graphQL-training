@@ -2716,3 +2716,544 @@ Now that we get the `data` of the `products` on the application we can do a quic
 
 - Go back to your browser and refresh the page
 - You will see that the `nav` items have the complete `height` of their container
+
+## A real good lesson in React forms and custom hooks
+
+Now that we `query` the data to our application; we can continue with the next step that is `create` and `push` data. We are going to do this on the `sell` page.
+
+#### Steps to create a basic form
+
+- On your editor go to the `frontend/components`
+- Create a new file call `CreateProduct.js`
+- Inside of this newly created file; export a function call `CreateProduct`
+  `export default function CreateProduct() {}`
+- On the `CreateProduct` function return the following
+  ```js
+  export default function CreateProduct() {
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input type="text" id="name" name="name" />
+        </label>
+      </form>
+    );
+  }
+  ```
+- Now go to the `sell.js` file on the `page` directory
+- Import the `CreateProduct` component
+  `import CreateProduct from '../components/CreateProduct';`
+- Replace the content of the `sell` page with the `CreateProduct` component
+  ```js
+  export default function SellPage() {
+    return (
+      <div>
+        <CreateProduct />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `frontend` directory
+- Start your local server using: `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- You should see the `input` with a `label` on the page
+- To use the `data` of the `input` we need to associate the `input` with a `state`. Go to the `CreateProduct` file
+- Import the `useState` hook from `react`
+  `import { useState } from 'react';`
+- At the top of the `CreateProduct` function destructure the state with the following names
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState();
+
+    return (...);
+  }
+  ```
+
+- Add a initial `state` of your choosing for the new `state`. Here is an example:
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (...);
+  }
+  ```
+
+- The `name` state is reactive so when it changes; it will change on every place that is on and if you wanna use a state with an `input` you will need to add the state on the `value` property of the `input`
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input type="text" id="name" name="name" value={name} />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- You should see the `input` with the `initial` state value as it content
+- You should not be able to type on the `input`
+- Inspect the `input`
+- You should see an error on the browser console
+- The error that you see before is because `React` is very strict about a single source of `data` and if you change the `data` of the `input` you will have `data` from your state and another from your `input`. To solve this `React` tell you that you need to listen to an `onChange` event that updates the state and that trigger a `re-render that update the `value`property of the`input`
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={name}
+            onChange={(e) => {
+              console.log(e);
+            }}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+  Here we send a callback function that receive the `event` object
+
+- Go to your browser and refresh the page
+- Type something on the `input`
+- Inspect the `input`
+- You should see a log on the browser `console`
+- Check the `event` object and on the `target` property you will found the `value` of the `input`
+- Now go back to the `CreateProduct` file
+- On the `onChange` property console `e.target.value` and use the `setName` function sending the `e.target.value`
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={name}
+            onChange={(e) => {
+              console.log(e.target.value);
+              setName(e.target.value);
+            }}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something on the `input`
+- Inspect the `input`
+- You should see that the log with what you type in the `input`
+
+### Using a custom hook to handle the form
+
+Now we want to address some interesting issue; what happens if I got a lot of `inputs`? if this is the case we will need to create multiple `states` to handle all of them but we can do an approach to this synchronizing all the `states` on one and using a `custom hook` to handle the `form` data and how is updated. Here are the steps:
+
+- On your editor; go to the `lib` folder on the `frontend` directory
+- Create a file called `useForm.js`
+- On this newly create file; export a function call `useForm` that recive a `initial` variable as a parameter with an empty object as it default value
+  `export default function useForm(initial = {}) {}`
+- Import `useState` from `react`
+  `import { useState } from 'react';`
+- Inside of the `useForm` function; create a state call `inputs` with it respective `set` function and with the `initial` variable as it initial value
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+  }
+  ```
+- Now we need to create the function that we will send to the `onChange` property of the `input`. In the `useForm` function create a function call `handleChange` that receive the `event` variable as a parameter
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {}
+  }
+  ```
+
+- Use the `setInput` function in `handleChange`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {
+      setInputs();
+    }
+  }
+  ```
+
+- Since; all the `inputs` will be attached to the same `state` we will need to do the following to update the `state`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {
+      setInputs({
+        ...inputs,
+        [e.target.name]: e.target.value,
+      });
+    }
+  }
+  ```
+
+  This will create a new object with the same properties and values of the `inputs` state since we use the `spread` operator on `inputs` them we will override the current `input` data that is changing with the `e.target` current data
+
+- Now we will return the things that we want to surface on the other components in this case the `inputs` state and the `handleChange` function
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {
+      setInputs({
+        ...inputs,
+        [e.target.name]: e.target.value,
+      });
+    }
+
+    return {
+      inputs,
+      handleChange,
+    };
+  }
+  ```
+
+- Now get back to the `CreateProduct` file
+- Add the following `input` bellow the `name input`
+  ```js
+  <label htmlFor="price">
+    Price
+    <input
+      type="number"
+      id="price"
+      name="price"
+      placeholder="Price"
+      value={}
+      onChange={}
+    />
+  </label>
+  ```
+- Then import the `useForm` hook
+  `import useForm from '../lib/useForm';`
+- Remove the `useState` import
+- Then remove the `name` state
+- On the line that was the name `state` use the `useForm` hook to obtain the `inputs` state and the `handleChange` function
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange } = useForm();
+
+    return <form>....</form>;
+  }
+  ```
+
+- Replace the `value` of the inputs and add the `inputs.name_of_the_input`
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange } = useForm();
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Name"
+            value={inputs.name}
+            onChange={...}
+          />
+        </label>
+        <label htmlFor="price">
+          Price
+          <input
+            type="number"
+            id="price"
+            name="price"
+            placeholder="Price"
+            value={inputs.price}
+            onChange={}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- Now add on the `onChange` property the `handleChange` function
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange } = useForm();
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Name"
+            value={inputs.name}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="price">
+          Price
+          <input
+            type="number"
+            id="price"
+            name="price"
+            placeholder="Price"
+            value={inputs.price}
+            onChange={handleChange}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- Inspect the inputs
+- On the console click on the `components` tab(This extension we ask to installed at the beginning)
+- Click for the `CreateProduct` component
+- At the right check the `hook` section
+- Type something on the `inputs`
+- You will see the data on the `hook` section
+- Now we encounter an issue that is the `number` input that turns into a string but we actually need a number. To fix this go back to the `useForm` file
+- On the `handleChange` function; destructure the `value`, `name` and `type` from `e.target`
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     setInputs({
+       ...inputs,
+       [e.target.name]: e.target.value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+- Add the following condition
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     if (type === 'number') {
+      value = parseInt(value);
+    }
+
+     setInputs({
+       ...inputs,
+       [e.target.name]: e.target.value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+This will use the `type` to convert the `string` of the `value` variable to a `numeric` value
+
+- Update the `e.target` on the `setInputs` function to use the new variables
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     if (type === 'number') {
+      value = parseInt(value);
+    }
+
+     setInputs({
+       ...inputs,
+       [name]: value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+- We will need to upload files via inputs and we will need this
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     if (type === 'number') {
+      value = parseInt(value);
+    }
+
+    if (type === 'file') {
+      value[0] = e.target.files;
+    }
+
+     setInputs({
+       ...inputs,
+       [name]: value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+- We will need a `reset` functionality that will restore the `initial values that we got
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {...}
+
+   function resetFrom() {
+     setInputs(initial);
+  }
+
+  return {...};
+ }
+```
+
+- We will also need a clear form value that will clean even the initial data from the form. Add the following
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {...}
+
+   function resetFrom() {
+    setInputs(initial);
+   }
+
+   function clearForm() {
+      const blankState = Object.fromEntries(
+        Object.entries(inputs).map(([key, value]) => [key, ''])
+      );
+      setInputs(blankState);
+  }
+
+   return {...};
+  }
+  ```
+
+  Using the following object as a example: `const person = {name: 'test', price: '20', age: '25'};`
+
+  - If you use `Object.entries(person)` you will have: `[ ['name', 'test'], ['price', 20], ['age', 25]]`
+  - Now if you `map` throw each `item` and return an empty value as the second parameter like this:
+    `const newPerson = person.map([key, value]) => [key, ''];`
+  - Now the `newPerson` value is like this: `[['name', ""], ['price', ""], ['age', ""]];`
+  - Then wrap `newPerson` into an `Object.fromEntries`: `Object.fromEntries(newPerson);`
+  - You will have a result like this: `{name: "", price: "", age: ""}`
+
+  This is the same process that we follow on the `clearForm` function
+
+- Finally; make available for other components the `resetFrom` and `clearForm`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {...}
+
+   function resetFrom() {
+    setInputs(initial);
+   }
+
+   function clearForm() {
+      const blankState = Object.fromEntries(
+        Object.entries(inputs).map(([key, value]) => [key, ''])
+      );
+      setInputs(blankState);
+  }
+
+   return {
+     inputs,
+     handleChange,
+     resetFrom,
+     clearForm,
+   };
+  }
+  ```
+
+- On the `CreateProduct` file; add a initial data on the `useForm`
+  ```js
+  const { inputs, handleChange, resetFrom, clearForm } = useForm({
+    name: 'Nice shoes',
+    price: 34234,
+    description: 'These are the best shoes!',
+  });
+  ```
+- Then add the following `buttons` below the `inputs`
+
+```js
+export default function CreateProduct() {
+  const { inputs, handleChange, resetFrom, clearForm } = useForm({
+    name: 'Nice shoes',
+    price: 34234,
+  });
+
+  return (
+    <form>
+      <label htmlFor="name">...</label>
+      <label htmlFor="price">...</label>
+      <button type="button" onClick={clearForm}>
+        Clear form
+      </button>
+      <button type="button" onClick={resetFrom}>
+        Reset form
+      </button>
+    </form>
+  );
+}
+```
+
+- Go to your browser and refresh the page
+- You should see the `inputs` with an initial value and 2 `buttons`
+- Click on then and you should see how they affect the `inputs`
