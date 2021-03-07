@@ -3131,7 +3131,7 @@ This will use the `type` to convert the `string` of the `value` variable to a `n
     }
 
     if (type === 'file') {
-      value[0] = e.target.files;
+      [value] = e.target.files;
     }
 
      setInputs({
@@ -3257,3 +3257,189 @@ export default function CreateProduct() {
 - Go to your browser and refresh the page
 - You should see the `inputs` with an initial value and 2 `buttons`
 - Click on then and you should see how they affect the `inputs`
+
+### Hooking up our file input and form styles
+
+Now we need to add some styling and the `inputs` that we still miss on the `form`. Here are the steps:
+
+- First; on your editor go to the `CreateProduct` file on the `frontend/components/` directory
+- Import `Form` from `./styles/Form`(It came with the initial files of the example)
+  `import Form from './styles/Form';`
+- Substitute the `form` tag with the `Form` component
+- Remove all buttons on the `form`
+- Bellow the las `input` add the following button:
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+            ...
+          </label>
+          <button type="submit">+ Add Product</button>
+      </Form>
+    );
+  }
+  ```
+
+- We will need to `disable` the `form` in the future because when you click on `submit` it takes time to process the request and some other things that take time so we will use a `fieldset` to group all `items` of the `form`. Add a `fieldset` tag to wrap all elements of the `form`
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+            ...
+          </label>
+          <button type="submit">+ Add Product</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- Add a `disabled` property on the `fieldset`
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset disabled>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- On your terminal; go to the `frontend` directory
+- Start your local `server` using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- You should see that the all `form` is `disabled`
+- Go back to the `CreateProduct` file
+- Remove the `disabled` property of the `fieldset`
+- Add `aria-busy` in the `fieldset`
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset aria-busy>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that now have a `loading` indicator. This is to make accessible the `form` so it targets properties like this
+- Go back to the `CreateProduct` component
+- Remove the `aria-busy` property from the `fieldset`
+- Now duplicate the `name` input and substitute the values with the following
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset>
+          <label htmlFor="image">
+            Image
+            <input
+              required
+              type="file"
+              id="image"
+              name="image"
+              onChange={handleChange}
+            />
+          </label>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+           ...
+          </label>
+          <button type="submit">+ Add Product</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+  The `required` property will give us some `input` that is necessary to upload an `image`
+
+- Now duplicate the `price` input and update its value like this
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset>
+          <label htmlFor="image">
+            ...
+          </label>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+            ...
+          </label>
+          <label htmlFor="description">
+            Description
+            <textarea
+              id="description"
+              name="description"
+              placeholder="Description"
+              value={inputs.description}
+              onChange={handleChange}
+            />
+          </label>
+
+          <button type="submit">+ Add Product</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Add the `image` and `description` to the initial `state`
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({
+      image: '',
+      name: 'Nice shoes',
+      price: 34234,
+      description: 'These are the best shoes!',
+    });
+
+    return <Form>...</Form>;
+  }
+  ```
+
+- Now go back to your browser and refresh the page
+- Click on the `submit` button
+- You should see that the page refresh and add the `inputs` values to the `URL` and we want to prevent this
+- Go back to the `CreateProduct` file
+- Now we need to put the `form` to listen to the submit event
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form onSubmit={(e) => {
+        e.preventDefault();
+        console.log(inputs);
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+  This will prevent that the page refresh and we will log the `input` state with the values. We will continue with this functionality in a later section
