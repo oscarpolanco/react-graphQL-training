@@ -3776,3 +3776,41 @@ In this example, we are going to see both of them so lets begin to do it.
 - Fill and submit the `form`
 - Click on the `sick fits` logo
 - Search on the list of `products` and you should see the `product` that you just created
+
+### Programmatically changing the page after product creation
+
+When we want to change `pages` in `Next js` we are using the `Link` tag and that is referred to as `declarative` programming that you will `declare` what you need to do and it will figure out the logic that we need to do what you ask behind the scene but some times you will need an `imperative way to things; so we basically need to programmatically tell what to do and that is what we need in the successful `form`submission on the`sell`page. We will redirect the`user`to the`single product`page where it can see all the`data`related to a specific`product`.
+
+- On your editor; go to the `CreateProduct` file on the `frontend/components/` directory
+- Import `Router` from `next/router`
+  `import Router from 'next/router';`
+- Then go to the `onSubmit` callback function and add the following
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+
+        await createProduct();
+        clearForm();
+        Router.push({
+          pathname: `/product/${data.createProduct.id}`,
+        });
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  The `push` method of `Router` will send you to the `page` that you need depending on the configuration object that you send as a parameter in this case the `pathname` define the `path` of the redirection and we will use the `id` of the new `product` in the URL to redirect to the `single product` page(Is not created yet but we can begin to redirect to it)
+
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On another terminal tab; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- Fill the `form` and submit the `data`
+- You should be redirected to another page(At this moment is not found)
