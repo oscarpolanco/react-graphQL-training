@@ -3443,3 +3443,281 @@ Now we need to add some styling and the `inputs` that we still miss on the `form
   }
   ```
   This will prevent that the page refresh and we will log the `input` state with the values. We will continue with this functionality in a later section
+
+### Creating products via our mutations
+
+Now that we got our form we can begin to create `products` from our `frontend` side of our application and for this, we will use `mutations`.
+
+#### Creating the mutation on the playground
+
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Add the following `mutation` on the left side of the `playground` editor
+  ```js
+  mutation {
+  createProduct (data: {
+    name: "Sample Product"
+    description: "This is a mutation test"
+    price: 100
+    status: "AVAILABLE"
+  }) {
+    id
+    price
+    description
+  }
+  }
+  ```
+  As you type inside of the `mutation` you will see the different `create` function that the `playground` intelligence gives to you; in our case, we will creating a `product` so we will use `createProduct`; then we sent the `data` that we need(you need to put the correct `fields` of your `data type`). We won't add the `photo field` yet because we don't have a standard on `graphQL` for file uploads so there isn't support on the `playground` that is why we use the `withData` method to handle the file upload for us. Finally, we put the `return` data that it will send used when the creation of the `product` is done.
+- Click the `play` button
+- You should see `data` at the right editor of the `playground`
+- Go to the [keystone products page](http://localhost:3000/products)
+- You should see the `product` that you just created on the list
+- Delete the `item` it was just for testing and save the `mutation` that we just did; that is going to be used later
+
+#### Use the mutation to create a product using the sell form
+
+- On your editor; go to the `sell.js` file in the `frontend/pages/` directory
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `CREATE_PRODUCT_MUTATION` that use `gql` as it value
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql``;
+  ```
+- Add the `mutation` that we did on the `graphQL` playground on `CREATE_PRODUCT_MUTATION`
+
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation {
+      createProduct(
+        data: {
+          name: "Sample Product"
+          description: "This is a mutation test"
+          price: 100
+          status: "AVAILABLE"
+        }
+      ) {
+        id
+        price
+        description
+      }
+    }
+  `;
+  ```
+
+- We will need to give a `name` to the `mutation` because it will take `variable` so we have dynamic `data` on the `mutation`. We will use the same `name` as the constant
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation CREATE_PRODUCT_MUTATION() {...}
+  `;
+  ```
+- Inside of the parenthesis add the following
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation CREATE_PRODUCT_MUTATION(
+      $name: String!
+      $description: String!
+      $price: Int!
+      $image: Upload
+    ) {...}
+  `;
+  ```
+  We define each variable; it type and variables are `required`(The `!` means that the variable is `required`)
+- Now we need to replace the fixed values of `data` with the `variables` names
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation CREATE_PRODUCT_MUTATION(
+      $name: String!
+      $description: String!
+      $price: Int!
+      $image: Upload
+    ) {
+      createProduct(
+        data: {
+          name: $name
+          description: $description
+          price: $price
+          status: "AVAILABLE"
+          photo: { create: { image: $image, altText: $name } }
+        }
+      ) {
+        id
+        price
+        description
+      }
+    }
+  `;
+  ```
+  We will leave the `status` as a fixed value because if someone creates a `product` from the `frontend` it will spect that the `product` is available when the creation process finishes. The `photo` is not just a `field`; it was its own `type` that is related to `product` and to handle `photo` we can use a `nested mutation` that will create the `product image` and relate it to the `product` in just one `request`(This is a `keystone` specific)
+- Now import the `useMutation` hook from `@apollo/client`
+  `import { useMutation } from '@apollo/client';`
+- Bellow the `useForm` hook; create a constant call `payload` that use the `useMutation` hook
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const payload = useMutation();
+
+    return (
+      <Form onSubmit={...}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now send the actual `mutation` as the first value of the `useMutation` hook and for the second parameter send the additional `data` that we need in this case the `inputs` data
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const payload = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- The `useMutation` hook actually returns an `array` with the `function` that will run the `mutation` and an `object` with a `loading`, `error`, and `data` values as the `useQuery` that we use before. Remove the `payload` constant and add the following
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now we need to trigger the `mutation` when the `form` is `submitted; for this, we are going to use the `onSubmit`property of the`form`
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+        console.log(inputs);
+
+        const rest = await createProduct();
+        console.log(res);
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  The `createProduct` is an `async` function so we will need to wait until is resolved. Another important thing is that you can send the `variables` using the `createProduct` function if you don't know it on the definition as we did when we use the `useMutation` hook
+
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- Fill the `form` and `submit` the `data`
+- Go to the `browser` console
+- You should see an `object` print with the product information
+- Go to the `product` page and `product images` on `keystone`
+- You will see that the `product` and the `product` image are on the list
+- Since we already have a `data` variable return on the `useMutation` we can eliminate the `res` constant and just `await` for the `createProduct` function
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+        console.log(inputs);
+
+        await createProduct();
+        console.log(res);
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Then remove the console and use the `clearForm` function to clean the inputs after submit
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+        console.log(inputs);
+
+        await createProduct();
+        clearForm();
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Go back to your browser and fill the form and submit the data
+- The `product` should be created and the `inputs` should be clear after submit
+
+#### Disable the form on creating a product and handle errors
+
+- Go back to the `CreateProduct` file
+- On the `fieldset` tag add the `disabled` and `aria-busy` properties using theloading` variable on both
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}}>
+        <fieldset disabled={loading} aria-busy={loading}>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Now import `DisplayError` from `./ErrorMessage`
+  `import DisplayError from './ErrorMessage';`
+- Use `DisplayError` before the `fieldset` tag; sending the `error` as it prop
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}}>
+        <DisplayError error={error} />
+        <fieldset disabled={loading} aria-busy={loading}>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Go back to the `sell` page
+- Fill the `form` and `submit`
+- You will see that the `form` is `disable` and the `loading` bar appear until the `createProduct` function finish
+- Go back to the `CreateProduct` file
+- Remove the `name` from the `data` in the `CREATE_PRODUCT_MUTATION`
+- Go back to the `sell` page and fill the `form` again
+- `Submit` the data
+- You should see an `error`
+- Go and add the `name` on the `CREATE_PRODUCT_MUTATION`
