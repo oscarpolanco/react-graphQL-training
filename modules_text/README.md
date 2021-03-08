@@ -3675,7 +3675,7 @@ Now that we got our form we can begin to create `products` from our `frontend` s
 #### Disable the form on creating a product and handle errors
 
 - Go back to the `CreateProduct` file
-- On the `fieldset` tag add the `disabled` and `aria-busy` properties using theloading` variable on both
+- On the `fieldset` tag add the `disabled` and `aria-busy` properties using the `loading` variable on both
 
   ```js
   export default function CreateProduct() {
@@ -3721,3 +3721,58 @@ Now that we got our form we can begin to create `products` from our `frontend` s
 - `Submit` the data
 - You should see an `error`
 - Go and add the `name` on the `CREATE_PRODUCT_MUTATION`
+
+### Re-fetching queries after a successful mutation
+
+At this moment we can create `products` on the `frontend` side of our application but if you go to the `homepage` you will see that the list of `products` will not refresh the `data` to add the new `product` after a successful `sell form` submit. This happens because we visit first the `homepage` that do a `query` for all `data` then we go to the `sell` page and submit the `form` and finally go back to the `homepage` and instead of doing the `query` again, it will use the `apollo` cache that this `query` exists.
+
+With `apollo` we have 2 approaches for this:
+
+- You can modify the `cache` directly; in other words when we have a `respond` of the `mutation` that create the `product` in this case we will `query` the `data` them manually inject it to the `cache` and it will continue using the normal flow. An example is `twitter` that when you post a `twit` it is immediately shown on the user but the other users will have the `twit` in his next network update; this is called an optimistic update that means that we assume that everything is going to be `ok` with the request and show the `data` immediately
+
+- You can tell `apollo` behind the scene; to go in the `server` and re-fetch a `query` all over again
+
+In this example, we are going to see both of them so lets begin to do it.
+
+#### Query and update the apollo cache
+
+- On your editor; go to the `Products.js` file in the `frontend/components` directory
+- Export `ALL_PRODUCTS_QUERY`
+  ```js
+  export const ALL_PRODUCTS_QUERY = gql`...`;
+  ```
+- Now go to the `CreateProduct.js` file in the `frontend/components` directory
+- Import `ALL_PRODUCTS_QUERY` from `./Products`
+  `import { ALL_PRODUCTS_QUERY } from './Products';`
+- On the `useMutation` hook in the object that have our `variables` add the following
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(
+      CREATE_PRODUCT_MUTATION,
+      {
+        variables: inputs,
+        refetchQueries: [{ query: ALL_PRODUCTS_QUERY }],
+      }
+    );
+
+    return (
+      <Form onSubmit={async (e) => {...}}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  The `refetchQueries` will receive an `array` of `queries` to re-fetch the `data`; in this case `ALL_PRODUCTS_QUERY`. In the case that the `query` that you want to re-fetch receive `variables` you can add the `variables` as a second parameter on the object:
+  `refetchQueries: [{ query: ALL_PRODUCTS_QUERY, variables }]`
+
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On another tab on your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser go to the [sell page](http://localhost:7777/sell)
+- Fill and submit the `form`
+- Click on the `sick fits` logo
+- Search on the list of `products` and you should see the `product` that you just created
