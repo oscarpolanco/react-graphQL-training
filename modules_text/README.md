@@ -3814,3 +3814,338 @@ When we want to change `pages` in `Next js` we are using the `Link` tag and that
 - On your browser; go to the [sell page](http://localhost:7777/sell)
 - Fill the `form` and submit the `data`
 - You should be redirected to another page(At this moment is not found)
+
+### Displaying single items, routing, and SEO
+
+At this moment we can `read` data from the `server` in the `product` pages but we need something a little bit different for the `single product` page because we will need the data of just one `product` and as you see on the previews sections this `single product` page need to be dynamic because every way to get to this page has the `product id` on it URL and that is what we are going to target on this section.
+
+#### Routing in Next.js
+
+As you remember when we mentioned the first time the `routing` on `next.js` is `file-based routing` that means; when we add a file on the `pages` directory it will use the file as the page content; for example; the `product.js` file will have the content of the `/product` URL. At this moment we will have an URL with a pattern instead of just a name; `/product/id_of_the_product` so we will need to create a file structure that matches this pattern and `next.js` can help us with this by just creating directories and files that handle the pattern that you need inside of the page directory. For `/product/id_of_the_product` we add the following
+
+```bash
+|-- page/
+|---- product/
+|----- [id].js
+```
+
+Here the `[id].js` will have the template that `next.js` will use when we have the `/product/id_of_the_product` URL and that structure will send us a `query` param with the current `product id`.
+
+#### Get the data and display it
+
+- On your editor; go to the `[id].js` file in the `frontend/pages/product/` directory
+- Export a function call `SingleProductPage`
+  `export default function SingleProductPage() {}`
+- Add the following as the page content
+  ```js
+  export default function SingleProductPage() {
+    return <p>Hey Im a single product</p>;
+  }
+  ```
+- On your terminal; start your `backend` local server using `npm run dev`
+- On another tab of your terminal; start your `frontend` local server using `npm run dev`
+- On the browser; go to the [homepage](http://localhost:7777/)
+- Click on one of the names of the items
+- You should be redirected to a new `single product` page and will have the content that you add in the `SingleProductPage`
+- Now get back to the `[id].js` file
+- `Next js` send you the pattern that you define as a `prop` to the component in other words the `SingleProductPage` recive a `prop` call `query` that have the current `id` show on the url. So add the `query prop` to the `SingleProductPage` component and use it as a content of the `page`
+  ```js
+  export default function SingleProductPage({ query }) {
+    return <p>Hey Im a single product {query.id}</p>;
+  }
+  ```
+- On your browser; refresh the page
+- You should see the `id` that is on the URL as a part of the content of the page
+- Copy the `id` of the `product`
+- Open another tab on your browser
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Make the following `query`
+
+  ```js
+  query {
+    Product(where: {
+      id: "id_of_the_product"
+    }) {
+      name
+      price
+      description
+    }
+  }
+  ```
+
+  Paste the `id` that you have before on the `id` property of the `query`. This `query` will grab a `single product` where the `id` is equal to the `product` that you choose; when you are `query` a `single` item you must put a unique field in this case the `id` to do the `query`, and return the `data` that is specified.
+
+- Click the `play` button
+- You should see the `product` data at the rigth
+- We actually going to do a component for all the logic of the `single product`. On the components directory create a file call `SingleProduct.js`
+- In this newly created file export a function call `SingleProduct` that recive an `id`
+  `export default function SingleProduct({ id }) {}`
+- Return the following content
+  ```js
+  export default function SingleProduct({ id }) {
+    return <p>Single Product</p>;
+  }
+  ```
+- Go back to the `[id].js` file
+- Import the `SingleProduct` component
+  `import SingleProduct from '../../components/SingleProduct';`
+- Use the `SingleProduct` sending the `id` prop
+  ```js
+  export default function SingleProductPage({ query }) {
+    return <SingleProduct id={query.id} />;
+  }
+  ```
+- Go back to the `SingleProduct` file and import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `SINGLE_ITEM_QUERY` that have `gql` as it content
+  ```js
+  const SINGLE_ITEM_QUERY = gql``;
+  ```
+- Paste the `query` that you did on the `graphQL playground`
+
+  ```js
+  const SINGLE_ITEM_QUERY = gql`
+    query {
+      Product(where: { id: "id_of_the_product" }) {
+        name
+        price
+        description
+      }
+    }
+  `;
+  ```
+
+- Import the `useQuery` hook from `@apollo/client`
+  `import { useQuery } from '@apollo/client';`
+- On the `SingleProduct` component use the hook sending the `SINGLE_ITEM_QUERY` as it parameter
+  ```js
+  export default function SingleProduct({ id }) {
+    const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY);
+    console.log({ data, loading, error });
+    return <p>Single Product</p>;
+  }
+  ```
+- Go to the browser and refresh the page
+- Inspect the page
+- On the browser console you should see the logs of the `data`, `loading`, and `error` variables
+- Refresh the page and you will see the log just ones
+- Click on the `logo`
+- Click on the name of a different `product`
+- You should see that the variables logs are twice; one with `data` as `undefined` and the other with the `data`. This happens because we get to do the request on the browser
+- Refresh the page. You will see that the log appear just ones because in this case the first render happens on the `server` and you already have the `data`
+- Go back to the `SingleProduct` and add the following to handle the `loading` and `error`
+
+  ```js
+  export default function SingleProduct({ id }) {
+    const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <DisplayError error={error} />;
+
+    return <p>Single Product</p>;
+  }
+  ```
+
+- Now remove the `p` tag and its content and add the following
+
+  ```js
+  export default function SingleProduct({ id }) {
+    const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <DisplayError error={error} />;
+
+    return (
+      <div>
+        <h2>{data.Product.name}</h2>
+      </div>
+    );
+  }
+  ```
+
+- Go to the browser and refresh the page
+- You should see the `product` name as a content of the page
+- Now we need to make the `query` dynamic to use the `id` that recive the `SingleProduct` so on the `SINGLE_ITEM_QUERY` update it content like this
+  ```js
+  const SINGLE_ITEM_QUERY = gql`
+    query SINGLE_ITEM_QUERY($id: ID!) {
+      Product(where: { id: $id }) {
+        name
+        price
+        description
+      }
+    }
+  `;
+  ```
+  This will make the `id` variable available on the `query` and it will `require` and we just need to use it on the `where` clause
+- On the `useQuery` hook add as a second parameter an object with the `variable` property that have the `id`
+  ```js
+  const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY, {
+    variables: {
+      id,
+    },
+  });
+  ```
+- Go to your browser and refresh the page
+- You should see the page with the correct content
+
+### Styling the SingleProduct component and add a title to the page for SEO
+
+- Go to the `SingleProduct.js` file on your editor
+- Destructure the `data` variable to surface the `Product` variable
+
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    const { Product } = data;
+
+    return (
+      <div>
+        <h2>{Product.name}</h2>
+      </div>
+    );
+  }
+  ```
+
+- Add the `id` and `photo` fields(on the `photo` field you need to add the `altText` and from `image` the `publicUrlTransformed`)
+  ```js
+  const SINGLE_ITEM_QUERY = gql`
+    query SINGLE_ITEM_QUERY($id: ID!) {
+      Product(where: { id: $id }) {
+        name
+        price
+        description
+        id
+        photo {
+          altText
+          image {
+            publicUrlTransformed
+          }
+        }
+      }
+    }
+  `;
+  ```
+- Wrap the `h2` in a `div` with a class call `details`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <div className="details">
+          <h2>{Product.name}</h2>
+        </div>
+      </div>
+    );
+  }
+  ```
+- Add a `p` tag bellow the `h2` with the `description` of the `product`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </div>
+    );
+  }
+  ```
+- Before the `details div` add an `image` tag tha use the `altText` and `publicUrlTransformed`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <img
+          src={Product.photo.image.publicUrlTransformed}
+          alt={Product.photo.image.altText}
+        />
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </div>
+    );
+  }
+  ```
+- If you notice the tab of your browser of the page doesn't have the name and we need to add. First import the `Head` component from `next/head`
+  `import Head from 'next/head';`
+- Bellow of the first `div` in the content of the page add the following
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <Head>
+          <title>Sick Fits | {Product.name}</title>
+        </Head>
+        <img
+          src={Product.photo.image.publicUrlTransformed}
+          alt={Product.photo.image.altText}
+        />
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </div>
+    );
+  }
+  ```
+  Everything that we use inside of the `Head` component will be injected into the `head` of the document
+- Go to your browser and refresh
+- You should see that the title of the tab change
+- Now we need to add styles. Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a constant call `ProductStyles` that have a `div` as its content
+  ```js
+  const ProductStyles = styled.div``;
+  ```
+- Add the following styles
+  ```js
+  const ProductStyles = styled.div`
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    min-height: 800px;
+    max-width: var(--maxWidth);
+    align-items: top;
+    gap: 2rem;
+    img {
+      width: 100%;
+      object-fit: contain;
+    }
+  `;
+  ```
+  - `display: grid;`: This will show the items dividing into major regions of defining a relationship in terms of size, position, and layer.
+  - `grid-auto-columns: 1fr;`: This will put the items in a column with a `width` of 1 `frame`
+  - `grid-auto-flow: column;`: It will add the items at the right side in columns instead of the default that is rows in grid
+  - `min-height: 800px;`: The biggest `height` that the container can have
+  - `max-width: var(--maxWidth);`: Use the `--maxWidth` variable to define the biggest `width` that the items can have
+  - `align-items: top;`: Align the items to the top of the container
+  - `gap: 2rem;`: Add a `gap` between elements
+  - `width: 100%;`: Let the image have the complete `width` of its container
+  - `object-fit: contain;`: Adjust the image depending it container size
+- On the `SingleProduct` function replace the top `div` with `ProductStyles`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <ProductStyles>
+        <Head>
+          <title>Sick Fits | {Product.name}</title>
+        </Head>
+        <img
+          src={Product.photo.image.publicUrlTransformed}
+          alt={Product.photo.image.altText}
+        />
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </ProductStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that the styles that you use reflected on the page

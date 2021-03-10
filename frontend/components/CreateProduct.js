@@ -45,7 +45,6 @@ export default function CreateProduct() {
       refetchQueries: [{ query: ALL_PRODUCTS_QUERY }],
     }
   );
-  console.log(data);
 
   return (
     <Form
