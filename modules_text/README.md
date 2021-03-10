@@ -2006,3 +2006,2146 @@ If you take a look at the `backend` directory you will find a `seed-data` folder
 - You should see the result of the `query` at the right
 - Copy one of the `url` that you get on another `tab`
 - You should see that an image is showing up
+
+## Module 5: Client side React + GraphQL development
+
+At this point, we have our `backend` side setup and have test data on it so we can get back to the `frontend` side of the application to begin to use the `data` available.
+
+### Setting up Apollo client
+
+As we start to pull in data from the `API` into the `frontend` side of our application we need some source of tool that help us to make the `queries`; `cache` data; evict those `items` from the `data`; handle `mutation`; give us the `data` that comes back from the `server`; handle `errors` or file `uploads`; all this kind of stuff, in other words, we need a tool that talks with `graphQL` and manage all the `data` for us and in our case, we are going to use `Apollo Client`.
+
+To setup `Apollo` we need something call `link` that is a standard interface to modify the flow of `graphQL` request and fetching of `graphQL` results; in other words; `Apollo client` is made by a lot of different `links` and each `link` is responsible for handling the outgoing request and get/update `data` as well as responses coming back and other functionalities like `cache`. A lot of the features that we need will be on a package called `apollo-boost` because almost all the time we need just a few of these features so they wrap up on a package so we can easily work with them but one thing that is not done on this package is that they don't handle `image` upload and in other to do this we need to use a 3rd party and as soon that we use this custom feature; we need to create our links that is why the example brings a file called `withData.js` on the `frontend/lib/` directory.
+
+#### Insides about the withData file
+
+When we use `Apollo Client` we need to `create` a `client` and inject to it the `links` that we need. This is the responsibility of the first function that we see which is called `createClient` that returns an instance of the `ApolloClient` object with the configuration that we need.
+
+The first `link` that we see on the `ApolloClient` instance is an `error` handling `link` and all it does is that take 2 different types of `errors` that can possibly happen in your `graphQL` request. You could have a `graphQL` error where you will have an error produced by some information of the `query` that you do that does not match with the `data` on your `API` such as the wrong password or try to `query` a field that doesn't exist. The other type of `error` is the `network` error that happens when your `backend` is down, or `cors` something like that in other words that the `status` is not `200`.
+
+The other `link` is the `Apollo http link`; which is responsible for `fetching` data or making `POST` request and inside of `React`; `Apollo` will give us both `query` and `mutation` hooks that will allow to the `request` but if you check on [Apollo documentation](https://www.apollographql.com/docs/link/links/http/); the function is called different on the code; this is because we use another package called `apollo-upload-client` that use the `apollo-link-http` and add additional code to upload files the thing that we need. Now getting back to the `links` as you see we use the `createUploadLink` function to create the `Apollo http link` that receive a configuration object with the `URI` property that receives the `URL` of our `graphQL API` as you see it will take the `endpoint` variable that is exported from the `config.js` file in the root of the `frontend` directory and this `URL` is the one that we use before when we were testing the `graphQL API` on `keystone`(The other one is for production). Then we have the `fetchOptions` that will tell the `API` that sends the `credential` alongside the `request` in our case the `cookie` because we will control what a user is allowed to do or allow to see and we need to check is he is logged in. Finally, we need to add the `header` because we are using `server-side rendering` we need all the `headers` and `cookies` on the first request so we can `render` the `logged in` state of the components since the beginning.
+
+The last `link` is the `cache` that will define where you are going to store the cache in our case we are going to be storing this `in memory` in other words in the `browser` also at the end we need to `restore` the initial values that mean that all the `data` that is collected on the `server` then give it to the `hydration` on the `client`.
+
+The last thing that we need to know on this file is the last line; on which we are using the `withApollo` method that allows us to `crawl` all pages and components and look for any `queries` that we have then it will make sure that we have `fetch` all the `data` that we need and it will wait for all `data` to be `fetched` before the `server` send all the `HTML` to the `client`.
+
+#### Using the withData method
+
+Know we need to take the `withData` function and create an instance of `Apollo` then inject it into our application and the file that will help us with this is the `_app.js` file. We will wrap all the application in what is called a `provider` that in `React` is a component that usually lives in a very high place on your application and allows components that are several levels down to have access to the `provider` data. Here are the steps
+
+- On your editor; go to the `_app.js` file on the root of the `frontend` directory
+- Import `ApolloProvider` from `@apollo/client`
+  `import { ApolloProvider } from '@apollo/client';`
+- Wrap the content of the `MyApp` component using the `ApolloProvider`
+  ```js
+  export default function MyApp({ Component, pageProps }) {
+    return (
+      <ApolloProvider>
+        <Page>
+          <Component {...pageProps} />
+        </Page>
+      </ApolloProvider>
+    );
+  }
+  ```
+- The `ApolloProvider` need a `client` property and the value will be the `apollo` object that we will have as an argument of `MyApp`(You may ask yourself; where that `apollo` object came from; in a bit will be explained)
+  ```js
+  export default function MyApp({ Component, pageProps, apollo }) {
+    return (
+      <ApolloProvider client={apollo}>
+        <Page>
+          <Component {...pageProps} />
+        </Page>
+      </ApolloProvider>
+    );
+  }
+  ```
+- Import the `withData` method from the `lib` directory
+  `import withData from '../lib/withData';`
+- Since `MyApp` is the highest component in the application we need to change the `export` statement so we can wrap `MyApp` with the `withData` method that will give us all the `data` that we need. So remove `export default` from the `MyApp` function definition line
+  ```js
+  function MyApp({ Component, pageProps, apollo }) {
+    return (
+      <ApolloProvider client={apollo}>
+        <Page>
+          <Component {...pageProps} />
+        </Page>
+      </ApolloProvider>
+    );
+  }
+  ```
+- Below the `MyApp` function add the export statement using `withData` as a wrapper of the `MyApp` function
+  `export default withData(MyApp);`
+  This will inject the `apollo` object to the `MyApp` function
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to `http://localhost:7777/`
+- Open the browser console
+- You should see that the `Apollo` extension is active(We ask to install this extension at the beginning). This means that the extension detects that `Apollo Client` is present on our application but we still don't have anything to show yet
+- Now get back to the `_app.js` file on your editor
+- At this moment we need to tell `next.js` that we need to go and `fetch` all `queries` that are on all `children` components. Before the `export` use the `getInitialProps` with `MyAPP` and add an `async` function
+  `MyApp.getInitialProps = async function () {}`
+  The `getInitialProps` is a `next.js` specific
+- The props of the function will be the `Component` and `contex`(ctx)
+  `MyApp.getInitialProps = async function ({ Component, ctx }) {}`
+- Create a `let` variable call `pageProps`
+  ```js
+  MyApp.getInitialProps = async function ({ Component, ctx }) {
+    let pageProps = {};
+  };
+  ```
+- Add the following condition
+
+  ```js
+  MyApp.getInitialProps = async function ({ Component, ctx }) {
+    let pageProps = {};
+
+    if (Component.getInitialProps) {
+      pageProps = await Component.getInitialProps(ctx);
+    }
+  };
+  ```
+
+  If any other page has the `getInitialProps` method on them(Thing that will be `true` because the `withData` method add that to the pages) then it will wait, and fetch the `data`
+
+- Then add the following
+
+```js
+MyApp.getInitialProps = async function ({ Component, ctx }) {
+  let pageProps = {};
+
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+
+  pageProps.query = ctx.query;
+};
+```
+
+This will allow us to get any query variables available on a page level
+
+- Finally; we return the `pageProps`
+
+```js
+MyApp.getInitialProps = async function ({ Component, ctx }) {
+  let pageProps = {};
+
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+
+  pageProps.query = ctx.query;
+  return { pageProps };
+};
+```
+
+### Fetching data with hooks and displaying it on the frontend
+
+Since we have set `Apollo`; we can begin to pull in `data` to our `frontend` side of the application. So let begin with that:
+
+- First; on your editor go to the `index.js` file in the `frontend/pages/` directory
+- We want to show the same content as the `product` so update the `index` file as the following:
+  `export { default } from './products';`
+- Delete everything else on the `index` file
+- Now we need a `Product` component that `get` all `products` and loop throw each one of them; so on the `components` directory create a file call `Product.js`
+- Export a function call `Products` with the following content on this newly created file
+  ```js
+  export default function Products() {
+    return (
+      <div>
+        <p>Products!!!</p>
+      </div>
+    );
+  }
+  ```
+- Then go to the `product` file in the `page` directory
+- Import the `Products` component
+  `import Products from '../components/Products';`
+- Use the `Products` component on the `return` of the `ProductPage` component and delete the other elements
+  ```js
+  export default function ProductPage() {
+    return (
+      <div>
+        <Products />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to `http://localhost:7777/`
+- You should see the `Products!!` message on the page
+- Now on your terminal; open a new tab or another terminal
+- In this new tab/window; go to the `backend` directory
+- Start your local server using `npm run dev`
+- Go the [graphQL playground](http://localhost:3000/api/graphql)
+- Write the following `query`
+  ```js
+  query ALL_PRODUCTS_QUERY {
+    allProducts {
+      id
+      name
+      price
+      description
+      photo {
+        id
+        image {
+          publicUrlTransformed
+        }
+      }
+    }
+  }
+  ```
+  This `query` will bring all `products` with it `id`, `name`, `price`, `description`, and `photo`. Since the `photo` is a relation with another type we will need to define the `data` that we need from the other type; in this case; the `id` of the image and the `image` that is the `field` with the information that we need so from there we pull the `publicUrlTransformed`. Finally, you can name your `queries` and for the convention on the name of a `query` we will use all letters uppercase; underscore for spaces and finish the name with `QUERY`
+- Click on the `play` button
+- You should have all `product` information display
+- Copy the `query`
+- Get back to the `Products` component on your editor
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `ALL_PRODUCTS_QUERY` that use `gql` as its content
+  ```js
+  const ALL_PRODUCTS_QUERY = gql``;
+  ```
+  `gql` will turn our `string` to a proper `graphQL` query
+- Paste the `query` on the `gql` backtips
+  ```js
+  const ALL_PRODUCTS_QUERY = gql`
+    query ALL_PRODUCTS_QUERY {
+      allProducts {
+        id
+        name
+        price
+        description
+        photo {
+          id
+          image {
+            publicUrlTransformed
+          }
+        }
+      }
+    }
+  `;
+  ```
+  If you are using `vscode` you can add the `GraphQL` extension to format the `query` correctly. This extension will format any string that uses `gql`
+- In order to `fetch` the `data` we will need a `hook` call `useQuery`; so import `useQuery` from `@apollo/client`
+  `import { useQuery } from '@apollo/client';`
+- The `useQuery` will use the `ALL_PRODUCTS_QUERY` and return the `date`, if there is an `error` and if is still `loading`. So add the following in the `Products` component
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+
+    return (
+      <div>
+        <p>Products!!<p>
+      </div>
+    );
+  }
+  ```
+
+- Since these constants are reactive they will update without re-run the project or have a `callback` function so you can simply use it. Console.log all variables that you just created
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+
+    return (
+      <div>
+        <p>Products!!<p>
+      </div>
+    );
+  }
+  ```
+
+- On your browser; refresh the page
+- Open the browser's console
+- You should see the `data` of all `products`, `undefined` for the `errors`, and `false` for the `loading` state. Since we have `server-side rendering` you will see that the `loading` is always `false` since it made the `query` process on the `server`
+- Click on one of the pages links that aren't `product`
+- `Hard reload` your browser
+- Get back to the `product` page
+- You should see that the `console` runs twice one with `undefined` for the `data` of the `products`, `undefined` for the `errors`, and `true` for the `loading` state. The other log will be the same as the one we see before with the `data`
+- Go back to the `Products` component on your editor
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error.message}</p>;
+
+    return (
+      <div>
+        <p>Products!!<p>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser; go to another page that isn't the `homepage` or `product` page
+- `Hard refresh` the browser so we clean the `Apollo` cache
+- Go back to the `homepage` or `product` page
+- You should see the `loading` message then quickly change to the `Product!!` message
+- Now delete the `console` and the `paragraph
+- Then add a new `div` on the `return` statement and inside of that newly created `div` use the `data` variable to loop throw each item
+
+  ```js
+  export default function Products() {
+  const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+  console.log(data, error, loading);
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  return (
+    <div>
+      <div>
+        {data.allProducts.map((product) => ())}
+      </div>
+  </div>
+  );
+  }
+  ```
+
+- Inside of the `callback` function of the `map`; use the `product` variable to show the `product` name on a `p` tag and the `product` id as the `key` property of this `p` tag
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error.message}</p>;
+
+    return (
+      <div>
+        <div>
+          {data.allProducts.map((product) => (
+            <p key={product.key}>{product.name}</p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- You should see all `products` name
+- Now we need a `grid` for our `items`; so import `styled` from `styled-component`
+  `import styled from 'styled-components';`
+- Before the `Products` function; create a constant call `ProductsListStyles` that have a `styled div` as it value
+  ```js
+  const ProductsListStyles = styled.div``;
+  ```
+- Add the following `css`
+  ```js
+  const ProductsListStyles = styled.div`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 60px;
+  `;
+  ```
+  This will use `grid` to create 2 `columns` and will calculate the size of the `columns` depending on the size of the father container and the `gap` that we define
+- Now we need a singular `product` component to style each individual component. On the `component` directory create a new file call `Product.js`
+- In this newly created file export a function call `Product`
+  `export default function Product() {};`
+- The `Product` component will recive a `product` as it prop
+  `export default function Product({ product }) {};`
+- Return a `p` tag with the name of the `product` as it content
+  ```js
+  export default function Product({ product }) {
+    return <p>{product.name}</p>;
+  }
+  ```
+- Go to the `Products` component and import `Product`
+  `import Product from './Product';`
+- Remove the `product` name on the `map`
+- Use the `Product` component where the `product` name was before and send the `product` variable as it props and adds the `key` property the same as before
+
+  ```js
+  export default function Products() {
+    const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY);
+    console.log(data, error, loading);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error.message}</p>;
+
+    return (
+      <div>
+        <div>
+          {data.allProducts.map((product) => (
+            <Product key={product.id} product={product} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser; refresh the page
+- You should see the same result as before
+- If you see on the component directory; we have a `styles` directory with some pre done `styles` for us to use but first; go to the `ItemStyles` on that directory and change the name of the constant from `Item` to `ItemStyles` and on the `export` bellow too
+- Go back to the `Product` component and import `ItemStyles`
+  `import ItemStyles from './styles/ItemStyles';`
+- Wrap the `product` name on using the `ItemStyles` component
+  ```js
+  export default function Product({ product }) {
+    return <ItemStyles>{product.name}</ItemStyles>;
+  }
+  ```
+- Remove the `product` name
+- Add an `image` tag using the `product` variable to fill the `image` tag properties
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+      </ItemStyles>
+    );
+  }
+  ```
+  We use `nested` changing(Is the `?`) to prevent that the application gives an error in case we don't have one of those properties
+- Import `Title` from `./styles/Title'`
+  `import Title from './styles/Title';`
+- Import `Link` from `next/link`
+  `import Link from 'next/link';`
+- Add the `Title` component bellow the `image` tag
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title></Title>
+      </ItemStyles>
+    );
+  }
+  ```
+- Use the `Link` component as a child of the `Title` component as is show next
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+      </ItemStyles>
+    );
+  }
+  ```
+  This `URL` will be used for the `product` detail and is not exist for now. In a later section, we are going to handle this `URL`
+- Go to your browser and refresh the page
+- You should see the `images` and `titles` of each `product`
+- One issue is that the `title` is a little big so we need to handle this; on your editor go to the `Page` component
+- We need to change the `font-size` a little bit but in the `GlobalStyles` you see that only the `body` have a `font-size` and is a `rem` value so it will depend on the `font-size` of the `root` that is not defined but by default the value is `16px` if is don't defined. So on the `HTML tag add a `font-size`of`10px`
+
+  ```js
+  const GlobalStyles = createGlobalStyle`
+    @font-face {...}
+    
+    html {
+      ...
+      font-size: 10px;
+    }
+    ...
+  `;
+  ```
+
+  Another way is to put this `font-size` to be `62.5%` so the user can override this value with their browser settings
+
+- Now get back to the `Product` component
+- Now we need the `price`; so import `PriceTag` from `./styles/PriceTag`
+  `import PriceTag from './styles/PriceTag';`
+- Bellow the `Title` component use the `PriceTag` with the `product.price` as it content
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+        <PriceTag>{product.price}</PriceTag>
+      </ItemStyles>
+    );
+  }
+  ```
+- As you may remember we add the `price` of each product on `cents` so we need to `format` the `data` that we recive. For this we are going to create a helper. Go to the `lib` directory
+- Create a file call `formatMoney.js`
+- On this newly created file; export a function call `formatMoney`
+  `export default function formatMoney() {}`
+- On the `formatMoney` function add a constant call `options` with the following
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+  }
+  ```
+- Then create another constant call `formatter` that use the `Intl.NumberFormat` as its content
+
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat();
+    const formatter = Intl.NumberFormat('en-US', options);
+  }
+  ```
+
+- Send `en-US` and the `options` object as it parameters
+
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+  }
+  ```
+
+  This will give users the `US` money format
+
+- Return the `formatter` constant using it `format` function
+
+  ```js
+  export default function formatMoney() {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format();
+  }
+  ```
+
+- Now we need the `amount` that we will give `format`; so on the `formatMoney` function add `amount` as a parameter with a default of `0` and send it to the `format` function at the button
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount);
+  }
+  ```
+
+- Since we are in `cents` we need to divide the `amount` by a `100` in the `format` function
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount / 100);
+  }
+  ```
+
+- Go to the `Product` component and import `formatMoney`
+  `import formatMoney from '../lib/formatMoney';`
+- Wrap the `price` with the `formatMoney` function
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+      </ItemStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that each `product` have its prices on `dollars` not on `cents`
+- Choose one of the `products` and go to `keystone`
+- Update that `product` to finish with `0`. Ex: `3425` to `3400`
+- Go back to the `http://localhost:7777/products`
+- Search that `product` that you update
+- You should see that have a `.00` in his `price`
+- We need to eliminate this `.00`; so go to the `formatMoney` file
+- Bellow the `options` object add the following condition
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    if (amount % 100 === 0) {
+    }
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount / 100);
+  }
+  ```
+
+  This condition will check if the `amount` ends with `0`
+
+- Inside of the condition update the `minimumFractionDigits` to `0`
+
+  ```js
+  export default function formatMoney(amount = 0) {
+    const options = {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    };
+
+    if (amount % 100 === 0) {
+      options.minimumFractionDigits = 0;
+    }
+
+    const formatter = Intl.NumberFormat('en-US', options);
+
+    return formatter.format(amount / 100);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Search the `product` that has `.00` at the end
+- You should see that the `price` of that `product` doesn't have the `.00`
+- Go back to the `Product` component
+- Add a `description` bellow the `price`
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img
+          src={product?.photo?.image?.publicUrlTransformed}
+          alt={product.name}
+        />
+        <Title>
+          <Link href={`/product/${product.id}`}>{product.name}</Link>
+        </Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+      </ItemStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that each `product` have a `description`
+
+#### Notes
+
+If you notice when we add the `console.log` for the `useQuery` variables; the logs appear on your terminal as well on your browser console. This is because the first render happens in the server then the re-hydration happens on the browser; this will have this effect and don't worry the `API` is no hit twice because the `withData` will restore the initial values on the components.
+
+### Fixing and styling the nav
+
+Now that we get the `data` of the `products` on the application we can do a quick fix on the `nav`. Here are the steps for the quick fix:
+
+- On your editor; go to the `Header.js` file in the `frontend/components` directory
+- Move the `Nav` component position to the `bar` container
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">
+          <Logo>
+            <Link href="/">Sick fits</Link>
+          </Logo>
+          <Nav />
+        </div>
+        ...
+      </HeaderStyles>
+    );
+  }
+  ```
+- Now go to the `Nav.js` file
+- Import `NavStyles` from `./styles/NavStyles`
+  `import NavStyles from './styles/NavStyles';`
+- Replace the `nav` element with the `NavStyles` component
+- On your terminal; start your local server using `npm run dev`
+- On your browser; go to `http://localhost:7777/`
+- You should see that the `nav` is at the side of the `logo` and have some more styles
+- Inspect the `nav` element
+- Click on the `ul` element in the `HTML section
+- You see that the `URL` doesn't complete the `height` of its container
+- To fix this; go back to the `Header.js` file
+- In the `HeaderStyles` constant change the `align-items` value from `center` to `stretch`
+
+  ```js
+  const HeaderStyles = styled.header`
+    .bar {
+      ...
+      align-items: stretch;
+    }
+    ...
+  `;
+  ```
+
+- Go back to your browser and refresh the page
+- You will see that the `nav` items have the complete `height` of their container
+
+## A real good lesson in React forms and custom hooks
+
+Now that we `query` the data to our application; we can continue with the next step that is `create` and `push` data. We are going to do this on the `sell` page.
+
+#### Steps to create a basic form
+
+- On your editor go to the `frontend/components`
+- Create a new file call `CreateProduct.js`
+- Inside of this newly created file; export a function call `CreateProduct`
+  `export default function CreateProduct() {}`
+- On the `CreateProduct` function return the following
+  ```js
+  export default function CreateProduct() {
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input type="text" id="name" name="name" />
+        </label>
+      </form>
+    );
+  }
+  ```
+- Now go to the `sell.js` file on the `page` directory
+- Import the `CreateProduct` component
+  `import CreateProduct from '../components/CreateProduct';`
+- Replace the content of the `sell` page with the `CreateProduct` component
+  ```js
+  export default function SellPage() {
+    return (
+      <div>
+        <CreateProduct />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `frontend` directory
+- Start your local server using: `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- You should see the `input` with a `label` on the page
+- To use the `data` of the `input` we need to associate the `input` with a `state`. Go to the `CreateProduct` file
+- Import the `useState` hook from `react`
+  `import { useState } from 'react';`
+- At the top of the `CreateProduct` function destructure the state with the following names
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState();
+
+    return (...);
+  }
+  ```
+
+- Add a initial `state` of your choosing for the new `state`. Here is an example:
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (...);
+  }
+  ```
+
+- The `name` state is reactive so when it changes; it will change on every place that is on and if you wanna use a state with an `input` you will need to add the state on the `value` property of the `input`
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input type="text" id="name" name="name" value={name} />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- You should see the `input` with the `initial` state value as it content
+- You should not be able to type on the `input`
+- Inspect the `input`
+- You should see an error on the browser console
+- The error that you see before is because `React` is very strict about a single source of `data` and if you change the `data` of the `input` you will have `data` from your state and another from your `input`. To solve this `React` tell you that you need to listen to an `onChange` event that updates the state and that trigger a `re-render that update the `value`property of the`input`
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={name}
+            onChange={(e) => {
+              console.log(e);
+            }}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+  Here we send a callback function that receive the `event` object
+
+- Go to your browser and refresh the page
+- Type something on the `input`
+- Inspect the `input`
+- You should see a log on the browser `console`
+- Check the `event` object and on the `target` property you will found the `value` of the `input`
+- Now go back to the `CreateProduct` file
+- On the `onChange` property console `e.target.value` and use the `setName` function sending the `e.target.value`
+
+  ```js
+  export default function CreateProduct() {
+    const [name, setName] = useState('New name');
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={name}
+            onChange={(e) => {
+              console.log(e.target.value);
+              setName(e.target.value);
+            }}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something on the `input`
+- Inspect the `input`
+- You should see that the log with what you type in the `input`
+
+### Using a custom hook to handle the form
+
+Now we want to address some interesting issue; what happens if I got a lot of `inputs`? if this is the case we will need to create multiple `states` to handle all of them but we can do an approach to this synchronizing all the `states` on one and using a `custom hook` to handle the `form` data and how is updated. Here are the steps:
+
+- On your editor; go to the `lib` folder on the `frontend` directory
+- Create a file called `useForm.js`
+- On this newly create file; export a function call `useForm` that recive a `initial` variable as a parameter with an empty object as it default value
+  `export default function useForm(initial = {}) {}`
+- Import `useState` from `react`
+  `import { useState } from 'react';`
+- Inside of the `useForm` function; create a state call `inputs` with it respective `set` function and with the `initial` variable as it initial value
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+  }
+  ```
+- Now we need to create the function that we will send to the `onChange` property of the `input`. In the `useForm` function create a function call `handleChange` that receive the `event` variable as a parameter
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {}
+  }
+  ```
+
+- Use the `setInput` function in `handleChange`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {
+      setInputs();
+    }
+  }
+  ```
+
+- Since; all the `inputs` will be attached to the same `state` we will need to do the following to update the `state`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {
+      setInputs({
+        ...inputs,
+        [e.target.name]: e.target.value,
+      });
+    }
+  }
+  ```
+
+  This will create a new object with the same properties and values of the `inputs` state since we use the `spread` operator on `inputs` them we will override the current `input` data that is changing with the `e.target` current data
+
+- Now we will return the things that we want to surface on the other components in this case the `inputs` state and the `handleChange` function
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+    function handleChange(e) {
+      setInputs({
+        ...inputs,
+        [e.target.name]: e.target.value,
+      });
+    }
+
+    return {
+      inputs,
+      handleChange,
+    };
+  }
+  ```
+
+- Now get back to the `CreateProduct` file
+- Add the following `input` bellow the `name input`
+  ```js
+  <label htmlFor="price">
+    Price
+    <input
+      type="number"
+      id="price"
+      name="price"
+      placeholder="Price"
+      value={}
+      onChange={}
+    />
+  </label>
+  ```
+- Then import the `useForm` hook
+  `import useForm from '../lib/useForm';`
+- Remove the `useState` import
+- Then remove the `name` state
+- On the line that was the name `state` use the `useForm` hook to obtain the `inputs` state and the `handleChange` function
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange } = useForm();
+
+    return <form>....</form>;
+  }
+  ```
+
+- Replace the `value` of the inputs and add the `inputs.name_of_the_input`
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange } = useForm();
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Name"
+            value={inputs.name}
+            onChange={...}
+          />
+        </label>
+        <label htmlFor="price">
+          Price
+          <input
+            type="number"
+            id="price"
+            name="price"
+            placeholder="Price"
+            value={inputs.price}
+            onChange={}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- Now add on the `onChange` property the `handleChange` function
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange } = useForm();
+
+    return (
+      <form>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Name"
+            value={inputs.name}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="price">
+          Price
+          <input
+            type="number"
+            id="price"
+            name="price"
+            placeholder="Price"
+            value={inputs.price}
+            onChange={handleChange}
+          />
+        </label>
+      </form>
+    );
+  }
+  ```
+
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- Inspect the inputs
+- On the console click on the `components` tab(This extension we ask to installed at the beginning)
+- Click for the `CreateProduct` component
+- At the right check the `hook` section
+- Type something on the `inputs`
+- You will see the data on the `hook` section
+- Now we encounter an issue that is the `number` input that turns into a string but we actually need a number. To fix this go back to the `useForm` file
+- On the `handleChange` function; destructure the `value`, `name` and `type` from `e.target`
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     setInputs({
+       ...inputs,
+       [e.target.name]: e.target.value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+- Add the following condition
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     if (type === 'number') {
+      value = parseInt(value);
+    }
+
+     setInputs({
+       ...inputs,
+       [e.target.name]: e.target.value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+This will use the `type` to convert the `string` of the `value` variable to a `numeric` value
+
+- Update the `e.target` on the `setInputs` function to use the new variables
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     if (type === 'number') {
+      value = parseInt(value);
+    }
+
+     setInputs({
+       ...inputs,
+       [name]: value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+- We will need to upload files via inputs and we will need this
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {
+     let { value, name, type } = e.target;
+
+     if (type === 'number') {
+      value = parseInt(value);
+    }
+
+    if (type === 'file') {
+      [value] = e.target.files;
+    }
+
+     setInputs({
+       ...inputs,
+       [name]: value,
+     });
+   }
+
+   return {...};
+ }
+```
+
+- We will need a `reset` functionality that will restore the `initial values that we got
+
+```js
+ export default function useForm(initial = {}) {
+   const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {...}
+
+   function resetFrom() {
+     setInputs(initial);
+  }
+
+  return {...};
+ }
+```
+
+- We will also need a clear form value that will clean even the initial data from the form. Add the following
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {...}
+
+   function resetFrom() {
+    setInputs(initial);
+   }
+
+   function clearForm() {
+      const blankState = Object.fromEntries(
+        Object.entries(inputs).map(([key, value]) => [key, ''])
+      );
+      setInputs(blankState);
+  }
+
+   return {...};
+  }
+  ```
+
+  Using the following object as a example: `const person = {name: 'test', price: '20', age: '25'};`
+
+  - If you use `Object.entries(person)` you will have: `[ ['name', 'test'], ['price', 20], ['age', 25]]`
+  - Now if you `map` throw each `item` and return an empty value as the second parameter like this:
+    `const newPerson = person.map([key, value]) => [key, ''];`
+  - Now the `newPerson` value is like this: `[['name', ""], ['price', ""], ['age', ""]];`
+  - Then wrap `newPerson` into an `Object.fromEntries`: `Object.fromEntries(newPerson);`
+  - You will have a result like this: `{name: "", price: "", age: ""}`
+
+  This is the same process that we follow on the `clearForm` function
+
+- Finally; make available for other components the `resetFrom` and `clearForm`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+
+   function handleChange(e) {...}
+
+   function resetFrom() {
+    setInputs(initial);
+   }
+
+   function clearForm() {
+      const blankState = Object.fromEntries(
+        Object.entries(inputs).map(([key, value]) => [key, ''])
+      );
+      setInputs(blankState);
+  }
+
+   return {
+     inputs,
+     handleChange,
+     resetFrom,
+     clearForm,
+   };
+  }
+  ```
+
+- On the `CreateProduct` file; add a initial data on the `useForm`
+  ```js
+  const { inputs, handleChange, resetFrom, clearForm } = useForm({
+    name: 'Nice shoes',
+    price: 34234,
+    description: 'These are the best shoes!',
+  });
+  ```
+- Then add the following `buttons` below the `inputs`
+
+```js
+export default function CreateProduct() {
+  const { inputs, handleChange, resetFrom, clearForm } = useForm({
+    name: 'Nice shoes',
+    price: 34234,
+  });
+
+  return (
+    <form>
+      <label htmlFor="name">...</label>
+      <label htmlFor="price">...</label>
+      <button type="button" onClick={clearForm}>
+        Clear form
+      </button>
+      <button type="button" onClick={resetFrom}>
+        Reset form
+      </button>
+    </form>
+  );
+}
+```
+
+- Go to your browser and refresh the page
+- You should see the `inputs` with an initial value and 2 `buttons`
+- Click on then and you should see how they affect the `inputs`
+
+### Hooking up our file input and form styles
+
+Now we need to add some styling and the `inputs` that we still miss on the `form`. Here are the steps:
+
+- First; on your editor go to the `CreateProduct` file on the `frontend/components/` directory
+- Import `Form` from `./styles/Form`(It came with the initial files of the example)
+  `import Form from './styles/Form';`
+- Substitute the `form` tag with the `Form` component
+- Remove all buttons on the `form`
+- Bellow the las `input` add the following button:
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+            ...
+          </label>
+          <button type="submit">+ Add Product</button>
+      </Form>
+    );
+  }
+  ```
+
+- We will need to `disable` the `form` in the future because when you click on `submit` it takes time to process the request and some other things that take time so we will use a `fieldset` to group all `items` of the `form`. Add a `fieldset` tag to wrap all elements of the `form`
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+            ...
+          </label>
+          <button type="submit">+ Add Product</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- Add a `disabled` property on the `fieldset`
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset disabled>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- On your terminal; go to the `frontend` directory
+- Start your local `server` using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- You should see that the all `form` is `disabled`
+- Go back to the `CreateProduct` file
+- Remove the `disabled` property of the `fieldset`
+- Add `aria-busy` in the `fieldset`
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset aria-busy>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that now have a `loading` indicator. This is to make accessible the `form` so it targets properties like this
+- Go back to the `CreateProduct` component
+- Remove the `aria-busy` property from the `fieldset`
+- Now duplicate the `name` input and substitute the values with the following
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset>
+          <label htmlFor="image">
+            Image
+            <input
+              required
+              type="file"
+              id="image"
+              name="image"
+              onChange={handleChange}
+            />
+          </label>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+           ...
+          </label>
+          <button type="submit">+ Add Product</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+  The `required` property will give us some `input` that is necessary to upload an `image`
+
+- Now duplicate the `price` input and update its value like this
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form>
+        <fieldset>
+          <label htmlFor="image">
+            ...
+          </label>
+          <label htmlFor="name">
+            ...
+          </label>
+          <label htmlFor="price">
+            ...
+          </label>
+          <label htmlFor="description">
+            Description
+            <textarea
+              id="description"
+              name="description"
+              placeholder="Description"
+              value={inputs.description}
+              onChange={handleChange}
+            />
+          </label>
+
+          <button type="submit">+ Add Product</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Add the `image` and `description` to the initial `state`
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({
+      image: '',
+      name: 'Nice shoes',
+      price: 34234,
+      description: 'These are the best shoes!',
+    });
+
+    return <Form>...</Form>;
+  }
+  ```
+
+- Now go back to your browser and refresh the page
+- Click on the `submit` button
+- You should see that the page refresh and add the `inputs` values to the `URL` and we want to prevent this
+- Go back to the `CreateProduct` file
+- Now we need to put the `form` to listen to the submit event
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form onSubmit={(e) => {
+        e.preventDefault();
+        console.log(inputs);
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+  This will prevent that the page refresh and we will log the `input` state with the values. We will continue with this functionality in a later section
+
+### Creating products via our mutations
+
+Now that we got our form we can begin to create `products` from our `frontend` side of our application and for this, we will use `mutations`.
+
+#### Creating the mutation on the playground
+
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Add the following `mutation` on the left side of the `playground` editor
+  ```js
+  mutation {
+  createProduct (data: {
+    name: "Sample Product"
+    description: "This is a mutation test"
+    price: 100
+    status: "AVAILABLE"
+  }) {
+    id
+    price
+    description
+  }
+  }
+  ```
+  As you type inside of the `mutation` you will see the different `create` function that the `playground` intelligence gives to you; in our case, we will creating a `product` so we will use `createProduct`; then we sent the `data` that we need(you need to put the correct `fields` of your `data type`). We won't add the `photo field` yet because we don't have a standard on `graphQL` for file uploads so there isn't support on the `playground` that is why we use the `withData` method to handle the file upload for us. Finally, we put the `return` data that it will send used when the creation of the `product` is done.
+- Click the `play` button
+- You should see `data` at the right editor of the `playground`
+- Go to the [keystone products page](http://localhost:3000/products)
+- You should see the `product` that you just created on the list
+- Delete the `item` it was just for testing and save the `mutation` that we just did; that is going to be used later
+
+#### Use the mutation to create a product using the sell form
+
+- On your editor; go to the `sell.js` file in the `frontend/pages/` directory
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `CREATE_PRODUCT_MUTATION` that use `gql` as it value
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql``;
+  ```
+- Add the `mutation` that we did on the `graphQL` playground on `CREATE_PRODUCT_MUTATION`
+
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation {
+      createProduct(
+        data: {
+          name: "Sample Product"
+          description: "This is a mutation test"
+          price: 100
+          status: "AVAILABLE"
+        }
+      ) {
+        id
+        price
+        description
+      }
+    }
+  `;
+  ```
+
+- We will need to give a `name` to the `mutation` because it will take `variable` so we have dynamic `data` on the `mutation`. We will use the same `name` as the constant
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation CREATE_PRODUCT_MUTATION() {...}
+  `;
+  ```
+- Inside of the parenthesis add the following
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation CREATE_PRODUCT_MUTATION(
+      $name: String!
+      $description: String!
+      $price: Int!
+      $image: Upload
+    ) {...}
+  `;
+  ```
+  We define each variable; it type and variables are `required`(The `!` means that the variable is `required`)
+- Now we need to replace the fixed values of `data` with the `variables` names
+  ```js
+  const CREATE_PRODUCT_MUTATION = gql`
+    mutation CREATE_PRODUCT_MUTATION(
+      $name: String!
+      $description: String!
+      $price: Int!
+      $image: Upload
+    ) {
+      createProduct(
+        data: {
+          name: $name
+          description: $description
+          price: $price
+          status: "AVAILABLE"
+          photo: { create: { image: $image, altText: $name } }
+        }
+      ) {
+        id
+        price
+        description
+      }
+    }
+  `;
+  ```
+  We will leave the `status` as a fixed value because if someone creates a `product` from the `frontend` it will spect that the `product` is available when the creation process finishes. The `photo` is not just a `field`; it was its own `type` that is related to `product` and to handle `photo` we can use a `nested mutation` that will create the `product image` and relate it to the `product` in just one `request`(This is a `keystone` specific)
+- Now import the `useMutation` hook from `@apollo/client`
+  `import { useMutation } from '@apollo/client';`
+- Bellow the `useForm` hook; create a constant call `payload` that use the `useMutation` hook
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const payload = useMutation();
+
+    return (
+      <Form onSubmit={...}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now send the actual `mutation` as the first value of the `useMutation` hook and for the second parameter send the additional `data` that we need in this case the `inputs` data
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const payload = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- The `useMutation` hook actually returns an `array` with the `function` that will run the `mutation` and an `object` with a `loading`, `error`, and `data` values as the `useQuery` that we use before. Remove the `payload` constant and add the following
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now we need to trigger the `mutation` when the `form` is `submitted; for this, we are going to use the `onSubmit`property of the`form`
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+        console.log(inputs);
+
+        const rest = await createProduct();
+        console.log(res);
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  The `createProduct` is an `async` function so we will need to wait until is resolved. Another important thing is that you can send the `variables` using the `createProduct` function if you don't know it on the definition as we did when we use the `useMutation` hook
+
+- On your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- Fill the `form` and `submit` the `data`
+- Go to the `browser` console
+- You should see an `object` print with the product information
+- Go to the `product` page and `product images` on `keystone`
+- You will see that the `product` and the `product` image are on the list
+- Since we already have a `data` variable return on the `useMutation` we can eliminate the `res` constant and just `await` for the `createProduct` function
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+        console.log(inputs);
+
+        await createProduct();
+        console.log(res);
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Then remove the console and use the `clearForm` function to clean the inputs after submit
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+        console.log(inputs);
+
+        await createProduct();
+        clearForm();
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Go back to your browser and fill the form and submit the data
+- The `product` should be created and the `inputs` should be clear after submit
+
+#### Disable the form on creating a product and handle errors
+
+- Go back to the `CreateProduct` file
+- On the `fieldset` tag add the `disabled` and `aria-busy` properties using the `loading` variable on both
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}}>
+        <fieldset disabled={loading} aria-busy={loading}>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Now import `DisplayError` from `./ErrorMessage`
+  `import DisplayError from './ErrorMessage';`
+- Use `DisplayError` before the `fieldset` tag; sending the `error` as it prop
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(CREATE_PRODUCT_MUTATION, { variables: inputs, });
+
+    return (
+      <Form onSubmit={...}}>
+        <DisplayError error={error} />
+        <fieldset disabled={loading} aria-busy={loading}>
+          ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Go back to the `sell` page
+- Fill the `form` and `submit`
+- You will see that the `form` is `disable` and the `loading` bar appear until the `createProduct` function finish
+- Go back to the `CreateProduct` file
+- Remove the `name` from the `data` in the `CREATE_PRODUCT_MUTATION`
+- Go back to the `sell` page and fill the `form` again
+- `Submit` the data
+- You should see an `error`
+- Go and add the `name` on the `CREATE_PRODUCT_MUTATION`
+
+### Re-fetching queries after a successful mutation
+
+At this moment we can create `products` on the `frontend` side of our application but if you go to the `homepage` you will see that the list of `products` will not refresh the `data` to add the new `product` after a successful `sell form` submit. This happens because we visit first the `homepage` that do a `query` for all `data` then we go to the `sell` page and submit the `form` and finally go back to the `homepage` and instead of doing the `query` again, it will use the `apollo` cache that this `query` exists.
+
+With `apollo` we have 2 approaches for this:
+
+- You can modify the `cache` directly; in other words when we have a `respond` of the `mutation` that create the `product` in this case we will `query` the `data` them manually inject it to the `cache` and it will continue using the normal flow. An example is `twitter` that when you post a `twit` it is immediately shown on the user but the other users will have the `twit` in his next network update; this is called an optimistic update that means that we assume that everything is going to be `ok` with the request and show the `data` immediately
+
+- You can tell `apollo` behind the scene; to go in the `server` and re-fetch a `query` all over again
+
+In this example, we are going to see both of them so lets begin to do it.
+
+#### Query and update the apollo cache
+
+- On your editor; go to the `Products.js` file in the `frontend/components` directory
+- Export `ALL_PRODUCTS_QUERY`
+  ```js
+  export const ALL_PRODUCTS_QUERY = gql`...`;
+  ```
+- Now go to the `CreateProduct.js` file in the `frontend/components` directory
+- Import `ALL_PRODUCTS_QUERY` from `./Products`
+  `import { ALL_PRODUCTS_QUERY } from './Products';`
+- On the `useMutation` hook in the object that have our `variables` add the following
+
+  ```js
+  export default function CreateProduct() {
+    const { inputs, handleChange, resetFrom, clearForm } = useForm({...});
+    const [createProduct, { loading, error, data }] = useMutation(
+      CREATE_PRODUCT_MUTATION,
+      {
+        variables: inputs,
+        refetchQueries: [{ query: ALL_PRODUCTS_QUERY }],
+      }
+    );
+
+    return (
+      <Form onSubmit={async (e) => {...}}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  The `refetchQueries` will receive an `array` of `queries` to re-fetch the `data`; in this case `ALL_PRODUCTS_QUERY`. In the case that the `query` that you want to re-fetch receive `variables` you can add the `variables` as a second parameter on the object:
+  `refetchQueries: [{ query: ALL_PRODUCTS_QUERY, variables }]`
+
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On another tab on your terminal; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser go to the [sell page](http://localhost:7777/sell)
+- Fill and submit the `form`
+- Click on the `sick fits` logo
+- Search on the list of `products` and you should see the `product` that you just created
+
+### Programmatically changing the page after product creation
+
+When we want to change `pages` in `Next js` we are using the `Link` tag and that is referred to as `declarative` programming that you will `declare` what you need to do and it will figure out the logic that we need to do what you ask behind the scene but some times you will need an `imperative way to things; so we basically need to programmatically tell what to do and that is what we need in the successful `form`submission on the`sell`page. We will redirect the`user`to the`single product`page where it can see all the`data`related to a specific`product`.
+
+- On your editor; go to the `CreateProduct` file on the `frontend/components/` directory
+- Import `Router` from `next/router`
+  `import Router from 'next/router';`
+- Then go to the `onSubmit` callback function and add the following
+
+  ```js
+  export default function CreateProduct() {
+    ...
+    return (
+      <Form onSubmit={async (e) => {
+        e.preventDefault();
+
+        await createProduct();
+        clearForm();
+        Router.push({
+          pathname: `/product/${data.createProduct.id}`,
+        });
+      }}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  The `push` method of `Router` will send you to the `page` that you need depending on the configuration object that you send as a parameter in this case the `pathname` define the `path` of the redirection and we will use the `id` of the new `product` in the URL to redirect to the `single product` page(Is not created yet but we can begin to redirect to it)
+
+- On your terminal; go to the `backend` directory
+- Start your local server using `npm run dev`
+- On another terminal tab; go to the `frontend` directory
+- Start your local server using `npm run dev`
+- On your browser; go to the [sell page](http://localhost:7777/sell)
+- Fill the `form` and submit the `data`
+- You should be redirected to another page(At this moment is not found)
+
+### Displaying single items, routing, and SEO
+
+At this moment we can `read` data from the `server` in the `product` pages but we need something a little bit different for the `single product` page because we will need the data of just one `product` and as you see on the previews sections this `single product` page need to be dynamic because every way to get to this page has the `product id` on it URL and that is what we are going to target on this section.
+
+#### Routing in Next.js
+
+As you remember when we mentioned the first time the `routing` on `next.js` is `file-based routing` that means; when we add a file on the `pages` directory it will use the file as the page content; for example; the `product.js` file will have the content of the `/product` URL. At this moment we will have an URL with a pattern instead of just a name; `/product/id_of_the_product` so we will need to create a file structure that matches this pattern and `next.js` can help us with this by just creating directories and files that handle the pattern that you need inside of the page directory. For `/product/id_of_the_product` we add the following
+
+```bash
+|-- page/
+|---- product/
+|----- [id].js
+```
+
+Here the `[id].js` will have the template that `next.js` will use when we have the `/product/id_of_the_product` URL and that structure will send us a `query` param with the current `product id`.
+
+#### Get the data and display it
+
+- On your editor; go to the `[id].js` file in the `frontend/pages/product/` directory
+- Export a function call `SingleProductPage`
+  `export default function SingleProductPage() {}`
+- Add the following as the page content
+  ```js
+  export default function SingleProductPage() {
+    return <p>Hey Im a single product</p>;
+  }
+  ```
+- On your terminal; start your `backend` local server using `npm run dev`
+- On another tab of your terminal; start your `frontend` local server using `npm run dev`
+- On the browser; go to the [homepage](http://localhost:7777/)
+- Click on one of the names of the items
+- You should be redirected to a new `single product` page and will have the content that you add in the `SingleProductPage`
+- Now get back to the `[id].js` file
+- `Next js` send you the pattern that you define as a `prop` to the component in other words the `SingleProductPage` recive a `prop` call `query` that have the current `id` show on the url. So add the `query prop` to the `SingleProductPage` component and use it as a content of the `page`
+  ```js
+  export default function SingleProductPage({ query }) {
+    return <p>Hey Im a single product {query.id}</p>;
+  }
+  ```
+- On your browser; refresh the page
+- You should see the `id` that is on the URL as a part of the content of the page
+- Copy the `id` of the `product`
+- Open another tab on your browser
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Make the following `query`
+
+  ```js
+  query {
+    Product(where: {
+      id: "id_of_the_product"
+    }) {
+      name
+      price
+      description
+    }
+  }
+  ```
+
+  Paste the `id` that you have before on the `id` property of the `query`. This `query` will grab a `single product` where the `id` is equal to the `product` that you choose; when you are `query` a `single` item you must put a unique field in this case the `id` to do the `query`, and return the `data` that is specified.
+
+- Click the `play` button
+- You should see the `product` data at the rigth
+- We actually going to do a component for all the logic of the `single product`. On the components directory create a file call `SingleProduct.js`
+- In this newly created file export a function call `SingleProduct` that recive an `id`
+  `export default function SingleProduct({ id }) {}`
+- Return the following content
+  ```js
+  export default function SingleProduct({ id }) {
+    return <p>Single Product</p>;
+  }
+  ```
+- Go back to the `[id].js` file
+- Import the `SingleProduct` component
+  `import SingleProduct from '../../components/SingleProduct';`
+- Use the `SingleProduct` sending the `id` prop
+  ```js
+  export default function SingleProductPage({ query }) {
+    return <SingleProduct id={query.id} />;
+  }
+  ```
+- Go back to the `SingleProduct` file and import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `SINGLE_ITEM_QUERY` that have `gql` as it content
+  ```js
+  const SINGLE_ITEM_QUERY = gql``;
+  ```
+- Paste the `query` that you did on the `graphQL playground`
+
+  ```js
+  const SINGLE_ITEM_QUERY = gql`
+    query {
+      Product(where: { id: "id_of_the_product" }) {
+        name
+        price
+        description
+      }
+    }
+  `;
+  ```
+
+- Import the `useQuery` hook from `@apollo/client`
+  `import { useQuery } from '@apollo/client';`
+- On the `SingleProduct` component use the hook sending the `SINGLE_ITEM_QUERY` as it parameter
+  ```js
+  export default function SingleProduct({ id }) {
+    const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY);
+    console.log({ data, loading, error });
+    return <p>Single Product</p>;
+  }
+  ```
+- Go to the browser and refresh the page
+- Inspect the page
+- On the browser console you should see the logs of the `data`, `loading`, and `error` variables
+- Refresh the page and you will see the log just ones
+- Click on the `logo`
+- Click on the name of a different `product`
+- You should see that the variables logs are twice; one with `data` as `undefined` and the other with the `data`. This happens because we get to do the request on the browser
+- Refresh the page. You will see that the log appear just ones because in this case the first render happens on the `server` and you already have the `data`
+- Go back to the `SingleProduct` and add the following to handle the `loading` and `error`
+
+  ```js
+  export default function SingleProduct({ id }) {
+    const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <DisplayError error={error} />;
+
+    return <p>Single Product</p>;
+  }
+  ```
+
+- Now remove the `p` tag and its content and add the following
+
+  ```js
+  export default function SingleProduct({ id }) {
+    const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY);
+    if (loading) return <p>Loading...</p>;
+    if (error) return <DisplayError error={error} />;
+
+    return (
+      <div>
+        <h2>{data.Product.name}</h2>
+      </div>
+    );
+  }
+  ```
+
+- Go to the browser and refresh the page
+- You should see the `product` name as a content of the page
+- Now we need to make the `query` dynamic to use the `id` that recive the `SingleProduct` so on the `SINGLE_ITEM_QUERY` update it content like this
+  ```js
+  const SINGLE_ITEM_QUERY = gql`
+    query SINGLE_ITEM_QUERY($id: ID!) {
+      Product(where: { id: $id }) {
+        name
+        price
+        description
+      }
+    }
+  `;
+  ```
+  This will make the `id` variable available on the `query` and it will `require` and we just need to use it on the `where` clause
+- On the `useQuery` hook add as a second parameter an object with the `variable` property that have the `id`
+  ```js
+  const { data, loading, error } = useQuery(SINGLE_ITEM_QUERY, {
+    variables: {
+      id,
+    },
+  });
+  ```
+- Go to your browser and refresh the page
+- You should see the page with the correct content
+
+### Styling the SingleProduct component and add a title to the page for SEO
+
+- Go to the `SingleProduct.js` file on your editor
+- Destructure the `data` variable to surface the `Product` variable
+
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    const { Product } = data;
+
+    return (
+      <div>
+        <h2>{Product.name}</h2>
+      </div>
+    );
+  }
+  ```
+
+- Add the `id` and `photo` fields(on the `photo` field you need to add the `altText` and from `image` the `publicUrlTransformed`)
+  ```js
+  const SINGLE_ITEM_QUERY = gql`
+    query SINGLE_ITEM_QUERY($id: ID!) {
+      Product(where: { id: $id }) {
+        name
+        price
+        description
+        id
+        photo {
+          altText
+          image {
+            publicUrlTransformed
+          }
+        }
+      }
+    }
+  `;
+  ```
+- Wrap the `h2` in a `div` with a class call `details`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <div className="details">
+          <h2>{Product.name}</h2>
+        </div>
+      </div>
+    );
+  }
+  ```
+- Add a `p` tag bellow the `h2` with the `description` of the `product`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </div>
+    );
+  }
+  ```
+- Before the `details div` add an `image` tag tha use the `altText` and `publicUrlTransformed`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <img
+          src={Product.photo.image.publicUrlTransformed}
+          alt={Product.photo.image.altText}
+        />
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </div>
+    );
+  }
+  ```
+- If you notice the tab of your browser of the page doesn't have the name and we need to add. First import the `Head` component from `next/head`
+  `import Head from 'next/head';`
+- Bellow of the first `div` in the content of the page add the following
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <div>
+        <Head>
+          <title>Sick Fits | {Product.name}</title>
+        </Head>
+        <img
+          src={Product.photo.image.publicUrlTransformed}
+          alt={Product.photo.image.altText}
+        />
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </div>
+    );
+  }
+  ```
+  Everything that we use inside of the `Head` component will be injected into the `head` of the document
+- Go to your browser and refresh
+- You should see that the title of the tab change
+- Now we need to add styles. Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a constant call `ProductStyles` that have a `div` as its content
+  ```js
+  const ProductStyles = styled.div``;
+  ```
+- Add the following styles
+  ```js
+  const ProductStyles = styled.div`
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    min-height: 800px;
+    max-width: var(--maxWidth);
+    align-items: top;
+    gap: 2rem;
+    img {
+      width: 100%;
+      object-fit: contain;
+    }
+  `;
+  ```
+  - `display: grid;`: This will show the items dividing into major regions of defining a relationship in terms of size, position, and layer.
+  - `grid-auto-columns: 1fr;`: This will put the items in a column with a `width` of 1 `frame`
+  - `grid-auto-flow: column;`: It will add the items at the right side in columns instead of the default that is rows in grid
+  - `min-height: 800px;`: The biggest `height` that the container can have
+  - `max-width: var(--maxWidth);`: Use the `--maxWidth` variable to define the biggest `width` that the items can have
+  - `align-items: top;`: Align the items to the top of the container
+  - `gap: 2rem;`: Add a `gap` between elements
+  - `width: 100%;`: Let the image have the complete `width` of its container
+  - `object-fit: contain;`: Adjust the image depending it container size
+- On the `SingleProduct` function replace the top `div` with `ProductStyles`
+  ```js
+  export default function SingleProduct({ id }) {
+    ...
+    return (
+      <ProductStyles>
+        <Head>
+          <title>Sick Fits | {Product.name}</title>
+        </Head>
+        <img
+          src={Product.photo.image.publicUrlTransformed}
+          alt={Product.photo.image.altText}
+        />
+        <div className="details">
+          <h2>{Product.name}</h2>
+          <p>{Product.description}</p>
+        </div>
+      </ProductStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see that the styles that you use reflected on the page
