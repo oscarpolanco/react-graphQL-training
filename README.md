@@ -15,12 +15,13 @@ Fullstack React and GraphQL training.
 - [Styled Components](https://styled-components.com/) for the styles of the application
 - [Keystone.js](https://www.keystonejs.com/) as a `CMS` of the application
 - [Cloudinary](https://cloudinary.com/) to store the `images` of the application
-- [dotenv](https://www.npmjs.com/package/dotenv) for the `eviromment variables` of the application
+- [dotenv](https://www.npmjs.com/package/dotenv) for the `environment variables` of the application
 
 ## Pages
 
 - [Home](http://localhost:7777/)
 - [Products](http://localhost:7777/products)
+- [Single Product](http://localhost:7777/product/60346ef344fcaa3ea38dcf26)(This is one of the `testing` data examples; check the `Inject testing data to the application` section)
 - [Sell](http://localhost:7777/sell)
 - [Orders](http://localhost:7777/order)
 - [Account](http://localhost:7777/account)
