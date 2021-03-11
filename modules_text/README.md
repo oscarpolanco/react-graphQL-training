@@ -4149,3 +4149,338 @@ Here the `[id].js` will have the template that `next.js` will use when we have t
   ```
 - Go to your browser and refresh the page
 - You should see that the styles that you use reflected on the page
+
+## Module 6: Working on mutation
+
+In this part we will handle the `mutations` that we still missing for the `products`; the `update` and `delete` and all logic that we will need to do to present the correct way the `data` after we perform those `mutations`.
+
+### Update Items
+
+We already have a `form` that is in charge to create the `product` and now we will need another `form` that `update` the `data` of an existing `product`. This `form` will be in its own `update` page and all `inputs` available for `update` the `data` will bring the actual `product data` as their default value.
+
+#### Creating an update page and pass query parameters to it
+
+- On your editor; go to the `frontend/pages` directory and create a file call `update.js`
+- Export a function call `UpdatePage`
+  `export default function UpdatePage() {}`
+- Then; go to the `components` directory and create a new file call `UpdateProduct.js`
+- Export a function call `UpdateProduct` with the following content
+  ```js
+  export default function UpdateProduct() {
+    return <p>This is an update product page!!!</p>;
+  }
+  ```
+- Go back to the `update` file on the `pages` directory
+- Import the `UpdateProduct` component
+  `import UpdateProduct from '../components/UpdateProduct';`
+- Use the `UpdateProduct` on the `UsePage` component
+  ```js
+  export default function UpdatePage() {
+    return (
+      <div>
+        <UpdateProduct />
+      </div>
+    );
+  }
+  ```
+- On your editor; go to the `Product.js` file in the `frontend/components/` directory
+- Bellow the `product` description add the following
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img ... />
+        <Title>...</Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+        <div className="buttonList">
+          <Link>
+            Edit ✏️
+          </Link>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+- Now we need to define the `href` of the `Link` component but we can't do it as we did on previews `links` we need to send a `query` parameter with the `id` so we will need to send some mor options in a configuration object to the `href`
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img ... />
+        <Title>...</Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+        <div className="buttonList">
+          <Link href={{
+              pathname: 'update',
+              query: {
+                id: product.id,
+              },
+            }}
+          >
+            Edit ✏️
+          </Link>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+  This will send the user to the `update` page with a `query` parameter that has the `id`
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of the terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- You should see a link below the `product` description
+- Click on the link
+- You should be redirected to the `update` page and it should have a `query` param on the URL
+
+#### Using the query param in our components
+
+Every `query` param that you receive on a `page` will be available via `props`. In this case, the `prop` where the `query` params are available is called `query`. So here what you need to do for the `update` page:
+
+- On your editor; go to the `update.js` file on the `pages` directory
+- Add the `query` prop
+  ```js
+  export default function UpdatePage({ query }) {
+    return (
+      <div>
+        <UpdateProduct />
+      </div>
+    );
+  }
+  ```
+- Now we need to send the `id` to the `UpdateProduct` component; so add a prop call `id` for that
+  ```js
+  export default function UpdatePage({ query }) {
+    return (
+      <div>
+        <UpdateProduct id={query.id} />
+      </div>
+    );
+  }
+  ```
+- Go to the `UpdateProduct` file and add de `id` prop
+  ```js
+  export default function UpdateProduct({ id }) {
+    return <p>This is an update product page!!! {id}</p>;
+  }
+  ```
+- On your browser go to one of the `update` pages
+- You should see the `id` of the `product` on the content of the page
+
+#### Get and update a product
+
+We need 3 things to continue working with the `update` page that is `get` the `product data`; a `mutation` to update a `product data` and a `form` that have the `product data` as a default value and `update` the `data` on `submit`. So let's get into it.
+
+- Go to the `UpdateProduct` file and import `gql`
+  `import gql from 'graphql-tag';`
+- Before of the `UpdateProduct` function create a constant call `SINGLE_PRODUCT_QUERY` and it value will be `gql`
+  ```js
+  const SINGLE_PRODUCT_QUERY = gql``;
+  ```
+- Add a `query` of `products` that recive an `id`(required) and get the `name`, `description` and `price` of a `product`
+  ```js
+  const SINGLE_PRODUCT_QUERY = gql`
+    query SINGLE_PRODUCT_QUERY($id: ID!) {
+      Product(where: { id: $id }) {
+        id
+        name
+        description
+      }
+    }
+  `;
+  ```
+- Now we need to make and get the result of the `query` that we just add. Import the `useQuery` hook
+  `import { useQuery } from '@apollo/client';`
+- On the `UpdateProduct` use the `useQuery` hook sending the `query` and the `id` as it parameters and log the `data`
+  ```js
+  export default function UpdateProduct({ id }) {
+    const { data, error, loading } = useQuery(SINGLE_PRODUCT_QUERY, {
+      variables: {
+        id,
+      },
+    });
+    console.log(data);
+    return <p>This is an update product page!!! {id}</p>;
+  }
+  ```
+- Go to your browser and refresh the page
+- Inspect the page and on the console, you should see the `data` of the `product`
+- Now we need to create the `mutation` to update the `data` so create a constant call `UPDATE_PRODUCT_MUTATION` that it value is `gql`
+  ```js
+  const UPDATE_PRODUCT_MUTATION = gql``;
+  ```
+- Now write a `mutation` that recive the `id`(required), `name`, `description` and `price` and use `updateProduct` sending the variables and return the same `data`
+  ```js
+  const UPDATE_PRODUCT_MUTATION = gql`
+    mutation UPDATE_PRODUCT_MUTATION(
+      $id: ID!
+      $name: String
+      $description: String
+      $price: Int
+    ) {
+      updateProduct(
+        id: $id
+        data: { name: $name, description: $description, price: $price }
+      ) {
+        id
+        name
+        description
+        price
+      }
+    }
+  `;
+  ```
+- Import the `useMutation` hook
+  `import { useMutation, useQuery } from '@apollo/client';`
+- Use the `useMutation` hook on the `UpdateProduct` function
+
+  ```js
+  export default function UpdateProduct({ id }) {
+    const { data, error, loading } = useQuery(SINGLE_PRODUCT_QUERY, {
+      variables: {
+        id,
+      },
+    });
+
+    const [
+      updateProduct,
+      { data: updateData, error: updateError, loading: updateLoading },
+    ] = useMutation(UPDATE_PRODUCT_MUTATION);
+    return <p>This is an update product page!!! {id}</p>;
+  }
+  ```
+
+  Since we already declare the `data`, `loading`, and `error` variable on the `useQuery` hook call; we need to rename the variables
+
+- We need a `form` to update the `product` but first import the following
+  ```js
+  import useForm from '../lib/useForm';
+  import DisplayError from './ErrorMessage';
+  import Form from './styles/Form';
+  ```
+- Now replace the `return` statement with the following
+
+  ```js
+  export default function UpdateProduct({ id }) {
+  const { data, error, loading } = useQuery(...);
+
+  const [...] = useMutation(UPDATE_PRODUCT_MUTATION);
+  return (
+    <Form
+      onSubmit={async (e) => {}}
+    >
+      <DisplayError error={error || updateError} />
+      <fieldset disabled={updateLoading} aria-busy={updateLoading}>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Name"
+            value={inputs.name}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="price">
+          Price
+          <input
+            type="number"
+            id="price"
+            name="price"
+            placeholder="Price"
+            value={inputs.price}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="description">
+          Description
+          <textarea
+            id="description"
+            name="description"
+            placeholder="Description"
+            value={inputs.description}
+            onChange={handleChange}
+          />
+        </label>
+
+        <button type="submit">Update Product</button>
+      </fieldset>
+    </Form>
+  );
+  ```
+
+  We use to add both `errors` to the `DisplayError` prop because one of the `queries` can have an error. Also, the loading will be handle by the `updateLoading` variable
+
+- Add the `useForm` hook below the other hooks
+
+  ```js
+  export default function UpdateProduct({ id }) {
+  const { data, error, loading } = useQuery(...);
+
+  const [...] = useMutation(UPDATE_PRODUCT_MUTATION);
+
+  const { inputs, handleChange, resetFrom, clearForm } = useForm(data?.Product);
+
+  return (
+    <Form
+      onSubmit={async (e) => {}}
+    >
+    ...
+    </Form>
+  );
+  ```
+
+  We use the `data` variable to get the initial values for the `inputs` and `data` can be empty depending on if a `server` side render is done
+
+- Then use the `loading` variable to have a condition in case the `data` doesn't exist
+
+  ```js
+  export default function UpdateProduct({ id }) {
+  const { data, error, loading } = useQuery(...);
+
+  const [...] = useMutation(UPDATE_PRODUCT_MUTATION);
+
+  const { inputs, handleChange, resetFrom, clearForm } = useForm(data?.Product);\
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <Form
+      onSubmit={async (e) => {}}
+    >
+    ...
+    </Form>
+  );
+  ```
+
+- Go to your browser and refresh the page
+- You should see the new `form` and on all `inputs` should be the `product` data
+- Now we need to use the `updateProduct` function on the `onSubmit` property
+  ```js
+  export default function UpdateProduct({ id }) {
+    ...
+  return (
+    <Form
+      onSubmit={async (e) => {
+         e.preventDefault();
+        await updateProduct({
+          variables: {
+            id,
+            name: inputs.name,
+            description: inputs.description,
+            price: inputs.price,
+          },
+        });
+      }}
+    >
+    ...
+    </Form>
+  );
+  ```
+  Instead to define the `variables` that we are going to send to the `mutation` in the `useMutation` hook; we send it as a parameter on the `updateProduct` function
+- Go again to your browser and refresh the page
+- Update one of the `inputs` and submit
+- Refresh the page
+- You should see that the `data` that you update still is on the `input` that you update before
