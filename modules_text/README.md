@@ -4484,3 +4484,59 @@ We need 3 things to continue working with the `update` page that is `get` the `p
 - Update one of the `inputs` and submit
 - Refresh the page
 - You should see that the `data` that you update still is on the `input` that you update before
+
+### Using useEffect to deal with a tricking loading state issue
+
+Before continuing with another `mutation`; we need to target an issue with our `useForm` hook. As you remember we got an `initial` state on the set the values of the `inputs` of the `form` if it exists; in the case of the `form` on the `sell` page this `initial` state is empty but on the `update product` page the `initial` value is the actual `product` information but as you remember on the `client`; if the page already renders for the `server` and you enter to the `update` page; we will have a moment that is in `loading` state until the `query` finish so the `inputs` will render with no `product data`(If you refresh the page this is a fix because the initial render pass on the `server` and the `data` is already available). To fix this issue we need to set the `initial` state when it updates and to do this we will use a `useEffect` that will trigger this action when the `data` is available. Here are the steps:
+
+- On your editor; go to the `useFrom` file on the `frontend/lib/` directory
+- Import `useEffect` from `react`
+  `import { useEffect, useState } from 'react';`
+- On the `useForm` function and bellow the `useState` add the `useEffect`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+    useEffect(() => {}, []);
+
+    ...
+  }
+  ```
+
+  The `useEffect` receives a `callback` function and an `array` of dependencies. The `callback` function will run when one item of the `array` of dependencies change(If we don't put an `array` of dependencies it will run the function on every render and if you send an empty `array`; the function will run the first time the component render).
+
+- You may think that we need to put `initial` on the `array` of dependencies and `setInputs` sending the `initial` object in the callback function but this will cause an `infinite loop` because `useState` don't update the object; it actually overrides the `initial` object so it will detect an update every time you call `setInputs` so we will need to watch the actual values on the object and when the value change from nothing to an object the function runs. So add the following
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+    const initialValues = Object.values(initial).join('');
+    useEffect(() => {}, []);
+
+    ...
+  }
+  ```
+
+  This will turn the `initial` object on an `array` that have every property value as an item on the `array` and then turn the `array` in a `string`
+
+- Now add `initialValues` to the `array` of dependencies and on the `callback` function add the `setInput` function with `initial` as it parameter
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+    const initialValues = Object.values(initial).join('');
+
+
+    useEffect(() => {
+    setInputs(initial);
+  }, [initialValues]);
+
+    ...
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser go to the [homepage](http://localhost:7777/)
+- Click on the `edit` button of a `product`
+- You should be redirected to the `update` page and the `form` should have the `single product` data
