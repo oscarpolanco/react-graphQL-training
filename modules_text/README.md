@@ -4149,3 +4149,569 @@ Here the `[id].js` will have the template that `next.js` will use when we have t
   ```
 - Go to your browser and refresh the page
 - You should see that the styles that you use reflected on the page
+
+## Module 6: Working on mutation
+
+In this part we will handle the `mutations` that we still missing for the `products`; the `update` and `delete` and all logic that we will need to do to present the correct way the `data` after we perform those `mutations`.
+
+### Update Items
+
+We already have a `form` that is in charge to create the `product` and now we will need another `form` that `update` the `data` of an existing `product`. This `form` will be in its own `update` page and all `inputs` available for `update` the `data` will bring the actual `product data` as their default value.
+
+#### Creating an update page and pass query parameters to it
+
+- On your editor; go to the `frontend/pages` directory and create a file call `update.js`
+- Export a function call `UpdatePage`
+  `export default function UpdatePage() {}`
+- Then; go to the `components` directory and create a new file call `UpdateProduct.js`
+- Export a function call `UpdateProduct` with the following content
+  ```js
+  export default function UpdateProduct() {
+    return <p>This is an update product page!!!</p>;
+  }
+  ```
+- Go back to the `update` file on the `pages` directory
+- Import the `UpdateProduct` component
+  `import UpdateProduct from '../components/UpdateProduct';`
+- Use the `UpdateProduct` on the `UsePage` component
+  ```js
+  export default function UpdatePage() {
+    return (
+      <div>
+        <UpdateProduct />
+      </div>
+    );
+  }
+  ```
+- On your editor; go to the `Product.js` file in the `frontend/components/` directory
+- Bellow the `product` description add the following
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img ... />
+        <Title>...</Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+        <div className="buttonList">
+          <Link>
+            Edit ✏️
+          </Link>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+- Now we need to define the `href` of the `Link` component but we can't do it as we did on previews `links` we need to send a `query` parameter with the `id` so we will need to send some mor options in a configuration object to the `href`
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img ... />
+        <Title>...</Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+        <div className="buttonList">
+          <Link href={{
+              pathname: 'update',
+              query: {
+                id: product.id,
+              },
+            }}
+          >
+            Edit ✏️
+          </Link>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+  This will send the user to the `update` page with a `query` parameter that has the `id`
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of the terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- You should see a link below the `product` description
+- Click on the link
+- You should be redirected to the `update` page and it should have a `query` param on the URL
+
+#### Using the query param in our components
+
+Every `query` param that you receive on a `page` will be available via `props`. In this case, the `prop` where the `query` params are available is called `query`. So here what you need to do for the `update` page:
+
+- On your editor; go to the `update.js` file on the `pages` directory
+- Add the `query` prop
+  ```js
+  export default function UpdatePage({ query }) {
+    return (
+      <div>
+        <UpdateProduct />
+      </div>
+    );
+  }
+  ```
+- Now we need to send the `id` to the `UpdateProduct` component; so add a prop call `id` for that
+  ```js
+  export default function UpdatePage({ query }) {
+    return (
+      <div>
+        <UpdateProduct id={query.id} />
+      </div>
+    );
+  }
+  ```
+- Go to the `UpdateProduct` file and add de `id` prop
+  ```js
+  export default function UpdateProduct({ id }) {
+    return <p>This is an update product page!!! {id}</p>;
+  }
+  ```
+- On your browser go to one of the `update` pages
+- You should see the `id` of the `product` on the content of the page
+
+#### Get and update a product
+
+We need 3 things to continue working with the `update` page that is `get` the `product data`; a `mutation` to update a `product data` and a `form` that have the `product data` as a default value and `update` the `data` on `submit`. So let's get into it.
+
+- Go to the `UpdateProduct` file and import `gql`
+  `import gql from 'graphql-tag';`
+- Before of the `UpdateProduct` function create a constant call `SINGLE_PRODUCT_QUERY` and it value will be `gql`
+  ```js
+  const SINGLE_PRODUCT_QUERY = gql``;
+  ```
+- Add a `query` of `products` that recive an `id`(required) and get the `name`, `description` and `price` of a `product`
+  ```js
+  const SINGLE_PRODUCT_QUERY = gql`
+    query SINGLE_PRODUCT_QUERY($id: ID!) {
+      Product(where: { id: $id }) {
+        id
+        name
+        description
+      }
+    }
+  `;
+  ```
+- Now we need to make and get the result of the `query` that we just add. Import the `useQuery` hook
+  `import { useQuery } from '@apollo/client';`
+- On the `UpdateProduct` use the `useQuery` hook sending the `query` and the `id` as it parameters and log the `data`
+  ```js
+  export default function UpdateProduct({ id }) {
+    const { data, error, loading } = useQuery(SINGLE_PRODUCT_QUERY, {
+      variables: {
+        id,
+      },
+    });
+    console.log(data);
+    return <p>This is an update product page!!! {id}</p>;
+  }
+  ```
+- Go to your browser and refresh the page
+- Inspect the page and on the console, you should see the `data` of the `product`
+- Now we need to create the `mutation` to update the `data` so create a constant call `UPDATE_PRODUCT_MUTATION` that it value is `gql`
+  ```js
+  const UPDATE_PRODUCT_MUTATION = gql``;
+  ```
+- Now write a `mutation` that recive the `id`(required), `name`, `description` and `price` and use `updateProduct` sending the variables and return the same `data`
+  ```js
+  const UPDATE_PRODUCT_MUTATION = gql`
+    mutation UPDATE_PRODUCT_MUTATION(
+      $id: ID!
+      $name: String
+      $description: String
+      $price: Int
+    ) {
+      updateProduct(
+        id: $id
+        data: { name: $name, description: $description, price: $price }
+      ) {
+        id
+        name
+        description
+        price
+      }
+    }
+  `;
+  ```
+- Import the `useMutation` hook
+  `import { useMutation, useQuery } from '@apollo/client';`
+- Use the `useMutation` hook on the `UpdateProduct` function
+
+  ```js
+  export default function UpdateProduct({ id }) {
+    const { data, error, loading } = useQuery(SINGLE_PRODUCT_QUERY, {
+      variables: {
+        id,
+      },
+    });
+
+    const [
+      updateProduct,
+      { data: updateData, error: updateError, loading: updateLoading },
+    ] = useMutation(UPDATE_PRODUCT_MUTATION);
+    return <p>This is an update product page!!! {id}</p>;
+  }
+  ```
+
+  Since we already declare the `data`, `loading`, and `error` variable on the `useQuery` hook call; we need to rename the variables
+
+- We need a `form` to update the `product` but first import the following
+  ```js
+  import useForm from '../lib/useForm';
+  import DisplayError from './ErrorMessage';
+  import Form from './styles/Form';
+  ```
+- Now replace the `return` statement with the following
+
+  ```js
+  export default function UpdateProduct({ id }) {
+  const { data, error, loading } = useQuery(...);
+
+  const [...] = useMutation(UPDATE_PRODUCT_MUTATION);
+  return (
+    <Form
+      onSubmit={async (e) => {}}
+    >
+      <DisplayError error={error || updateError} />
+      <fieldset disabled={updateLoading} aria-busy={updateLoading}>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="Name"
+            value={inputs.name}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="price">
+          Price
+          <input
+            type="number"
+            id="price"
+            name="price"
+            placeholder="Price"
+            value={inputs.price}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="description">
+          Description
+          <textarea
+            id="description"
+            name="description"
+            placeholder="Description"
+            value={inputs.description}
+            onChange={handleChange}
+          />
+        </label>
+
+        <button type="submit">Update Product</button>
+      </fieldset>
+    </Form>
+  );
+  ```
+
+  We use to add both `errors` to the `DisplayError` prop because one of the `queries` can have an error. Also, the loading will be handle by the `updateLoading` variable
+
+- Add the `useForm` hook below the other hooks
+
+  ```js
+  export default function UpdateProduct({ id }) {
+  const { data, error, loading } = useQuery(...);
+
+  const [...] = useMutation(UPDATE_PRODUCT_MUTATION);
+
+  const { inputs, handleChange, resetFrom, clearForm } = useForm(data?.Product);
+
+  return (
+    <Form
+      onSubmit={async (e) => {}}
+    >
+    ...
+    </Form>
+  );
+  ```
+
+  We use the `data` variable to get the initial values for the `inputs` and `data` can be empty depending on if a `server` side render is done
+
+- Then use the `loading` variable to have a condition in case the `data` doesn't exist
+
+  ```js
+  export default function UpdateProduct({ id }) {
+  const { data, error, loading } = useQuery(...);
+
+  const [...] = useMutation(UPDATE_PRODUCT_MUTATION);
+
+  const { inputs, handleChange, resetFrom, clearForm } = useForm(data?.Product);\
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <Form
+      onSubmit={async (e) => {}}
+    >
+    ...
+    </Form>
+  );
+  ```
+
+- Go to your browser and refresh the page
+- You should see the new `form` and on all `inputs` should be the `product` data
+- Now we need to use the `updateProduct` function on the `onSubmit` property
+  ```js
+  export default function UpdateProduct({ id }) {
+    ...
+  return (
+    <Form
+      onSubmit={async (e) => {
+         e.preventDefault();
+        await updateProduct({
+          variables: {
+            id,
+            name: inputs.name,
+            description: inputs.description,
+            price: inputs.price,
+          },
+        });
+      }}
+    >
+    ...
+    </Form>
+  );
+  ```
+  Instead to define the `variables` that we are going to send to the `mutation` in the `useMutation` hook; we send it as a parameter on the `updateProduct` function
+- Go again to your browser and refresh the page
+- Update one of the `inputs` and submit
+- Refresh the page
+- You should see that the `data` that you update still is on the `input` that you update before
+
+### Using useEffect to deal with a tricking loading state issue
+
+Before continuing with another `mutation`; we need to target an issue with our `useForm` hook. As you remember we got an `initial` state on the set the values of the `inputs` of the `form` if it exists; in the case of the `form` on the `sell` page this `initial` state is empty but on the `update product` page the `initial` value is the actual `product` information but as you remember on the `client`; if the page already renders for the `server` and you enter to the `update` page; we will have a moment that is in `loading` state until the `query` finish so the `inputs` will render with no `product data`(If you refresh the page this is a fix because the initial render pass on the `server` and the `data` is already available). To fix this issue we need to set the `initial` state when it updates and to do this we will use a `useEffect` that will trigger this action when the `data` is available. Here are the steps:
+
+- On your editor; go to the `useFrom` file on the `frontend/lib/` directory
+- Import `useEffect` from `react`
+  `import { useEffect, useState } from 'react';`
+- On the `useForm` function and bellow the `useState` add the `useEffect`
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+    useEffect(() => {}, []);
+
+    ...
+  }
+  ```
+
+  The `useEffect` receives a `callback` function and an `array` of dependencies. The `callback` function will run when one item of the `array` of dependencies change(If we don't put an `array` of dependencies it will run the function on every render and if you send an empty `array`; the function will run the first time the component render).
+
+- You may think that we need to put `initial` on the `array` of dependencies and `setInputs` sending the `initial` object in the callback function but this will cause an `infinite loop` because `useState` don't update the object; it actually overrides the `initial` object so it will detect an update every time you call `setInputs` so we will need to watch the actual values on the object and when the value change from nothing to an object the function runs. So add the following
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+    const initialValues = Object.values(initial).join('');
+    useEffect(() => {}, []);
+
+    ...
+  }
+  ```
+
+  This will turn the `initial` object on an `array` that have every property value as an item on the `array` and then turn the `array` in a `string`
+
+- Now add `initialValues` to the `array` of dependencies and on the `callback` function add the `setInput` function with `initial` as it parameter
+
+  ```js
+  export default function useForm(initial = {}) {
+    const [inputs, setInputs] = useState(initial);
+    const initialValues = Object.values(initial).join('');
+
+
+    useEffect(() => {
+    setInputs(initial);
+  }, [initialValues]);
+
+    ...
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser go to the [homepage](http://localhost:7777/)
+- Click on the `edit` button of a `product`
+- You should be redirected to the `update` page and the `form` should have the `single product` data
+
+### Deleting Products
+
+We can continue with another `mutation` that is related to deleting a `product`. In this case, we are going to `delete` the `product` instead of a `soft delete` where we only update status and don't make it available.
+
+#### Steps for the delete process
+
+- On your editor; go to the `frontend/components` directory
+- Create a file call `DeleteProducts.js`
+- On this newly created file export a function call `DeleteProduct` that recive an object that have an `id` amd `children` property
+  `export default function DeleteProduct({ id, children }) {}`
+- Now return the following button in the `DeleteProduct` function
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    return <button type="button">{children}</button>;
+  }
+  ```
+- Go to the `Product` file in the `components` directory
+- Import the `DeleteProduct` component
+  `import DeleteProduct from './DeleteProduct';`
+- Bellow the `edit` link; use the `DeleteProduct` component and pass the `product id` as a prop
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        ...
+        <div className="buttonList">
+          <Link href={...}>Edit ✏️</Link>
+          <DeleteProduct id={product.id}>Delete</DeleteProduct>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+- Go back to the `DeleteProduct` file
+- We need some kind of confirmation so the `user` is aware and secure that he is deleting an item so we will use a `confirm` for this. On the button in the `DeleteProduct` function; add an `onClick` property with the `confirm`
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    return <button type="button" onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- You should see a `delete` button on each `product`
+- Click on one of the `delete` buttons
+- A `confirm` should popup
+- Now go back to the `DeleteProduct` file
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `DELETE_PRODUCT_MUTATION` that his value is `gql`
+  ```js
+  const DELETE_PRODUCT_MUTATION = gql``;
+  ```
+- Create a `mutation` call `DELETE_PRODUCT_MUTATION` that recive an `id` and use the `deleteProduct` to delete a `product` and return the `name` and `id`
+  ```js
+  const DELETE_PRODUCT_MUTATION = gql`
+    mutation DELETE_PRODUCT_MUTATION($id: ID!) {
+      deleteProduct(id: $id) {
+        id
+        name
+      }
+    }
+  `;
+  ```
+- Import the `useMutation` hook
+  `import { useMutation } from '@apollo/client';`
+- Then use the `useMutation` hook and create just the following constants
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return <button type="button" onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+  Since we don't have a lot of markup to present the error we will catch the `error` on the `deleteProduct` function
+- Add the `DELETE_PRODUCT_MUTATION` and the variable that que `mutation` need ad a parameter of the `useMutation` hook
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation()DELETE_PRODUCT_MUTATION, {
+    variables: { id },
+  };
+    return <button type="button" onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+- Add the `disabled` property on the button and it value will be the `loading` variable
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return <button type="button" disabled={loading} onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+- Then use the `confirm` as a content of a condition that will run the `deleteProduct` function
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return (
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => {
+          if (confirm('Are you sure you want to delete this item')) {
+            deleteProduct();
+          }
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
+  ```
+- Catch the `error` on the `deleteProduct` and use an `alert` to let know the `user` that is an error
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return (
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => {
+          if (confirm('Are you sure you want to delete this item')) {
+            deleteProduct().catch((err) => alert(err.message));
+          }
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Click on one of the `delete` buttons
+- Refresh the page and you should not see the `product` that you `delete`(On the next section we will see how to remove the item that you `delete` from the list in the browser)
+
+### Evicting items from Apollo cache
+
+As we see in the previews section we have an issue when we eliminate a `product` from the list; this issue happens because we only `delete` the `product` on our database and not from the `Apollo` cache so we could re-fetch the `query` as we do before but this will do a request that we will need to wait; another approach is using an API part of `Apollo` call `evict` that will help us to eliminate the `product` from the cache than `react` will notice that the cache change and will re-render.
+
+#### Steps to use the evict API
+
+- Go to the `DeleteProduct` file on the `frontend/components/` directory
+- Now we need to create an `update` function and pass it to the `useMutation` hook. So before the `DeleteProduct` function create a function call `update` that recive `cache` and `payload`
+  `function update(cache, payload) {}`
+  The `cache` and `payload` parameter are going to be send to the `update` function as part of the `useMutation` internal flow. The `cache` is the actual values that are avilable on the `Apollo` cache and the `payload` is the response that we recive from the `deleteProduct mutation`; in this case; the `id` and the `name` of the`product`
+- Add the following to the `update` function
+  ```js
+  function update(cache, payload) {
+    cache.evict(cache.identify(payload.data.deleteProduct));
+  }
+  ```
+  The `evict` method is in charge of preform the `delete` that we want but it needs a reference to the item that you need to `delete` and for this we use the `identity` method will find the item using the `data that the `delete mutation` returns
+- Then we need to add the `update` function as a second property on the object that we send on the `useMutation`hook
+
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation(DELETE_PRODUCT_MUTATION, {
+      variables: { id },
+      update,
+    });
+    ...
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [homepage](http://localhost:7777/)
+- Click on one of the `delete` buttons of the `products`
+- You should be able to delete the `product` and it will disappear from the list
