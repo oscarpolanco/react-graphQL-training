@@ -4680,3 +4680,38 @@ We can continue with another `mutation` that is related to deleting a `product`.
 - Go to your browser and refresh the page
 - Click on one of the `delete` buttons
 - Refresh the page and you should not see the `product` that you `delete`(On the next section we will see how to remove the item that you `delete` from the list in the browser)
+
+### Evicting items from Apollo cache
+
+As we see in the previews section we have an issue when we eliminate a `product` from the list; this issue happens because we only `delete` the `product` on our database and not from the `Apollo` cache so we could re-fetch the `query` as we do before but this will do a request that we will need to wait; another approach is using an API part of `Apollo` call `evict` that will help us to eliminate the `product` from the cache than `react` will notice that the cache change and will re-render.
+
+#### Steps to use the evict API
+
+- Go to the `DeleteProduct` file on the `frontend/components/` directory
+- Now we need to create an `update` function and pass it to the `useMutation` hook. So before the `DeleteProduct` function create a function call `update` that recive `cache` and `payload`
+  `function update(cache, payload) {}`
+  The `cache` and `payload` parameter are going to be send to the `update` function as part of the `useMutation` internal flow. The `cache` is the actual values that are avilable on the `Apollo` cache and the `payload` is the response that we recive from the `deleteProduct mutation`; in this case; the `id` and the `name` of the`product`
+- Add the following to the `update` function
+  ```js
+  function update(cache, payload) {
+    cache.evict(cache.identify(payload.data.deleteProduct));
+  }
+  ```
+  The `evict` method is in charge of preform the `delete` that we want but it needs a reference to the item that you need to `delete` and for this we use the `identity` method will find the item using the `data that the `delete mutation` returns
+- Then we need to add the `update` function as a second property on the object that we send on the `useMutation`hook
+
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation(DELETE_PRODUCT_MUTATION, {
+      variables: { id },
+      update,
+    });
+    ...
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [homepage](http://localhost:7777/)
+- Click on one of the `delete` buttons of the `products`
+- You should be able to delete the `product` and it will disappear from the list
