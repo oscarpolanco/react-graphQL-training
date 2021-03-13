@@ -4540,3 +4540,143 @@ Before continuing with another `mutation`; we need to target an issue with our `
 - On your browser go to the [homepage](http://localhost:7777/)
 - Click on the `edit` button of a `product`
 - You should be redirected to the `update` page and the `form` should have the `single product` data
+
+### Deleting Products
+
+We can continue with another `mutation` that is related to deleting a `product`. In this case, we are going to `delete` the `product` instead of a `soft delete` where we only update status and don't make it available.
+
+#### Steps for the delete process
+
+- On your editor; go to the `frontend/components` directory
+- Create a file call `DeleteProducts.js`
+- On this newly created file export a function call `DeleteProduct` that recive an object that have an `id` amd `children` property
+  `export default function DeleteProduct({ id, children }) {}`
+- Now return the following button in the `DeleteProduct` function
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    return <button type="button">{children}</button>;
+  }
+  ```
+- Go to the `Product` file in the `components` directory
+- Import the `DeleteProduct` component
+  `import DeleteProduct from './DeleteProduct';`
+- Bellow the `edit` link; use the `DeleteProduct` component and pass the `product id` as a prop
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        ...
+        <div className="buttonList">
+          <Link href={...}>Edit ✏️</Link>
+          <DeleteProduct id={product.id}>Delete</DeleteProduct>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+- Go back to the `DeleteProduct` file
+- We need some kind of confirmation so the `user` is aware and secure that he is deleting an item so we will use a `confirm` for this. On the button in the `DeleteProduct` function; add an `onClick` property with the `confirm`
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    return <button type="button" onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- You should see a `delete` button on each `product`
+- Click on one of the `delete` buttons
+- A `confirm` should popup
+- Now go back to the `DeleteProduct` file
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `DELETE_PRODUCT_MUTATION` that his value is `gql`
+  ```js
+  const DELETE_PRODUCT_MUTATION = gql``;
+  ```
+- Create a `mutation` call `DELETE_PRODUCT_MUTATION` that recive an `id` and use the `deleteProduct` to delete a `product` and return the `name` and `id`
+  ```js
+  const DELETE_PRODUCT_MUTATION = gql`
+    mutation DELETE_PRODUCT_MUTATION($id: ID!) {
+      deleteProduct(id: $id) {
+        id
+        name
+      }
+    }
+  `;
+  ```
+- Import the `useMutation` hook
+  `import { useMutation } from '@apollo/client';`
+- Then use the `useMutation` hook and create just the following constants
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return <button type="button" onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+  Since we don't have a lot of markup to present the error we will catch the `error` on the `deleteProduct` function
+- Add the `DELETE_PRODUCT_MUTATION` and the variable that que `mutation` need ad a parameter of the `useMutation` hook
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation()DELETE_PRODUCT_MUTATION, {
+    variables: { id },
+  };
+    return <button type="button" onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+- Add the `disabled` property on the button and it value will be the `loading` variable
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return <button type="button" disabled={loading} onClick={() => {
+        confirm('Are you sure you want to delete this  item'))
+      }}>{children}</button>;
+  }
+  ```
+- Then use the `confirm` as a content of a condition that will run the `deleteProduct` function
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return (
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => {
+          if (confirm('Are you sure you want to delete this item')) {
+            deleteProduct();
+          }
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
+  ```
+- Catch the `error` on the `deleteProduct` and use an `alert` to let know the `user` that is an error
+  ```js
+  export default function DeleteProduct({ id, children }) {
+    const [deleteProduct, { loading }] = useMutation();
+    return (
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => {
+          if (confirm('Are you sure you want to delete this item')) {
+            deleteProduct().catch((err) => alert(err.message));
+          }
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Click on one of the `delete` buttons
+- Refresh the page and you should not see the `product` that you `delete`(On the next section we will see how to remove the item that you `delete` from the list in the browser)
