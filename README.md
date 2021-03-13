@@ -21,7 +21,8 @@ Fullstack React and GraphQL training.
 
 - [Home](http://localhost:7777/)
 - [Products](http://localhost:7777/products)
-- [Single Product](http://localhost:7777/product/60346ef344fcaa3ea38dcf26)(This is one of the `testing` data examples; check the `Inject testing data to the application` section)
+- [Single Product](http://localhost:7777/product/60346ef344fcaa3ea38dcf26)(This is one of the `testing` data examples; check the `Inject testing data to the application` section; you only need to change the `id` of the end of the `URL` with one of your `products`)
+- [Update Product](http://localhost:7777/update?id=60346ef344fcaa3ea38dcf24)(This is one of the `testing` data examples; check the `Inject testing data to the application` section; you only need to change the `id` of the end of the `URL` with one of your `products`)
 - [Sell](http://localhost:7777/sell)
 - [Orders](http://localhost:7777/order)
 - [Account](http://localhost:7777/account)
