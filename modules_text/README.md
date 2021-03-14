@@ -4715,3 +4715,228 @@ As we see in the previews section we have an issue when we eliminate a `product`
 - Go to the [homepage](http://localhost:7777/)
 - Click on one of the `delete` buttons of the `products`
 - You should be able to delete the `product` and it will disappear from the list
+
+## Module 6: Pagination
+
+As you can see on the `products` and `home` page we have a list of all `products` that we have available and for now that we have a little amount of `products` is not an issue but when we grow it will become an issue; that is why we will add `pagination` to those pages so we can have just an amount of `products` and the user can have the ability to surface all the `pagination` pages. In this module we first `render` the `pagination` links; then allow `dynamic` routing; after that `filter` the `products` that are shown on the page and finally deal with the cache.
+
+### Pagination links
+
+Here we will add the `links` that we will need to surface the different pages and all the information that will tell the `user` on which page he is at the moment and how many items are in total. Here are the steps:
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `Pagination.js`
+- Export a function call `Pagination` that recive `page` as a prop
+  `export default function Pagination({ page }) {}`
+- Import `Head` from `next/head`
+  `import Head from 'next/head';`
+- On the `Pagination` function; use the `Head` component defining the `title` tag as the following
+  ```js
+  export default function Pagination({ page }) {
+    return (
+      <Head>
+        <title>Sick Fits - Page of --</title>
+      </Head>
+    );
+  }
+  ```
+  We will add the `page` on the `title` in a little bit
+- Import `PaginationStyles` from `./styles/PaginationStyles`
+  `import PaginationStyles from './styles/PaginationStyles';`
+- Wrap the `Pagination` function content using the `PaginationStyles`
+  ```js
+  export default function Pagination({ page }) {
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+    );
+  }
+  ```
+- Now go to the `products` file on the `page` directory
+- Import the `Pagination` component
+  `import Pagination from '../components/Pagination';`
+- Use the `Pagination` component before and after the `Product` component sending the `page` prop; at this time put `1` later we will past it via `query` param
+  ```js
+  export default function ProductPage() {
+    return (
+      <div>
+        <Pagination page={1} />
+        <Products />
+        <Pagination page={1} />
+      </div>
+    );
+  }
+  ```
+- Import `Link` from `next/link`
+  `import Link from 'next/link';`
+- Back to the `Pagination` component; we will need a `link` for the `previous` page, a `link` to the `next` page, the information of the page that you are in, the information of the total of pages and the information of the total of items
+  ```js
+  export default function Pagination({ page }) {
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+      <Link href="/">← Prev</Link>
+      <p>
+        Page __ of __
+      </p>
+      <p>__ items totals</p>
+      <Link href="/">Next →</Link>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser go to the `homepage`
+- You should see the `Pagination` component render at the top of the list of `products` and on the bottom
+- Go back to the `Pagination` component
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- In order to have the missing information that still missing; we need 2 pieces of information; one is the total amount of `products` and the how many `products` per page we are going to have. To have the amount of `products` we will do a `query` for this. If you need some information that is related to the items but doesn't want to do a `query` to get all items; `keystone` provides some `meta queries` that can help us with these `meta queries` begin with `_`. Go to the `graphQL playground` and add this `query`
+  ```js
+  query {
+    _allProductsMeta  {
+      count
+    }
+  }
+  ```
+- You should see that it will give you the total amount of `items` that you have in a single `query`
+- Copy that `query`
+- Go back to the `Pagination` component
+- Before the `Pagination` function add a constant call `PAGINATION_QUERY` that will have the `query` as it value
+  ```js
+  const PAGINATION_QUERY = gql``;
+  ```
+- Paste the `query` as a value of `PAGINATION_QUERY`
+  ```js
+  const PAGINATION_QUERY = gql`
+    query PAGINATION_QUERY {
+      _allProductsMeta {
+        count
+      }
+    }
+  `;
+  ```
+  We don't need to name the `query` but is a good practice to do it
+- Import the `useQuery` hook
+  `import { useQuery } from '@apollo/client';`
+- Use the `useQuery` hook on the `Pagination` component sending the `PAGINATION_QUERY` as a parameter
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    return (...);
+  }
+  ```
+- Destructure the `data.data._allProductsMeta` to have a variable call `count`
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+    return (...);
+  }
+  ```
+- Import the `DisplayError` component
+  `import DisplayError from './ErrorMessage';`
+- Handle the `loading` and `error` states with conditions
+
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+
+    if (loading) return 'Loading...';
+    if (error) return <DisplayError error={error} />;
+    return (...);
+  }
+  ```
+
+- Update the `p` tag that contains the `items totals` adding the `count` variable
+  of the page that you are in, the information of the total of pages, and the information of the total of items
+
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+
+    if (loading) return 'Loading...';
+    if (error) return <DisplayError error={error} />;
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+      <Link href="/">← Prev</Link>
+      <p>
+        Page __ of __
+      </p>
+      <p>{count} items totals</p>
+      <Link href="/">Next →</Link>
+    );
+  }
+  ```
+
+- Then we need how many pages we will have and for this, we need to know how many pages we will have to do this calculation. We already add a constant call `perPage` in a file called `config.js` at the root of the `frontend` directory. So import `perPage`
+  `import { perPage } from '../config';`
+- If we want to know how many pages you will have for the `pagination` you just need to divide the total of the page with the items per page that you will have but be careful because this division some times will give you a decimal value that means that you don't have all items per page but we still need a page to put in so we use the `Math.ceil` function to have that extra value. To create a `pageCount` variable to do this calculation and use it on the first `p` tag after the `prev` link(also add the `page`)
+
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+    const pageCount = Math.ceil(count / perPage);
+
+    if (loading) return 'Loading...';
+    if (error) return <DisplayError error={error} />;
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+      <Link href="/">← Prev</Link>
+      <p>
+        Page {page} of {pageCount}
+      </p>
+      <p>{count} items totals</p>
+      <Link href="/">Next →</Link>
+    );
+  }
+  ```
+
+- We need to dynamically calculate the `prev` and `next` link using the `page` prop
+  ```js
+  export default function Pagination({ page }) {
+    ...
+    return (
+      <PaginationStyles>
+        <Head>...</Head>
+      </PaginationStyles>
+      <Link href=href={`/product/${page - 1}`}>← Prev</Link>
+      ...
+      <Link href={`/product/${page + 1}`}>Next →</Link>
+    );
+  }
+  ```
+- Now we need to `disabled` the links when we are on the `first` and `last` page so we will use the `aria-disabled` property and the `page` variable
+  ```js
+  export default function Pagination({ page }) {
+    ...
+    return (
+      <PaginationStyles>
+        <Head>...</Head>
+      </PaginationStyles>
+      <Link href=href={`/product/${page - 1}`}><a aria-disabled={page <= 1}>← Prev</a></Link>
+      ...
+      <Link href={`/product/${page + 1}`}><a aria-disabled={page >= pageCount}>Next →</a></Link>
+    );
+  }
+  ```
+  You can't send properties to the `Link` component so you will need to add an `anchor` tag as a child of the `Link` component with the properties that you need.
+- Go to your browser and refresh the page
+- You should see all the information that we added and the first link should be `disabled`
