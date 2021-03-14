@@ -95,7 +95,7 @@ Now create the following `pages` that we will use on the application. Use the sa
 | :-----------: | :-------------: |
 | `account.js`  |  `AccountPage`  |
 |  `order.js`   |   `OrderPage`   |
-| `products.js` |  `ProductPage`  |
+| `products.js` | `ProductsPage`  |
 |   `sell.js`   |   `SellPage`    |
 
 Another thing that we need to know about `Next js` is that out of the box do `server-side rendering` this means that when you do a `view source` of your page; it will show all the `HTML` then `React` will come and `rehydrate` it to have all the `React` functionality. `Next js` can also be `statically render` which means; that on build time you can pre-render pages so they load really quickly because the `HTML` of those pages will be already available.
@@ -2161,9 +2161,9 @@ Since we have set `Apollo`; we can begin to pull in `data` to our `frontend` sid
 - Then go to the `product` file in the `page` directory
 - Import the `Products` component
   `import Products from '../components/Products';`
-- Use the `Products` component on the `return` of the `ProductPage` component and delete the other elements
+- Use the `Products` component on the `return` of the `ProductsPage` component and delete the other elements
   ```js
-  export default function ProductPage() {
+  export default function ProductsPage() {
     return (
       <div>
         <Products />
@@ -4760,7 +4760,7 @@ Here we will add the `links` that we will need to surface the different pages an
   `import Pagination from '../components/Pagination';`
 - Use the `Pagination` component before and after the `Product` component sending the `page` prop; at this time put `1` later we will past it via `query` param
   ```js
-  export default function ProductPage() {
+  export default function ProductsPage() {
     return (
       <div>
         <Pagination page={1} />
@@ -4917,9 +4917,9 @@ Here we will add the `links` that we will need to surface the different pages an
       <PaginationStyles>
         <Head>...</Head>
       </PaginationStyles>
-      <Link href=href={`/product/${page - 1}`}>← Prev</Link>
+      <Link href=href={`/products/${page - 1}`}>← Prev</Link>
       ...
-      <Link href={`/product/${page + 1}`}>Next →</Link>
+      <Link href={`/products/${page + 1}`}>Next →</Link>
     );
   }
   ```
@@ -4931,12 +4931,93 @@ Here we will add the `links` that we will need to surface the different pages an
       <PaginationStyles>
         <Head>...</Head>
       </PaginationStyles>
-      <Link href=href={`/product/${page - 1}`}><a aria-disabled={page <= 1}>← Prev</a></Link>
+      <Link href=href={`/products/${page - 1}`}><a aria-disabled={page <= 1}>← Prev</a></Link>
       ...
-      <Link href={`/product/${page + 1}`}><a aria-disabled={page >= pageCount}>Next →</a></Link>
+      <Link href={`/products/${page + 1}`}><a aria-disabled={page >= pageCount}>Next →</a></Link>
     );
   }
   ```
   You can't send properties to the `Link` component so you will need to add an `anchor` tag as a child of the `Link` component with the properties that you need.
 - Go to your browser and refresh the page
 - You should see all the information that we added and the first link should be `disabled`
+
+### Pagination dynamic routing
+
+At this moment we got the links that will render the different pages of the navigation but we still don't have the routing to handle those links. We can do 2 things:
+
+- We can do `query string`; where we send a `query` param to filter the items
+  `http://localhost:7777/products?page=2`
+- Also we can do `file base routing` on `next js`. Since we don't have a lot of `query` params to filter this became a nice option and easy to use
+  `http://localhost:7777/products/2`
+
+On this app, we will choose the second option.
+
+#### Use file base routing for the pagination
+
+- On your editor; go to the `frontend/pages/` directory
+- Create a folder called `products`
+- Inside of the `products` directory; create a file call `[pages].js`. The name that you put inside of the `[]` will be the name that you will receive via `prop` as we saw on the `single product` page
+- On this newly created file; export a function call `ProductsPage` with the following content
+  ```js
+  export default function ProductsPage() {
+    return <p>Hey Im one page</p>;
+  }
+  ```
+- On your terminal; go to the `backend` directory and start you local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [products page](http://localhost:7777/products)
+- You should see that the page still works normally
+- Go to this URL: `http://localhost:7777/products/2`
+- You should see the content that you put on the `[page].js` file. This means that the routing of the `products` page still works normally and when it has another parameter the URL use the file that we create in this section
+- We can keep this structure but we like to keep all related pages in the same directory so take the `products.js` file and move it to the `products` directory
+- Rename the `products.js` file to `index.js`; this will be the default file that `next js` will search for the `/` URL
+- On the `index.js` file update the the imports like this
+  ```js
+  import Pagination from '../../components/Pagination';
+  import Products from '../../components/Products';
+  ```
+- On your browser; go to the [products page](http://localhost:7777/products)
+- Should be working normally
+- Go to the `[pages].js` file and delete the `ProductsPage` function
+- We are going to show the same content as the `products/index.js` file so export the `index.js` file
+  `export { default } from './index';`
+- On your browser; go to the [products page](http://localhost:7777/products)
+- Click on the `next` button of the `pagination`
+- You should redirect to the new `pagination` page and see the same content of the `products` page
+- Go back to the `products/index.js` file and import `useRouter` from `ext/dist/client/router'`
+  `import { useRouter } from 'next/dist/client/router';`
+- Use the `useRouter` hook in the `ProductsPage` function; destructuring the `query` property
+
+  ```js
+  export default function ProductsPage() {
+    const { query } = useRouter();
+
+    return (...);
+  }
+  ```
+
+  We already have the `query` prop on the `ProductPage` component but this is another way to do it and the difference is that this hook you don't necessarily need to have the `query` param in a page level and this hook will help us to use it when we want
+
+- The `query` param will be a `string` but we need a `number` to make the calculation of the links in the `pagination` component
+
+  ```js
+  export default function ProductsPage() {
+    const { query } = useRouter();
+    const page = parseInt(query.page);
+
+    return (
+      <div>
+        <Pagination page={page || 1} />
+        <Products />
+        <Pagination page={page || 1} />
+      </div>
+    );
+  }
+  ```
+
+  We put the `|| 1` to handle when the `query.page` is empty for the `/product/` URL
+
+- On your browser; go to the [products page](http://localhost:7777/products)
+- You should see the correct content on the page
+- Click on the `next` button of the `pagination`
+- You should see the correct next page and the correct content
