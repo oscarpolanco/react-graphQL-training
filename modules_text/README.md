@@ -5021,3 +5021,58 @@ On this app, we will choose the second option.
 - You should see the correct content on the page
 - Click on the `next` button of the `pagination`
 - You should see the correct next page and the correct content
+
+### Adjust our query for pagination values
+
+Now we just need to adjust the `query` of the `products` just to present the items per page that we need and show the correct `products` depending on the page that we at. Here are the steps:
+
+- On your editor; go to the `frontend/page/products` directory and open the `index.js` file
+- In the `Product` component send a prop called `page` like the one sent on the `Pagination` component
+
+  ```js
+  export default function ProductsPage() {
+    ...
+    return (
+      <div>
+        <Pagination page={page || 1} />
+        <Products page={page || 1} />
+        <Pagination page={page || 1} />
+      </div>
+    );
+  }
+  ```
+
+- Go to the `Products.js` file on the `components` directory
+- Add a `skip` and `first` variable to `ALL_PRODUCTS_QUERY`. Both integers and for the `skip` default value will be `0`
+  ```js
+  export const ALL_PRODUCTS_QUERY = gql`
+    query ALL_PRODUCTS_QUERY($skip: Int = 0, $first: Int) {
+      allProducts {...}
+  `;
+  ```
+  The `skip` variable will represent how many items should we `skip` depending on the page that we are; for example; if we are on the page `2` and we have `2` items per page; you will need to `skip` the first `2` items and show from the third and fourth item. The `first` variable will give you the `first` items depending on the items per page that you will show
+- Now send the variables to the `graphQL` function
+  ```js
+  export const ALL_PRODUCTS_QUERY = gql`
+    query ALL_PRODUCTS_QUERY($skip: Int = 0, $first: Int) {
+      allProducts(first: $first, skip: $skip) {...}
+  `;
+  ```
+- Add the `page` prop to the `Products` function
+  `export default function Products({ page }) {...}`
+- Then go to the `useQuery` hook and pass the variables with it values
+  ```js
+  const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY, {
+    variables: {
+      skip: page * perPage - perPage,
+      first: perPage,
+    },
+  });
+  ```
+  Here you have that `skip` calculation that gives you the numbers of items that you will `skip`; for example; if you are on page `2` and show `2` items per page you will have `2 * 2 = 4` then `4 - 2 = 2` so you will `skip` the first `2` items of the list of `products` and the `first` variable just need to send the items per page that you will show
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of the terminal; go to the `frontend` directory and start your local server
+- Go to the `homepage`
+- You should see the number of items defined on the `perPage` variable
+- Click on the `next` button of the `pagination`
+- You should be on the second page with the correct content
