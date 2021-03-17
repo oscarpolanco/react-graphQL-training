@@ -16,6 +16,8 @@ Fullstack React and GraphQL training.
 - [Keystone.js](https://www.keystonejs.com/) as a `CMS` of the application
 - [Cloudinary](https://cloudinary.com/) to store the `images` of the application
 - [dotenv](https://www.npmjs.com/package/dotenv) for the `environment variables` of the application
+- [GraphQL](https://graphql.org/) for the `queries` and `mutations`
+- [Apollo](https://www.apollographql.com/) for handle the `graphQL` API and the `cache` of the `queries`
 
 ## Pages
 

@@ -5076,3 +5076,383 @@ Now we just need to adjust the `query` of the `products` just to present the ite
 - You should see the number of items defined on the `perPage` variable
 - Click on the `next` button of the `pagination`
 - You should be on the second page with the correct content
+
+### Custom type policies and control over the Apollo cache
+
+As you may notice when you are on one page of the `pagination` it take a couple of seconds to show the `data` but if you change the page and get back to it; the `data` will show faster because it will use the `Apollo` cache instead of doing a network request. This is ok for us until we need to `delete` a `product` because of how `Apollo` handles the cache for the `pagination`.
+
+Previously `Apollo` store all `products` on the same `query` but we change it for the `pagination` and now you will see that it use the `query`(In this case `allProducts`) as a key related to the `products`. To see on the browser follow this:
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [homepage](http://localhost:7777/)
+- Inspect the page
+- On the browser console click on the `Apollo` tab
+- Choose the `cache` option on the left sidebar
+- You should see the `allProducts query` with 2 items
+- Click on the `next` button in the `pagination` bar of the `homepage`
+- Close the `dev tools and open it again
+- Follow the same options to see the `cache`
+- Now you will see 2 `key value` pairs using the `allProducts` as a key
+
+This way of storing the `cache` will be an issue for us; first; if we want to `query` one of the items again in some other place the `query` will be `Product` with an `id` and that is not the same as the `query` that we have at this moment with the `allProducts` key-value pair so it will re-fetch the same `data` all over again from the server. Also when we `delete` a `product` will have some issue displaying it.
+
+So what we are going to do to resolve those issues; well first; we don't want the `skip` and `first` values as part of the `key` for the `allProducts query` and we want that all `products` are on the same list so we can control how the items are fetched from the network and show on the page. Then when we `delete` an item what need to happen is that the item should be `delete` from the `cache` and when that happen the items should go forward on the list; like this:
+
+| Page 1 | Page 1 |
+| :----: | :----: |
+| item 1 | item 1 |
+| item 2 | item 2 |
+| :---:  | :---:  |
+| Page 2 | Page 2 |
+| :---:  | :---:  |
+| item 3 | item 3 |
+| item 4 | item 5 |
+| :---:  | :---:  |
+| page 3 | Page 3 |
+| :---:  | :---:  |
+| item 5 | item 6 |
+| item 6 |        |
+
+Here we delete the `item 4`
+
+But how we achieve this; one option is to re-fetch the `queries` all over again but we don't actually know all the `queries` that need to be re-fetch and the other thing is; as we mentioned before; is to put all items the same list and when an item is `deleted` the other items will adjust on the list. Another option is to `delete` the complete `cache` and re-fetch all over again the `queries` when the `users` navigate to the pages but the only issue is that `Apollo` have a `evict` function that `delete` one item and another one that `delete` the complete `cache`(So it will remove all `queries` and `metadata` that you have at that moment) so `Apollo` doesn't have `delete` function that eliminates a `cache` of a certain type so we will need to use what is called a `type policy` on `Apollo`.
+
+#### Handle the cache using a type policy
+
+To handle the issues that we mention in the previous section we will be defining a `type policy` that will allow us for a certain `field`(the `query` that we need in this case `allProducts`) let us manage the `cache` process. So let begin with the process!!!
+
+- On your editor; go to the `frontend/lib/` directory
+- Create a new file call `paginationField.js`
+- On this newly create file export a function call `paginationField` that return an object with a `render` and a `merge` function
+  ```js
+  export default function paginationField() {
+    return {
+      read() {},
+      merge() {},
+    };
+  }
+  ```
+- Go to the `withData` file and import the `paginationField` file
+  `import paginationField from './paginationField';`
+- On the `withData.js` file search for the `cache` and uncomment the `allProduct field`
+
+How this will work is first; ask the `read` function on the `paginationField` file for the items; there we can do one of this 2 thing:
+
+- Return the items because they are already on the `cache`
+- Return a `false` that will trigger a `network` request to obtain the items
+
+If we target the second option and come back with the items it will run the `merge` function. The `merge` function will help us to define how we are going to put it on the `cache`. Let continue with the process
+
+- On the `paginationField` return object add a new property call `keyArgs` with a `false` value
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read() {},
+      merge() {},
+    };
+  }
+  ```
+  This property will tell `Apollo` that we will take care of everything on the `cache` process
+- The `read` function recive a couple of arguments; an array call `existing` and a object with some more options but we are interested on the `args` and `cache` properties
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {},
+      merge() {},
+    };
+  }
+  ```
+  - The `existing` array will have the `existing` items on the `cache`
+  - The `args` will be the arguments that the `query` need in this case the `skip` and `first` value
+  - The `cache` is a reference to the `Apollo cache` that we are going to be using to fetch the `data` that we need
+- Destructure the `skip` and `first` value from the `args` object
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+      },
+      merge() {},
+    };
+  }
+  ```
+- Now we need to pull `data` from our `cache` and for this, we need to send a `query` so we will re-use the `allProducts query` that we did before. So go to the `Pagination` component and export `PAGINATION_QUERY`
+  ```js
+  export const PAGINATION_QUERY = gql`...`;
+  ```
+- Go back to the `paginationField` and import `PAGINATION_QUERY`
+  `import { PAGINATION_QUERY } from '../components/Pagination';`
+- On the `read` function create a constant call `data` with the following content
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+      },
+      merge() {},
+    };
+  }
+  ```
+  The `readQuery` function will allow us to pull `data` from the `cache` and it recive an object with a `query` property that need a `query` as it value
+- Now create a constant call `count` and pull the `data` of the `allProductsMeta query` from the `data` variable
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+      },
+      merge() {},
+    };
+  }
+  ```
+  We add the `?` because there is a possibility that the `data` is `undefined` so the application won't crash
+- Next, we need to calculate what page we are currently on using the `skip` and `first` value and how many pages that we have in total
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+      },
+      merge() {},
+    };
+  }
+  ```
+- Then we need to check if we have existing items
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+      },
+      merge() {},
+    };
+  }
+  ```
+  Using all items on the `existing` array we will begin from the `skip` value then go until the `skip` value plus the number of items per page that is on the `first` variable then we `filter` the `undefined` position of the array
+- If there are no existing items we will send them to the `network` returning a `false` value
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length !== first) {
+          return false;
+        }
+      },
+      merge() {},
+    };
+  }
+  ```
+
+- Then they are items we return then and there is no need to go to the network
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length !== first) {
+          return false;
+        }
+
+        if (items.length) {
+          return items;
+        }
+      },
+      merge() {},
+    };
+  }
+  ```
+
+- And finally; we put a fallback that goes to the network returning `false`
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length !== first) {
+          return false;
+        }
+
+        if (items.length) {
+          return items;
+        }
+
+        return false;
+      },
+      merge() {},
+    };
+  }
+  ```
+
+- Now we need work with the `merge` function that will trigger after a network request. As we see on the `read` function; `merge` recive `exiting`; `incoming` and a object with the `args` property
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {},
+    };
+  }
+  ```
+  - The `existing` array has the items that already are on the `Apollo cache`
+  - The `incoming` array have the items that were fetched from the network
+  - The `args` have the parameters that we send to the `query`; in this case the `skip` and `first` variables
+- Now if we got `existing` items on the array we grab a copy of them or send an empty array
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const merged = existing ? existing.slice(0) : [];
+      },
+    };
+  }
+  ```
+  Why we don't simply use the `push` function with the `incoming` items? Is because if we are on a page that is not the first one we need to have a blank spot on the `skip` items so we can re ajust the items to the correct position when we delete one
+- Destructure the `skip` value from `args`
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const { skip, first } = args;
+        const merged = existing ? existing.slice(0) : [];
+      },
+    };
+  }
+  ```
+- Now add the following loop
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const { skip, first } = args;
+        const merged = existing ? existing.slice(0) : [];
+        for (let i = skip; i < skip + incoming.length; ++i) {
+          merged[i] = incoming[i - skip];
+        }
+      },
+    };
+  }
+  ```
+  This loop will take the `skip` value and make it the index of the current page position and loop until we get to the `skip` plus the `incoming` items size. This will add the items to the correct place and leave the other `skip` values as a blank spot on the array
+- Finally; we return the `merge` items
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const { skip, first } = args;
+        const merged = existing ? existing.slice(0) : [];
+        for (let i = skip; i < skip + incoming.length; ++i) {
+          merged[i] = incoming[i - skip];
+        }
+
+        return merged;
+      },
+    };
+  }
+  ```
+
+- If we do a network request and return the `merge` items; `apollo` will call again the `read` function and try it again and ideally you will have items and it will return it. So let test this; on your terminal go to the `backend` directory and start your local server
+- On another tab of your terminal go to the `frontend` directory and start your local server
+- Go to this [product url](http://localhost:7777/products/2)
+- Open the browser `dev tools`
+- Click on the `Apollo` tab
+- Then click on the `cache` option on the left side
+- You should see just one `allProducts query` and if you use the `page 2` URL that it share previously; you will see 2 `null` for the first 2 `skip` items then the 2 current items
+- Click the next button on the pagination
+- Close and open the `dev tools`
+- Go to the `Apollo cache` option
+- You should see the new items in the correct position
+- Click the next button and get to the last page
+- You should have an error(if the last page have the least items that the show per page) and is because on the `read` function we only return the items when the length of the items are equal to the `first` variable
+- Go back to the `read` function on the `paginationField` file
+- Before the `item.length !== first` condition add the following
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length && items.length !== first && page === pages) {
+          return items;
+        }
+
+        if (items.length !== first) {
+          return false;
+        }
+
+        if (items.length) {
+          return items;
+        }
+
+        return false;
+      },
+      merge(existing, incoming, { args }) {...},
+    };
+  }
+  ```
+
+  If they are items and the items don't have the side of the per-page variables and we are on the last page then send the items
+
+- Now go back to your browser and refresh the page. If you got the error on the last page; it should be fix
+- Go to another `pagination` page that is not the last(so you can see the effect) and `delete` an item
+- You should see the items re adjust itself
