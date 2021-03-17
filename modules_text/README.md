@@ -95,7 +95,7 @@ Now create the following `pages` that we will use on the application. Use the sa
 | :-----------: | :-------------: |
 | `account.js`  |  `AccountPage`  |
 |  `order.js`   |   `OrderPage`   |
-| `products.js` |  `ProductPage`  |
+| `products.js` | `ProductsPage`  |
 |   `sell.js`   |   `SellPage`    |
 
 Another thing that we need to know about `Next js` is that out of the box do `server-side rendering` this means that when you do a `view source` of your page; it will show all the `HTML` then `React` will come and `rehydrate` it to have all the `React` functionality. `Next js` can also be `statically render` which means; that on build time you can pre-render pages so they load really quickly because the `HTML` of those pages will be already available.
@@ -2161,9 +2161,9 @@ Since we have set `Apollo`; we can begin to pull in `data` to our `frontend` sid
 - Then go to the `product` file in the `page` directory
 - Import the `Products` component
   `import Products from '../components/Products';`
-- Use the `Products` component on the `return` of the `ProductPage` component and delete the other elements
+- Use the `Products` component on the `return` of the `ProductsPage` component and delete the other elements
   ```js
-  export default function ProductPage() {
+  export default function ProductsPage() {
     return (
       <div>
         <Products />
@@ -4715,3 +4715,744 @@ As we see in the previews section we have an issue when we eliminate a `product`
 - Go to the [homepage](http://localhost:7777/)
 - Click on one of the `delete` buttons of the `products`
 - You should be able to delete the `product` and it will disappear from the list
+
+## Module 6: Pagination
+
+As you can see on the `products` and `home` page we have a list of all `products` that we have available and for now that we have a little amount of `products` is not an issue but when we grow it will become an issue; that is why we will add `pagination` to those pages so we can have just an amount of `products` and the user can have the ability to surface all the `pagination` pages. In this module we first `render` the `pagination` links; then allow `dynamic` routing; after that `filter` the `products` that are shown on the page and finally deal with the cache.
+
+### Pagination links
+
+Here we will add the `links` that we will need to surface the different pages and all the information that will tell the `user` on which page he is at the moment and how many items are in total. Here are the steps:
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `Pagination.js`
+- Export a function call `Pagination` that recive `page` as a prop
+  `export default function Pagination({ page }) {}`
+- Import `Head` from `next/head`
+  `import Head from 'next/head';`
+- On the `Pagination` function; use the `Head` component defining the `title` tag as the following
+  ```js
+  export default function Pagination({ page }) {
+    return (
+      <Head>
+        <title>Sick Fits - Page of --</title>
+      </Head>
+    );
+  }
+  ```
+  We will add the `page` on the `title` in a little bit
+- Import `PaginationStyles` from `./styles/PaginationStyles`
+  `import PaginationStyles from './styles/PaginationStyles';`
+- Wrap the `Pagination` function content using the `PaginationStyles`
+  ```js
+  export default function Pagination({ page }) {
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+    );
+  }
+  ```
+- Now go to the `products` file on the `page` directory
+- Import the `Pagination` component
+  `import Pagination from '../components/Pagination';`
+- Use the `Pagination` component before and after the `Product` component sending the `page` prop; at this time put `1` later we will past it via `query` param
+  ```js
+  export default function ProductsPage() {
+    return (
+      <div>
+        <Pagination page={1} />
+        <Products />
+        <Pagination page={1} />
+      </div>
+    );
+  }
+  ```
+- Import `Link` from `next/link`
+  `import Link from 'next/link';`
+- Back to the `Pagination` component; we will need a `link` for the `previous` page, a `link` to the `next` page, the information of the page that you are in, the information of the total of pages and the information of the total of items
+  ```js
+  export default function Pagination({ page }) {
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+      <Link href="/">← Prev</Link>
+      <p>
+        Page __ of __
+      </p>
+      <p>__ items totals</p>
+      <Link href="/">Next →</Link>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser go to the `homepage`
+- You should see the `Pagination` component render at the top of the list of `products` and on the bottom
+- Go back to the `Pagination` component
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- In order to have the missing information that still missing; we need 2 pieces of information; one is the total amount of `products` and the how many `products` per page we are going to have. To have the amount of `products` we will do a `query` for this. If you need some information that is related to the items but doesn't want to do a `query` to get all items; `keystone` provides some `meta queries` that can help us with these `meta queries` begin with `_`. Go to the `graphQL playground` and add this `query`
+  ```js
+  query {
+    _allProductsMeta  {
+      count
+    }
+  }
+  ```
+- You should see that it will give you the total amount of `items` that you have in a single `query`
+- Copy that `query`
+- Go back to the `Pagination` component
+- Before the `Pagination` function add a constant call `PAGINATION_QUERY` that will have the `query` as it value
+  ```js
+  const PAGINATION_QUERY = gql``;
+  ```
+- Paste the `query` as a value of `PAGINATION_QUERY`
+  ```js
+  const PAGINATION_QUERY = gql`
+    query PAGINATION_QUERY {
+      _allProductsMeta {
+        count
+      }
+    }
+  `;
+  ```
+  We don't need to name the `query` but is a good practice to do it
+- Import the `useQuery` hook
+  `import { useQuery } from '@apollo/client';`
+- Use the `useQuery` hook on the `Pagination` component sending the `PAGINATION_QUERY` as a parameter
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    return (...);
+  }
+  ```
+- Destructure the `data.data._allProductsMeta` to have a variable call `count`
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+    return (...);
+  }
+  ```
+- Import the `DisplayError` component
+  `import DisplayError from './ErrorMessage';`
+- Handle the `loading` and `error` states with conditions
+
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+
+    if (loading) return 'Loading...';
+    if (error) return <DisplayError error={error} />;
+    return (...);
+  }
+  ```
+
+- Update the `p` tag that contains the `items totals` adding the `count` variable
+  of the page that you are in, the information of the total of pages, and the information of the total of items
+
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+
+    if (loading) return 'Loading...';
+    if (error) return <DisplayError error={error} />;
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+      <Link href="/">← Prev</Link>
+      <p>
+        Page __ of __
+      </p>
+      <p>{count} items totals</p>
+      <Link href="/">Next →</Link>
+    );
+  }
+  ```
+
+- Then we need how many pages we will have and for this, we need to know how many pages we will have to do this calculation. We already add a constant call `perPage` in a file called `config.js` at the root of the `frontend` directory. So import `perPage`
+  `import { perPage } from '../config';`
+- If we want to know how many pages you will have for the `pagination` you just need to divide the total of the page with the items per page that you will have but be careful because this division some times will give you a decimal value that means that you don't have all items per page but we still need a page to put in so we use the `Math.ceil` function to have that extra value. To create a `pageCount` variable to do this calculation and use it on the first `p` tag after the `prev` link(also add the `page`)
+
+  ```js
+  export default function Pagination({ page }) {
+    const { error, loading, data } = useQuery(PAGINATION_QUERY);
+    const { count } = data._allProductsMeta;
+    const pageCount = Math.ceil(count / perPage);
+
+    if (loading) return 'Loading...';
+    if (error) return <DisplayError error={error} />;
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>Sick Fits - Page of --</title>
+        </Head>
+      </PaginationStyles>
+      <Link href="/">← Prev</Link>
+      <p>
+        Page {page} of {pageCount}
+      </p>
+      <p>{count} items totals</p>
+      <Link href="/">Next →</Link>
+    );
+  }
+  ```
+
+- We need to dynamically calculate the `prev` and `next` link using the `page` prop
+  ```js
+  export default function Pagination({ page }) {
+    ...
+    return (
+      <PaginationStyles>
+        <Head>...</Head>
+      </PaginationStyles>
+      <Link href=href={`/products/${page - 1}`}>← Prev</Link>
+      ...
+      <Link href={`/products/${page + 1}`}>Next →</Link>
+    );
+  }
+  ```
+- Now we need to `disabled` the links when we are on the `first` and `last` page so we will use the `aria-disabled` property and the `page` variable
+  ```js
+  export default function Pagination({ page }) {
+    ...
+    return (
+      <PaginationStyles>
+        <Head>...</Head>
+      </PaginationStyles>
+      <Link href=href={`/products/${page - 1}`}><a aria-disabled={page <= 1}>← Prev</a></Link>
+      ...
+      <Link href={`/products/${page + 1}`}><a aria-disabled={page >= pageCount}>Next →</a></Link>
+    );
+  }
+  ```
+  You can't send properties to the `Link` component so you will need to add an `anchor` tag as a child of the `Link` component with the properties that you need.
+- Go to your browser and refresh the page
+- You should see all the information that we added and the first link should be `disabled`
+
+### Pagination dynamic routing
+
+At this moment we got the links that will render the different pages of the navigation but we still don't have the routing to handle those links. We can do 2 things:
+
+- We can do `query string`; where we send a `query` param to filter the items
+  `http://localhost:7777/products?page=2`
+- Also we can do `file base routing` on `next js`. Since we don't have a lot of `query` params to filter this became a nice option and easy to use
+  `http://localhost:7777/products/2`
+
+On this app, we will choose the second option.
+
+#### Use file base routing for the pagination
+
+- On your editor; go to the `frontend/pages/` directory
+- Create a folder called `products`
+- Inside of the `products` directory; create a file call `[pages].js`. The name that you put inside of the `[]` will be the name that you will receive via `prop` as we saw on the `single product` page
+- On this newly created file; export a function call `ProductsPage` with the following content
+  ```js
+  export default function ProductsPage() {
+    return <p>Hey Im one page</p>;
+  }
+  ```
+- On your terminal; go to the `backend` directory and start you local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [products page](http://localhost:7777/products)
+- You should see that the page still works normally
+- Go to this URL: `http://localhost:7777/products/2`
+- You should see the content that you put on the `[page].js` file. This means that the routing of the `products` page still works normally and when it has another parameter the URL use the file that we create in this section
+- We can keep this structure but we like to keep all related pages in the same directory so take the `products.js` file and move it to the `products` directory
+- Rename the `products.js` file to `index.js`; this will be the default file that `next js` will search for the `/` URL
+- On the `index.js` file update the the imports like this
+  ```js
+  import Pagination from '../../components/Pagination';
+  import Products from '../../components/Products';
+  ```
+- On your browser; go to the [products page](http://localhost:7777/products)
+- Should be working normally
+- Go to the `[pages].js` file and delete the `ProductsPage` function
+- We are going to show the same content as the `products/index.js` file so export the `index.js` file
+  `export { default } from './index';`
+- On your browser; go to the [products page](http://localhost:7777/products)
+- Click on the `next` button of the `pagination`
+- You should redirect to the new `pagination` page and see the same content of the `products` page
+- Go back to the `products/index.js` file and import `useRouter` from `ext/dist/client/router'`
+  `import { useRouter } from 'next/dist/client/router';`
+- Use the `useRouter` hook in the `ProductsPage` function; destructuring the `query` property
+
+  ```js
+  export default function ProductsPage() {
+    const { query } = useRouter();
+
+    return (...);
+  }
+  ```
+
+  We already have the `query` prop on the `ProductPage` component but this is another way to do it and the difference is that this hook you don't necessarily need to have the `query` param in a page level and this hook will help us to use it when we want
+
+- The `query` param will be a `string` but we need a `number` to make the calculation of the links in the `pagination` component
+
+  ```js
+  export default function ProductsPage() {
+    const { query } = useRouter();
+    const page = parseInt(query.page);
+
+    return (
+      <div>
+        <Pagination page={page || 1} />
+        <Products />
+        <Pagination page={page || 1} />
+      </div>
+    );
+  }
+  ```
+
+  We put the `|| 1` to handle when the `query.page` is empty for the `/product/` URL
+
+- On your browser; go to the [products page](http://localhost:7777/products)
+- You should see the correct content on the page
+- Click on the `next` button of the `pagination`
+- You should see the correct next page and the correct content
+
+### Adjust our query for pagination values
+
+Now we just need to adjust the `query` of the `products` just to present the items per page that we need and show the correct `products` depending on the page that we at. Here are the steps:
+
+- On your editor; go to the `frontend/page/products` directory and open the `index.js` file
+- In the `Product` component send a prop called `page` like the one sent on the `Pagination` component
+
+  ```js
+  export default function ProductsPage() {
+    ...
+    return (
+      <div>
+        <Pagination page={page || 1} />
+        <Products page={page || 1} />
+        <Pagination page={page || 1} />
+      </div>
+    );
+  }
+  ```
+
+- Go to the `Products.js` file on the `components` directory
+- Add a `skip` and `first` variable to `ALL_PRODUCTS_QUERY`. Both integers and for the `skip` default value will be `0`
+  ```js
+  export const ALL_PRODUCTS_QUERY = gql`
+    query ALL_PRODUCTS_QUERY($skip: Int = 0, $first: Int) {
+      allProducts {...}
+  `;
+  ```
+  The `skip` variable will represent how many items should we `skip` depending on the page that we are; for example; if we are on the page `2` and we have `2` items per page; you will need to `skip` the first `2` items and show from the third and fourth item. The `first` variable will give you the `first` items depending on the items per page that you will show
+- Now send the variables to the `graphQL` function
+  ```js
+  export const ALL_PRODUCTS_QUERY = gql`
+    query ALL_PRODUCTS_QUERY($skip: Int = 0, $first: Int) {
+      allProducts(first: $first, skip: $skip) {...}
+  `;
+  ```
+- Add the `page` prop to the `Products` function
+  `export default function Products({ page }) {...}`
+- Then go to the `useQuery` hook and pass the variables with it values
+  ```js
+  const { data, error, loading } = useQuery(ALL_PRODUCTS_QUERY, {
+    variables: {
+      skip: page * perPage - perPage,
+      first: perPage,
+    },
+  });
+  ```
+  Here you have that `skip` calculation that gives you the numbers of items that you will `skip`; for example; if you are on page `2` and show `2` items per page you will have `2 * 2 = 4` then `4 - 2 = 2` so you will `skip` the first `2` items of the list of `products` and the `first` variable just need to send the items per page that you will show
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of the terminal; go to the `frontend` directory and start your local server
+- Go to the `homepage`
+- You should see the number of items defined on the `perPage` variable
+- Click on the `next` button of the `pagination`
+- You should be on the second page with the correct content
+
+### Custom type policies and control over the Apollo cache
+
+As you may notice when you are on one page of the `pagination` it take a couple of seconds to show the `data` but if you change the page and get back to it; the `data` will show faster because it will use the `Apollo` cache instead of doing a network request. This is ok for us until we need to `delete` a `product` because of how `Apollo` handles the cache for the `pagination`.
+
+Previously `Apollo` store all `products` on the same `query` but we change it for the `pagination` and now you will see that it use the `query`(In this case `allProducts`) as a key related to the `products`. To see on the browser follow this:
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [homepage](http://localhost:7777/)
+- Inspect the page
+- On the browser console click on the `Apollo` tab
+- Choose the `cache` option on the left sidebar
+- You should see the `allProducts query` with 2 items
+- Click on the `next` button in the `pagination` bar of the `homepage`
+- Close the `dev tools and open it again
+- Follow the same options to see the `cache`
+- Now you will see 2 `key value` pairs using the `allProducts` as a key
+
+This way of storing the `cache` will be an issue for us; first; if we want to `query` one of the items again in some other place the `query` will be `Product` with an `id` and that is not the same as the `query` that we have at this moment with the `allProducts` key-value pair so it will re-fetch the same `data` all over again from the server. Also when we `delete` a `product` will have some issue displaying it.
+
+So what we are going to do to resolve those issues; well first; we don't want the `skip` and `first` values as part of the `key` for the `allProducts query` and we want that all `products` are on the same list so we can control how the items are fetched from the network and show on the page. Then when we `delete` an item what need to happen is that the item should be `delete` from the `cache` and when that happen the items should go forward on the list; like this:
+
+| Page 1 | Page 1 |
+| :----: | :----: |
+| item 1 | item 1 |
+| item 2 | item 2 |
+| :---:  | :---:  |
+| Page 2 | Page 2 |
+| :---:  | :---:  |
+| item 3 | item 3 |
+| item 4 | item 5 |
+| :---:  | :---:  |
+| page 3 | Page 3 |
+| :---:  | :---:  |
+| item 5 | item 6 |
+| item 6 |        |
+
+Here we delete the `item 4`
+
+But how we achieve this; one option is to re-fetch the `queries` all over again but we don't actually know all the `queries` that need to be re-fetch and the other thing is; as we mentioned before; is to put all items the same list and when an item is `deleted` the other items will adjust on the list. Another option is to `delete` the complete `cache` and re-fetch all over again the `queries` when the `users` navigate to the pages but the only issue is that `Apollo` have a `evict` function that `delete` one item and another one that `delete` the complete `cache`(So it will remove all `queries` and `metadata` that you have at that moment) so `Apollo` doesn't have `delete` function that eliminates a `cache` of a certain type so we will need to use what is called a `type policy` on `Apollo`.
+
+#### Handle the cache using a type policy
+
+To handle the issues that we mention in the previous section we will be defining a `type policy` that will allow us for a certain `field`(the `query` that we need in this case `allProducts`) let us manage the `cache` process. So let begin with the process!!!
+
+- On your editor; go to the `frontend/lib/` directory
+- Create a new file call `paginationField.js`
+- On this newly create file export a function call `paginationField` that return an object with a `render` and a `merge` function
+  ```js
+  export default function paginationField() {
+    return {
+      read() {},
+      merge() {},
+    };
+  }
+  ```
+- Go to the `withData` file and import the `paginationField` file
+  `import paginationField from './paginationField';`
+- On the `withData.js` file search for the `cache` and uncomment the `allProduct field`
+
+How this will work is first; ask the `read` function on the `paginationField` file for the items; there we can do one of this 2 thing:
+
+- Return the items because they are already on the `cache`
+- Return a `false` that will trigger a `network` request to obtain the items
+
+If we target the second option and come back with the items it will run the `merge` function. The `merge` function will help us to define how we are going to put it on the `cache`. Let continue with the process
+
+- On the `paginationField` return object add a new property call `keyArgs` with a `false` value
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read() {},
+      merge() {},
+    };
+  }
+  ```
+  This property will tell `Apollo` that we will take care of everything on the `cache` process
+- The `read` function recive a couple of arguments; an array call `existing` and a object with some more options but we are interested on the `args` and `cache` properties
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {},
+      merge() {},
+    };
+  }
+  ```
+  - The `existing` array will have the `existing` items on the `cache`
+  - The `args` will be the arguments that the `query` need in this case the `skip` and `first` value
+  - The `cache` is a reference to the `Apollo cache` that we are going to be using to fetch the `data` that we need
+- Destructure the `skip` and `first` value from the `args` object
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+      },
+      merge() {},
+    };
+  }
+  ```
+- Now we need to pull `data` from our `cache` and for this, we need to send a `query` so we will re-use the `allProducts query` that we did before. So go to the `Pagination` component and export `PAGINATION_QUERY`
+  ```js
+  export const PAGINATION_QUERY = gql`...`;
+  ```
+- Go back to the `paginationField` and import `PAGINATION_QUERY`
+  `import { PAGINATION_QUERY } from '../components/Pagination';`
+- On the `read` function create a constant call `data` with the following content
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+      },
+      merge() {},
+    };
+  }
+  ```
+  The `readQuery` function will allow us to pull `data` from the `cache` and it recive an object with a `query` property that need a `query` as it value
+- Now create a constant call `count` and pull the `data` of the `allProductsMeta query` from the `data` variable
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+      },
+      merge() {},
+    };
+  }
+  ```
+  We add the `?` because there is a possibility that the `data` is `undefined` so the application won't crash
+- Next, we need to calculate what page we are currently on using the `skip` and `first` value and how many pages that we have in total
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+      },
+      merge() {},
+    };
+  }
+  ```
+- Then we need to check if we have existing items
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+      },
+      merge() {},
+    };
+  }
+  ```
+  Using all items on the `existing` array we will begin from the `skip` value then go until the `skip` value plus the number of items per page that is on the `first` variable then we `filter` the `undefined` position of the array
+- If there are no existing items we will send them to the `network` returning a `false` value
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length !== first) {
+          return false;
+        }
+      },
+      merge() {},
+    };
+  }
+  ```
+
+- Then they are items we return then and there is no need to go to the network
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length !== first) {
+          return false;
+        }
+
+        if (items.length) {
+          return items;
+        }
+      },
+      merge() {},
+    };
+  }
+  ```
+
+- And finally; we put a fallback that goes to the network returning `false`
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length !== first) {
+          return false;
+        }
+
+        if (items.length) {
+          return items;
+        }
+
+        return false;
+      },
+      merge() {},
+    };
+  }
+  ```
+
+- Now we need work with the `merge` function that will trigger after a network request. As we see on the `read` function; `merge` recive `exiting`; `incoming` and a object with the `args` property
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {},
+    };
+  }
+  ```
+  - The `existing` array has the items that already are on the `Apollo cache`
+  - The `incoming` array have the items that were fetched from the network
+  - The `args` have the parameters that we send to the `query`; in this case the `skip` and `first` variables
+- Now if we got `existing` items on the array we grab a copy of them or send an empty array
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const merged = existing ? existing.slice(0) : [];
+      },
+    };
+  }
+  ```
+  Why we don't simply use the `push` function with the `incoming` items? Is because if we are on a page that is not the first one we need to have a blank spot on the `skip` items so we can re ajust the items to the correct position when we delete one
+- Destructure the `skip` value from `args`
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const { skip, first } = args;
+        const merged = existing ? existing.slice(0) : [];
+      },
+    };
+  }
+  ```
+- Now add the following loop
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const { skip, first } = args;
+        const merged = existing ? existing.slice(0) : [];
+        for (let i = skip; i < skip + incoming.length; ++i) {
+          merged[i] = incoming[i - skip];
+        }
+      },
+    };
+  }
+  ```
+  This loop will take the `skip` value and make it the index of the current page position and loop until we get to the `skip` plus the `incoming` items size. This will add the items to the correct place and leave the other `skip` values as a blank spot on the array
+- Finally; we return the `merge` items
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {...},
+      merge(existing, incoming, { args }) {
+        const { skip, first } = args;
+        const merged = existing ? existing.slice(0) : [];
+        for (let i = skip; i < skip + incoming.length; ++i) {
+          merged[i] = incoming[i - skip];
+        }
+
+        return merged;
+      },
+    };
+  }
+  ```
+
+- If we do a network request and return the `merge` items; `apollo` will call again the `read` function and try it again and ideally you will have items and it will return it. So let test this; on your terminal go to the `backend` directory and start your local server
+- On another tab of your terminal go to the `frontend` directory and start your local server
+- Go to this [product url](http://localhost:7777/products/2)
+- Open the browser `dev tools`
+- Click on the `Apollo` tab
+- Then click on the `cache` option on the left side
+- You should see just one `allProducts query` and if you use the `page 2` URL that it share previously; you will see 2 `null` for the first 2 `skip` items then the 2 current items
+- Click the next button on the pagination
+- Close and open the `dev tools`
+- Go to the `Apollo cache` option
+- You should see the new items in the correct position
+- Click the next button and get to the last page
+- You should have an error(if the last page have the least items that the show per page) and is because on the `read` function we only return the items when the length of the items are equal to the `first` variable
+- Go back to the `read` function on the `paginationField` file
+- Before the `item.length !== first` condition add the following
+
+  ```js
+  export default function paginationField() {
+    return {
+      keyArgs: false,
+      read(existing = [], { args, cache }) {
+        const { skip, first } = args;
+        const data = cache.readQuery({ query: PAGINATION_QUERY });
+        const count = data?._allProductsMeta?.count;
+        const page = skip / first + 1;
+        const pages = Math.ceil(count / first);
+        const items = existing.slice(skip, skip + first).filter((x) => x);
+
+        if (items.length && items.length !== first && page === pages) {
+          return items;
+        }
+
+        if (items.length !== first) {
+          return false;
+        }
+
+        if (items.length) {
+          return items;
+        }
+
+        return false;
+      },
+      merge(existing, incoming, { args }) {...},
+    };
+  }
+  ```
+
+  If they are items and the items don't have the side of the per-page variables and we are on the last page then send the items
+
+- Now go back to your browser and refresh the page. If you got the error on the last page; it should be fix
+- Go to another `pagination` page that is not the last(so you can see the effect) and `delete` an item
+- You should see the items re adjust itself
