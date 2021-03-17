@@ -5456,3 +5456,155 @@ If we target the second option and come back with the items it will run the `mer
 - Now go back to your browser and refresh the page. If you got the error on the last page; it should be fix
 - Go to another `pagination` page that is not the last(so you can see the effect) and `delete` an item
 - You should see the items re adjust itself
+
+## Module 8: User registration + authentication
+
+Over the next sections, we will be working with `sign in`, `sign out`, `registration`, and `resetting` password`all the flow that is involved in the`user authentication.
+
+### Querying the current user
+
+Thankfully for us `keystone` does a pretty good job of handling all the logic begin the `user authentication and it will our job to code the `UI`of all this flow. At this moment we will begin with the`sign in`page and the option for this in the`navigation`because we already have a`logged in user`in our`keystone`admin(We already make this`user`on a previews section). Here we will show the`user`information on the`navigation`and is it not`logged in`will show a link to the`sign in` page. Let begin with the process
+
+- On your editor; go to the `frontend/components/` directory
+- Create a new file call `User.js`. This file will contain a `query` for the current `user` and a custom hook that will allow us to get the `user` information regardless the file that we are in
+- On this newly created file; export a function call `useUser`
+  `export function useUser() {}`
+- Import `gql` and `useQuery` from `@apollo/client`
+  `import { gql, useQuery } from '@apollo/client';`
+- Create a constant call `CURRENT_USER_QUERY` that have a `gql` as it value
+  ```js
+  export const CURRENT_USER_QUERY = gql``;
+  ```
+- As you may remember we set `User` as `authenticated` item but on the `query` we can just call `User` on the `query` because `keystone` makes a general name so you can set anything to be your `authenticated` item. So go to your terminal and get to the `backend` directory and start your local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Type the following `query`(make sure that you are logged in)
+  ```js
+  query {
+    authenticatedItem {}
+  }
+  ```
+- Try to let the intelligence fill what you need to `query` for the `authenticatedItem`
+- You should see that it no give you any options
+- Click on the `Docs`tab on the right side
+- Type `authenticatedItem` on the `search` input
+- Click on the `authenticatedItem` option and you will see that it doesn't return the actual `user` values; it returns a type `User` but not only that as you see it returns a `union` type that means that can return multiple types(in this case we only have a `user`)
+- So we need to do the following to grab the actual information of the `user`
+  ```js
+  query {
+    authenticatedItem {
+      ... on User {
+        id
+        email
+        name
+      }
+    }
+  }
+  ```
+  Sometimes you will have multiple subtypes on a type and you will need to follow this syntax. If you have more than one type you just need to put it below the `User` in this case
+- Click the play button
+- You will see the `user` data
+- Copy the `query` and paste it on the `CURRENT_USER_QUERY`
+  ```js
+  export const CURRENT_USER_QUERY = gql`
+    query {
+      authenticatedItem {
+        ... on User {
+          id
+          email
+          name
+          # TODO: Query the cart once we have it
+        }
+      }
+    }
+  `;
+  ```
+- Now go to the `useUser` hook and use the `useQuery` to get the `data` and return it
+
+  ```js
+  export function useUser() {
+    const { data } = useQuery(CURRENT_USER_QUERY);
+
+    return data?.authenticatedItem;
+  }
+  ```
+
+  The `query` could be undefined for a moment so we add the `?` in the return statement
+
+- Go to the `Nav` component
+- Import the `useUser` hook
+- On the `Nav` function create a constant call `user` that has the `useUser` hook as its value and log the `user` value
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    console.log(user);
+    return (...);
+  }
+  ```
+
+- On your terminal; go to the `frontend` directory and start your local server
+- Go to the `homepage`
+- Open the `dev tools` of the browser
+- You should see the `user` information on the console(Remember that you previously logged in on `keystone`)
+- Go back to the `Nav` component
+- Put a condition to show the `sell`, `order` and `account` only if the `user` is `sign in`
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    console.log(user);
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+          </>
+        )}
+      </NavStyles>
+    );
+  }
+  ```
+- Now if the user is not `sign in`; it will show a link to the `sign in` page(we will create this page in a moment)
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    console.log(user);
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+          </>
+        )}
+        {!user && (
+          <>
+            <Link href="/signin">Sing In</Link>
+          </>
+        )}
+      </NavStyles>
+    );
+  }
+  ```
+- Go to the `page` directory and create a file call `signin.js`
+- On this newly created file; export a function call `SignInPage` with the following content
+  ```js
+  export default function SingInPage() {
+    return (
+      <div>
+        <p>Sign In!!!</p>
+      </div>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see the options normally as we have before
+- Open a new browser window on incognito
+- Go to the `homepage`
+- You should see the `sign in` option
+- Click on the `sign in` option
+- You should be redirected to the `signin` page
