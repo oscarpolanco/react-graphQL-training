@@ -5608,3 +5608,402 @@ Thankfully for us `keystone` does a pretty good job of handling all the logic be
 - You should see the `sign in` option
 - Click on the `sign in` option
 - You should be redirected to the `signin` page
+
+### Creating a sign-in component
+
+Now that we get the `user` information we can continue with the `sign in` page. Here are the steps:
+
+- On your editor; go to the `frontend/components` directory and create a file call `SignIn.js`
+- In this newly create file export a function call `SignIn`
+  `export default function SignIn() {}`
+- Import the `Form` component from `./styles/Form`
+  `import Form from './styles/Form';`
+- Use the `Form` component with a message on the `SignIn` function
+  ```js
+  export default function SignIn() {
+    return (
+      <Form>
+        <p>Im the sign in page!!!</p>
+      </Form>
+    );
+  }
+  ```
+- Go to the `signin.js` file on the `pages` directory
+- Import the `SignIn` component
+  `import SignIn from '../components/SignIn';`
+- Use it as a content on the `SignInPage` function
+  ```js
+  export default function SignInPage() {
+    return (
+      <div>
+        <SignIn />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [signin page](http://localhost:7777/signin)
+- You should see the message of the `SignIn` component
+- Go back to the `SignIn` component file
+- Add the `POST` method on the `Form` component
+  ```js
+  export default function SignIn() {
+    return (
+      <Form method="POST">
+        <p>Im the sign in page!!!</p>
+      </Form>
+    );
+  }
+  ```
+  We need to add the `method` in this case because by default the `forms` add on the `URL` as a `query` param the things that you submit on the `form` and somewhere on your `server` it will have that you are doing a `get` request with the `data` in it, and remember that we will be working with a `password` so we can't have any store information like this.
+- Now add the following elements of the `form`
+  ```js
+  export default function SignIn() {
+    return (
+      <Form method="POST">
+        <h2>Sing into your account</h2>
+        <fieldset>
+          <label htmlFor="email">
+            Email
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autoComplete="email"
+            />
+          </label>
+          <label htmlFor="email">
+            Password
+            <input
+              type="password"
+              name="password"
+              placeholder="password"
+              autoComplete="password"
+            />
+          </label>
+          <button type="submit">Sign In!</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- Then we need to sync the inputs with a state and for this, we will use the `useForm` hook that we previously define; s import it
+  `import useForm from '../lib/useForm';`
+- Use the `useForm` hook on the `SignIn` function
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      password: '',
+    });
+
+    return (...);
+  }
+  ```
+
+- Add the `value` and `onChange` property using the `inputs` state and `handleChange` as it values on both `form inputs`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      password: '',
+    });
+
+    return (
+      <Form method="POST">
+        <h2>Sing into your account</h2>
+        <fieldset>
+          <label htmlFor="email">
+            Email
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autoComplete="email"
+              value={inputs.email}
+              onChange={handleChange}
+            />
+          </label>
+          <label htmlFor="email">
+            Password
+            <input
+              type="password"
+              name="password"
+              placeholder="password"
+              autoComplete="password"
+              value={inputs.password}
+              onChange={handleChange}
+            />
+          </label>
+          <button type="submit">Sign In!</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Bellow the `useForm` hook create a function call `handleSubmit` that receive the `inputs` event and call the `preventDefault`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+
+    function handleSubmit(e) {
+      e.preventDefault();
+    }
+    return (...);
+  }
+  ```
+
+  Before continuing with the next step; sometimes you may ask yourself that saving the `password` in clear text with the `input` is a security issue but that is the way that the browser work to get the `data` from the `user` but we use `HTTPS` on the site to prevent a security issue when is on the network so when we send the actual request with the `password` will be encrypted
+
+- We need to write a `mutation` to `sign in` the `user`; so first import `gql` from `@apollo/client`
+  `import { gql } from '@apollo/client';`
+- Create a constant call `SIGNIN_MUTATION` that it value is `gql`
+  ```js
+  const SIGNIN_MUTATION = gql``;
+  ```
+- Begin to write a `mutation` call `SIGNIN_MUTATION` that recive an `email` and a `password` that are `strings` and are `required`
+  ```js
+  const SIGNIN_MUTATION = gql`
+    mutation SIGNIN_MUTATION($email: String!, $password: String!) {}
+  `;
+  ```
+- Before to continue let see how this `mutation` works on the `graphQL` playground. On your terminal; go to the `backend` directory and start your local server
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Type the following
+  ```js
+  mutation {
+    authenticateUserWithPassword {}
+  }
+  ```
+- Click on the `Docs` tab on the right
+- Type `authenticateUserWithPassword` on the search input
+- You will see that returns a `union type` this means that can return more than one `type`; in this case `UserAuthenticationWithPasswordSuccess` or `UserAuthenticationWithPasswordFailure` representing the `success` or `failure` state of the operation
+- Go back to the `SingIn` component and add the following to the `SIGNIN_MUTATION` mutation
+  ```js
+  const SIGNIN_MUTATION = gql`
+    mutation SIGNIN_MUTATION($email: String!, $password: String!) {
+      authenticateUserWithPassword(email: $email, password: $password) {
+        ... on UserAuthenticationWithPasswordSuccess {
+          item {
+            id
+            email
+            name
+          }
+        }
+      }
+    }
+  `;
+  ```
+  This will return the `data` from the `user` if we got a successful `sign in` operation
+- Let test the `mutation`; first; import the `useMutation` hook
+  `import { gql, useMutation } from '@apollo/client';`
+- Use the `useMutation` hook below the `useForm` hook sending the `SIGNIN_MUTATION mutation` and the `variables` that we need
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(SIGNIN_MUTATION, {
+      variables: inputs,
+    });
+
+    function handleSubmit(e) {
+      e.preventDefault();
+    }
+    return (...);
+  }
+  ```
+
+- We need to re-fetch the `current user query` when we perform the `SIGNIN_MUTATION mutation` so we have the always up-to-date `user` information. So import the `CURRENT_USER_QUERY` from the `User` file
+  `import { CURRENT_USER_QUERY } from './User';`
+- Now add a `refetchQueries` property to the `useMutation` second parameter sending an array with an object that has the `CURRENT_USER_QUERY`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(SIGNIN_MUTATION, {
+      variables: inputs,
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+    }
+    return (...);
+  }
+  ```
+
+- Use the `signin` function on `handleSubmit` and console the response
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const res = await signin();
+      console.log(res);
+    }
+    return (...);
+  }
+  ```
+
+- On the `Form` component add a `onSubmit` property with `handleSubmit` as it value
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const res = await signin();
+      console.log(res);
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Let test this; on another tab of your console; go to the `frontend` directory and start your local server
+- Open an incognito browser
+- Go to the [Sign in page](http://localhost:7777/signin)
+- You should see the `form` that you created
+- Fill the `inputs` with the correct `email` and `password` that you use on `keystone`
+- Submit the data
+- The items on the `nav` should change to the `sign in` version
+- Check on the console of the `dev tools` that the `user data` is log
+- Now `reset` the `form` after a `sign in` and remove the `console` and the `res` constant
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now we need to catch `errors` and this will be a little different because when is a fail attend of a `sign in`; the request actually is successful but return another `type` so we need to capture the information of the request and send it to our `Error` component. So first let handle the `query`; add this second `type` to `SIGNIN_MUTATION`
+  ```js
+  const SIGNIN_MUTATION = gql`
+    mutation SIGNIN_MUTATION($email: String!, $password: String!) {
+      authenticateUserWithPassword(email: $email, password: $password) {
+        ... on UserAuthenticationWithPasswordSuccess {
+          item {
+            id
+            email
+            name
+          }
+        }
+        ... on UserAuthenticationWithPasswordFailure {
+          code
+          message
+        }
+      }
+    }
+  `;
+  ```
+  This will handle the `UserAuthenticationWithPasswordFailure` when the `sign in` was not successful
+- Then; import the `Error` component
+  `import Error from './ErrorMessage';`
+- Use it below the `h2` on the `form`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing into your account</h2>
+        <Error />
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Create a constant call `error` with the following value below the hooks
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+    const error =
+    data?.authenticateUserWithPassword.__typename ===
+    'UserAuthenticationWithPasswordFailure'
+      ? data?.authenticateUserWithPassword
+      : undefined;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing into your account</h2>
+        <Error />
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  This will take `data` if it has a value and checks the type of request of the `authenticateUserWithPassword` response and if it is a `UserAuthenticationWithPasswordFailure` we return the response and if it not the case we just return `undefined`
+
+- Send the `error` constant as a prop on the `Error` component
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+    const error =
+    data?.authenticateUserWithPassword.__typename ===
+    'UserAuthenticationWithPasswordFailure'
+      ? data?.authenticateUserWithPassword
+      : undefined;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing into your account</h2>
+        <Error error={error} />
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now let test this; close the incognito browser
+- Open another incognito tab(Shortly we will add the logout button)
+- Fill the `form` with `data` that don't are your current account
+- Submit the `data`
+- You should see an `error` pop up
