@@ -6007,3 +6007,86 @@ Now that we get the `user` information we can continue with the `sign in` page. 
 - Fill the `form` with `data` that don't are your current account
 - Submit the `data`
 - You should see an `error` pop up
+
+### Creating a sign out component
+
+At this moment we can `sign in` a valid `user` to our application and update some of the elements of the page we can continue with the `sign out` process.
+
+- First; on your editor; go to the `frontend/components` directory
+- Create a new file call `SignOut.js`
+- In this newly created file; export a function call `SignOut`
+  `export default function SignOut() {}`
+- Import `gql`; `useMutation` and the `CURRENT_USER_QUERY`
+  ```js
+  import { useMutation } from '@apollo/client';
+  import gql from 'graphql-tag';
+  import { CURRENT_USER_QUERY } from './User';
+  ```
+- Create a new constant call `SIGN_OUT_MUTATION` with `gql` as it value
+  ```js
+  const SIGN_OUT_MUTATION = gql``;
+  ```
+- Add the following `mutation`
+  ```js
+  const SIGN_OUT_MUTATION = gql`
+    mutation {
+      endSession
+    }
+  `;
+  ```
+  The `endSession mutation` doesn't recive parameter and terminate the current `session` of an `user`
+- On the `SignOut` use the `useMutation` hook sending `SIGN_OUT_MUTATION` and re-fetching the current `user query`
+  ```js
+  export default function SignOut() {
+    const [singOut] = useMutation(SIGN_OUT_MUTATION, {
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+  }
+  ```
+- Return a button with a `sign out` message and a property `onClick` that receive the function that returns the `useMutation` hook on the `SignOut` function
+
+  ```js
+  export default function SignOut() {
+    const [singOut] = useMutation(SIGN_OUT_MUTATION, {
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+
+    return (
+      <button type="button" onClick={singOut}>
+        Sing Out
+      </button>
+    );
+  }
+  ```
+
+- Go to the `Nav` component and import the `SignOut` component
+  `import SignOut from './SignOut';`
+- Call the `SignOut` component on the `Nav` function on the part that belongs to the authenticated `user`
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [sign in page](http://localhost:7777/signin)
+- `Sign in`; if you are not
+- Click on the `sign out` button
+- You should see that the items of the `nav` change; this means that you are not logged in anymore
