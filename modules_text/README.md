@@ -5673,7 +5673,7 @@ Now that we get the `user` information we can continue with the `sign in` page. 
               autoComplete="email"
             />
           </label>
-          <label htmlFor="email">
+          <label htmlFor="password">
             Password
             <input
               type="password"
@@ -5727,7 +5727,7 @@ Now that we get the `user` information we can continue with the `sign in` page. 
               onChange={handleChange}
             />
           </label>
-          <label htmlFor="email">
+          <label htmlFor="password">
             Password
             <input
               type="password"
@@ -6090,3 +6090,252 @@ At this moment we can `sign in` a valid `user` to our application and update som
 - `Sign in`; if you are not
 - Click on the `sign out` button
 - You should see that the items of the `nav` change; this means that you are not logged in anymore
+
+### Creating our sign up flow
+
+We can continue with the next step that is the `sign up` flow where the `user` will create a valid account. This feature will be on the `sign in` page; side by side with the `sign in form` because the `sign up form` will not `sign in` the `user`. So let get to it.
+
+- On your editor; go to the `frontend/components/` directory
+- Duplicate the content of the `SignIn` component in a new file call `SignUp.js`
+- On this newly created file update the function name from `SignIn` to `SignUp`
+  `export default function SignUp() {...}`
+- Go to the `signin` page on the `pages` directory
+- Import the `SignUp` component
+  `import SignUp from '../components/SignUp';`
+- Use the `SingUp` component below the `SignIn` component
+  ```js
+  export default function SignInPage() {
+    return (
+      <div>
+        <SignIn />
+        <SignUp />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [Sign in page](http://localhost:7777/signin)
+- You should see the 2 `forms` on the page
+- We are going to put these 2 `forms` side by side so let create some `grid` style for it. Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a constant call `GridStyles` that is a `styled` component `div`
+  ```js
+  const GridStyles = styled.div``;
+  ```
+- Add the following styles
+  ```js
+  const GridStyles = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-gap: 2rem;
+  `;
+  ```
+  - `display: grid`: The `display` property defines whether an element is treated as a block or inline-block and the layout that is going to use; in this case will use `grid` that divide the page into major regions or defining a relationship in terms of size, position and layer between the elements
+  - `grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));`: Define the column in the function of the `grid column` that is a vertical track of the `CSS grid layout` with space between to vertical `grid` lines. We use the `repeat` function to have the same values without typing 2 times and it calculates the `width` of the `columns` with the `auto-fit` value that will fill the space of the container will the columns that you defined. Also, we set `max` and `min` values that the `columns` can not pass; in this case `300px` and `1fr`
+  - `grid-gap: 2rem;` Define the space between `columns`
+- Replace the `div` with `GridStyles`
+  ```js
+  export default function SignInPage() {
+    return (
+      <GridStyles>
+        <SignIn />
+        <SignUp />
+      </GridStyles>
+    );
+  }
+  ```
+- Go back to your browser and refresh the page
+- You should see the `forms` side by side
+- Now get back to the `SignUp` file
+- Update the `h2` title for the `sign up form`
+
+  ```js
+  export default function SignUp() {
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing up for an account</h2>
+        ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Add a `name` initial value on the `useForm` hooks
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      name: '',
+      password: '',
+    });
+    ...
+
+    return (...);
+  }
+  ```
+
+- Add an `input` for the `name`
+
+  ```js
+  export default function SignUp() {
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Sing up for an account</h2>
+      <Error error={error} />
+      <fieldset>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            name="name"
+            placeholder="Your name"
+            autoComplete="name"
+            value={inputs.name}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="email">...</label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Sign In!</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+
+- Now we need to do the `mutation` to create a `user` but first; delete `SIGNIN_MUTATION` completely
+- Create a new constant call
+  ```js
+  const SIGNUP_MUTATION = gql``;
+  ```
+- Add a `mutation` call ``SIGNIN_MUTATION` that recive a `name`; an `email` and a `password`; all are `strings` and are `required`
+  ```js
+  const SIGNUP_MUTATION = gql`
+    mutation SIGNUP_MUTATION(
+      $email: String!
+      $name: String!
+      $password: String!
+    ) {}
+  `;
+  ```
+- Then we need to use the `createUser` API that `keystone` provide to us passing the `variables` that we previously created and returning the `user data`
+  ```js
+  const SIGNUP_MUTATION = gql`
+    mutation SIGNUP_MUTATION(
+      $email: String!
+      $name: String!
+      $password: String!
+    ) {
+      createUser(data: { email: $email, name: $name, password: $password }) {
+        id
+        email
+        name
+      }
+    }
+  `;
+  ```
+- Now go to the `useMutation` hook and use `SIGNUP_MUTATION`; rename the `signin` function to `signup` and add the `error` variable on the object return as a second item of the destructuring
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {
+      variables: inputs,
+    });
+    ...
+    return (...);
+  }
+  ```
+
+  We don't need to re-fetch the `user` data because the `user` will not be logged in after creating its account
+
+- Rename the `signin` function to `signup` on the `handleSubmit` function
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {
+      variables: inputs,
+    });
+
+    const error =
+    data?.authenticateUserWithPassword.__typename ===
+    'UserAuthenticationWithPasswordFailure'
+      ? data?.authenticateUserWithPassword
+      : undefined;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signup();
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+- Remove the `error` constant
+- Now if the `user` successfully create an account; we need to let know that everything goes as expected so add the following condition to show a message at the top of the `fieldset`
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {...});
+
+    async function handleSubmit(e) {...}
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Sing up for an account</h2>
+      <Error error={error} />
+      <fieldset>
+        {data?.createUser && (
+          <p>
+            Signed up with {data.createUser.email} - Please go ahead and sign
+            in!!
+          </p>
+        )}
+        <label htmlFor="name">...</label>
+        <label htmlFor="email">... </label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Sign In!</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+
+  This will pop up when `data` have the `user` information
+
+- Finally; we already use the `error` variable to show the `error` message but we still need to catch it on the `handleSubmit` function so the application doesn't break because the `signup` function retrieve an `error`
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {...});
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signup().catch(console.error);
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Fill the `sign up form` with a not valid account(try with less than 8 characters on the `password` or an `email` that already exists) and submit
+- You should see an `error` message pop up
+- Fill the `form` with a valid `user` and submit
+- A successful message should pop up
+- Go to the [keystone admin](http://localhost:3000/)
+- Click on the `Users` tab on the left side
+- You should see the `User` that you created on the list
