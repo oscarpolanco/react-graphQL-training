@@ -6339,3 +6339,174 @@ We can continue with the next step that is the `sign up` flow where the `user` w
 - Go to the [keystone admin](http://localhost:3000/)
 - Click on the `Users` tab on the left side
 - You should see the `User` that you created on the list
+
+### Password reset - Request a reset
+
+Finally, we can begin with the last part of the `authentication` flow that is the `password` reset; where the `user` will request a `password` reset and the `backend` will generate a random `token`; then an email is sent to the `user` email with an `URL` that have this random `token` on it; then the `user` will go to this `URL` and send it email and the new `password` that will be sent to the `backend` with the `token` that was generated before. The `backend` will determine that the `token` is made for the email that it receives and if that `token` has a certain amount of time since its creation. Let begin with the first part of this process.
+
+- On your editor; go to the `frontend/components` directory
+- Duplicate the content of the `SignUp` component in a new file call `RequestReset.js`
+- On this newly created file; replace the `SignUp` name of the main function to `RequestReset`
+- On the `useForm` hook eliminate the `name` and `password` on the initial values
+
+  ```js
+  export default function RequestReset() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+    });
+    ...
+
+    return (...);
+  }
+  ```
+
+- Remove the `name` and `password` inputs and update the submit button message to said `request reset`
+
+  ```js
+  export default function RequestReset() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+    });
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing up for an account</h2>
+        <Error error={error} />
+        <fieldset>
+          {data?.createUser && (
+            <p>
+              Signed up with {data.createUser.email} - Please go ahead and sign
+              in!!
+            </p>
+          )}
+          <label htmlFor="email">
+            Email
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autoComplete="email"
+              value={inputs.email}
+              onChange={handleChange}
+            />
+          </label>
+          <button type="submit">Request Reset</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Go to the `signin` page on the `pages` directory
+- Import the `RequestReset` component
+  `import RequestReset from '../components/RequestReset';`
+- Use the `RequestReset` component bellow the `SignUp` component
+  ```js
+  export default function SignInPage() {
+    return (
+      <GridStyles>
+        <SignIn />
+        <SignUp />
+        <RequestReset />
+      </GridStyles>
+    );
+  }
+  ```
+- Go back to the `RequestReset` component and remove `SIGNUP_MUTATION` and create a new constant call `REQUEST_RESET_MUTATION`
+  ```js
+  const REQUEST_RESET_MUTATION = gql``;
+  ```
+- Make a `mutation` that will be call `REQUEST_RESET_MUTATION` that recive an `email` that is a `string` and need to be `required` and send that value to the following api function
+  ```js
+  const REQUEST_RESET_MUTATION = gql`
+    mutation REQUEST_RESET_MUTATION($email: String!) {
+      sendUserPasswordResetLink(email: $email) {}
+    }
+  `;
+  ```
+- Now on your terminal; go to the `backend` directory and start your local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Click on the `Docs` tab on the right side
+- On the `search` input; `search` for `sendUserPasswordResetLink`
+- You will not have any results. This is because we don't have it available yet
+- To make `sendUserPasswordResetLink` available we need to add some configuration on the `keystone.ts` file in the `backend` directory
+- On the `createAuth` function and add the following
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+    identityField: 'email',
+    secretField: 'password',
+    initFirstItem: {
+      fields: ['name', 'email', 'password'],
+      // TODO: Add in initial roles here
+    },
+    passwordResetLink: {
+      async sendToken(args) {
+        console.log(args);
+      },
+    },
+  });
+  ```
+  The `passwordResetLink` recive an object with a `sendToken` method
+- On your terminal go; restart the `backend` local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Click on the `Docs` tab at the rigth side
+- On the `search` input; `search` for `sendUserPasswordResetLink`
+- You should see that you have a reult on the `search`; this mean that the `sendUserPasswordResetLink` is available on our api
+- Add the following `mutation` on the playground using a valid `user` email
+  ```js
+  mutation {
+    sendUserPasswordResetLink(email: "your_valid@email.com") {
+      code
+      message
+    }
+  }
+  ```
+- Click on the play button
+- You should have a `null` result
+- Go to your terminal
+- You should see that an object is print with an `id`; a `user` and a `token`
+- Go back to the `RequestReset` component
+- Add the `code` and `message` on `REQUEST_RESET_MUTATION`
+  ```js
+  const REQUEST_RESET_MUTATION = gql`
+    mutation REQUEST_RESET_MUTATION($email: String!) {
+      sendUserPasswordResetLink(email: $email) {
+        code
+        message
+      }
+    }
+  `;
+  ```
+- Replace the welcome message of the `form` with this
+
+  ```js
+  export default function RequestReset() {
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing up for an account</h2>
+        <Error error={error} />
+        <fieldset>
+          {data?.createUser && (
+            <p>
+              Signed up with {data.createUser.email} - Please go ahead and sign
+              in!!
+            </p>
+          )}
+          <label htmlFor="email">...</label>
+          <button type="submit">Request Reset</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Open another tab on your terminal; go to the `frontend` directory and start your local server
+- On your browser go to the [Sign in page](http://localhost:7777/signin)
+- You should see the `Request a password reset form`
+- Use a valid email and submit the data
+- You should see a success message
+- Go to the terminal with the `backend` local server and you should see an object print with the email that you just submit
