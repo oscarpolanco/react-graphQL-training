@@ -6510,3 +6510,288 @@ Finally, we can begin with the last part of the `authentication` flow that is th
 - Use a valid email and submit the data
 - You should see a success message
 - Go to the terminal with the `backend` local server and you should see an object print with the email that you just submit
+
+### Password Reset - Setting a new password
+
+At this moment we trigger the `password` reset process using a `form` that on valid `email` submit generate a `token` and we will send this `token` via a `query` param in a URL. Here are the steps
+
+- On your editor; go to the `frontend/pages/` directory
+- Since we are passing the `token` via `query` param we will need a new page so create a file on call `reset.js` on the `pages` directory
+- Create a function call `ResetPage` with the following message
+  ```js
+  export default function ResetPage() {
+    return (
+      <div>
+        <p>Reset your password</p>
+      </div>
+    );
+  }
+  ```
+- On your terminal go to the `backend` directory and start your local server
+- Then on another tab of your terminal go to the `frontend` directory and start your local server
+- On your browser go to the [reset page](http://localhost:7777/reset)
+- You should see the message that you use on the `ResetPage` component
+- Pass a `token` via `query` param like this `http://localhost:7777/reset?token=Your_test_token`
+- Go to the `reset` file
+- Receive the `query` prop as we did on other components
+  `export default function ResetPage({ query }) {...}`
+- Render the `token` as part of the page message
+  ```js
+  export default function ResetPage() {
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+      </div>
+    );
+  }
+  ```
+- Go back to your browser and refresh
+- You should see the `token` as part of the page message
+- Now we need to handle if someone enters the `reset` URL without `token` so add a condition that sends a message to use on this case
+
+  ```js
+  export default function ResetPage() {
+    if (!query?.token) {
+      return (
+        <div>
+          <p>Sorry you mus supply a token</p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+      </div>
+    );
+  }
+  ```
+
+- Then import the `RequestReset` component
+  `import RequestReset from '../components/RequestReset';`
+- Add the `RequestReset` component as part of the no `token` condition so the `user` can solicitate the `token`
+
+  ```js
+  export default function ResetPage() {
+    if (!query?.token) {
+      return (
+        <div>
+          <p>Sorry you mus supply a token</p>
+          <RequestReset />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser and remove the `token` on the URL
+- You should see the no `token` message and the `RequestReset` form
+- Go back to your editor and go to the `components` file
+- Create a new file call `Reset.js`
+- Take the content of the `RequestReset` component and add it to this newly created file
+- Update the `RequestReset` name on the function to `Reset`
+  `export default function Reset() {...}`
+- On the `useForm` hook add the `password` and `token` in the `initial` values
+  ```js
+  export default function Reset() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      password: '',
+      token,
+    });
+    ...
+  }
+  ```
+- Then add a new input for the `password` on the form
+
+  ```js
+  export default function Reset() {
+    ...
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Request a password reset</h2>
+        <Error error={error} />
+        <fieldset>
+          {data?.sendUserPasswordResetLink === null && (
+            <p>Success! Check your email for a link!!</p>
+          )}
+          <label htmlFor="email">...</label>
+          <label htmlFor="password">
+            Password
+            <input
+              type="password"
+              name="password"
+              placeholder="password"
+              autoComplete="password"
+              value={inputs.password}
+              onChange={handleChange}
+            />
+          </label>
+          <button type="submit">Request Reset</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Go to the `reset.js` file
+- Import the `Reset` component
+  `import Reset from '../components/Reset';`
+- Use the `Reset` component on the bellow the `query` message
+
+  ```js
+  export default function ResetPage() {
+    if (!query?.token) {...}
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+        <Reset />
+      </div>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh the page
+- You should see the `reset` form on the page
+- Then we will work with the `mutation`; so get back to the `Reset` component
+- Update `REQUEST_RESET_MUTATION` to `RESET_MUTATION`
+- Add the following method on the `mutation`
+  ```js
+  const RESET_MUTATION = gql`
+    mutation RESET_MUTATION(
+      $email: String!
+      $password: String!
+      $token: String!
+    ) {
+      redeemUserPasswordResetToken(
+        email: $email
+        token: $token
+        password: $password
+      ) {
+        code
+        message
+      }
+    }
+  `;
+  ```
+- Update the `signup` function to `reset` on the `useMutation` hook and the `handleSubmit` function
+
+  ```js
+  export default function Reset() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [reset, { data, error }] = useMutation(RESET_MUTATION, {
+      variables: inputs,
+    });
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await reset().catch(console.error);
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+- Update the success message
+
+  ```js
+  export default function Reset() {
+    ...
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Request a password reset</h2>
+      <Error error={error} />
+      <fieldset>
+        {data?.redeemUserPasswordResetToken === null && (
+          <p>Success! You can now sign in!!</p>
+        )}
+        <label htmlFor="email">...</label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Request Reset</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+
+- Now remove the error variable from the `useMutation` hook
+- Create a new variable call `codeRequestError` with the following content
+
+  ```js
+  export default function Reset() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [reset, { data }] = useMutation(RESET_MUTATION, {
+      variables: inputs,
+    });
+    const codeRequestError = data?.redeemUserPasswordResetToken?.code
+    ? data?.redeemUserPasswordResetToken
+    : undefined;
+
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await reset().catch(console.error);
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+  This will return the unsuccessful token creation that returns a valid request. A request `error` will be caught on the `handleSubmit` function
+
+- Add the `codeRequestError` to the `Error` component
+  ```js
+  export default function Reset() {
+    ...
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Request a password reset</h2>
+      <Error error={error || codeRequestError} />
+      <fieldset>
+        {data?.redeemUserPasswordResetToken === null && (
+          <p>Success! You can now sign in!!</p>
+        )}
+        <label htmlFor="email">...</label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Request Reset</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+- Now get back to the `reset.js` file
+- Grap the `token` and send it to the `Reset` component as a prop
+
+  ```js
+  export default function ResetPage({ query }) {
+    if (!query?.token) {...}
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+        <Reset token={query.token} />
+      </div>
+    );
+  }
+  ```
+
+- On the `Reset` component receive the `token` prop
+  `export default function Reset({ token }) {...}`
+- Go to your browser and refresh the page
+- The go-to the [signin page](http://localhost:7777/signin)
+- Request for a `password reset`
+- Get back to the tab of the terminal that has the `backend` local server
+- Copy the `token`
+- Use the `token` as a `query` param on the `reset` URL
+- Fill the `Reset your password` form
+- Submit the data
+- The account should successful update the `password`
