@@ -6795,3 +6795,200 @@ At this moment we trigger the `password` reset process using a `form` that on va
 - Fill the `Reset your password` form
 - Submit the data
 - The account should successful update the `password`
+
+### Password reset - sending the email
+
+Finally, we get to the final task of `password reset` that is send an email with the URL that has the `token` to redirect the `user` to the `reset page`. So let begin
+
+- In this example, we will use a fake service that sends an email. They are good free options like [mailtrap](https://mailtrap.io/) but we will use [ethereal](https://ethereal.email/). You need to remember that on `production` you will need a transactional email service like [postmark](https://postmarkapp.com/) or [sendgrid](https://sendgrid.com/). So go to [ethereal](https://ethereal.email/)
+- Click on `Create ethereal account`
+- You should see a `username` and `password`
+- Grab both and go to your editor
+- Go to the `.env` file in the `backend` directory
+- Add the following values and fill the `MAIL_USER` and `MAIL_PASS` with the `ethereal` information
+  ```bash
+  MAIL_HOST="smtp.ethereal.email"
+  MAIL_PORT=587
+  MAIL_USER="ethereal_account"
+  MAIL_PASS="ethereal_password"
+  ```
+- On your editor go to the `lib` directory
+- Create a new file call `mail.ts`
+- On this newly created file we will create a `transporter`. A `transporter` is going to allow us to hook up to a `smtp` api and send an email. Import `createTransport` and `TransportOptions` from `nodemailer`
+  `import { createTransport, TransportOptions } from 'nodemailer';`
+- Create a constant call `transport` with `createTransport` as it value
+  `const transport = createTransport({});`
+- On the `createTransport` configuration object add the following properties using the `environment variables`
+  ```js
+  const transport = createTransport({
+    host: process.env.MAIL_HOST,
+    port: process.env.MAIL_PORT,
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS,
+    },
+  });
+  ```
+- Since we are on `typescript` we need to specify the types that of the properties on the object and for this `nodemailer` make then avilable on the `TransportOptions`
+  ```js
+  const transport = createTransport({
+    host: process.env.MAIL_HOST,
+    port: process.env.MAIL_PORT,
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS,
+    },
+  } as TransportOptions);
+  ```
+- Now we will create a function that create our email body(There are some frameworks for this). Create a function call `makeANiceEmail` that recive `text`
+  `function makeANiceEmail(text) {}`
+- Use backtips to return the following content on the `makeANiceEmail` function
+  ```js
+  function makeANiceEmail(text) {
+    return `
+        <div style="
+            border: 1px solid black;
+            padding: 20px;
+            font-family: sans-serif;
+            line-height: 2;
+            font-size: 20px;
+        ">
+            <h2>Hello There!</h2>
+            <p>${text}</p>
+            <p>Your name</p>
+        </div>
+    `;
+  }
+  ```
+  This will be transformed to `HTML on the email content that the `user` receive
+- Since is `typescript` we need to define the `text` parameter type and what the `makeANiceEmail` returns
+  ```js
+  function makeANiceEmailtext: string): string {
+    return `
+        <div style="
+            border: 1px solid black;
+            padding: 20px;
+            font-family: sans-serif;
+            line-height: 2;
+            font-size: 20px;
+        ">
+            <h2>Hello There!</h2>
+            <p>${text}</p>
+            <p>Your name</p>
+        </div>
+    `;
+  }
+  ```
+- At this moment we will need a function that actually send the email. Export a `async` function call `sendPasswordResetEmail` that recive `resetToken` and `to`(The `user` that we will send the email)
+  `export async function sendPasswordResetEmail(resetToken, to) {}`
+- Inside of the `sendPasswordResetEmail` function; create a constant call `info` that `await` the `transport.sendMail` function
+  ```js
+  export async function sendPasswordResetEmail(resetToken, to) {
+    const info = await transport.sendMail({});
+  }
+  ```
+- On the `sendMail` configuration object add the following
+  ```js
+  export async function sendPasswordResetEmail(resetToken, to) {
+    const info = await transport.sendMail({
+      to,
+      from: 'test@example.com',
+      subject: 'Your password reset token',
+      html: makeANiceEmail(`Your Password reset token is here!
+            <a href="${process.env.FRONTEND_URL}/reset?token=${resetToken}">Click here to reset</a>
+        `),
+    });
+  }
+  ```
+  This function will send the email with the parameters that we defined and the actual content is on the `html` property
+- Maybe you don't see any errors but the `nodemailer` response return an `any` type so before having some issues with the linter so we will need to create an `interface`(our custom type) to handle this error
+  ```js
+  interface MailResponse {
+    message: string;
+  }
+  ```
+- Add the `interface` to the `info` constant value; the return value of the `sendPasswordResetEmail` function and the types of the `requestToken` and `to` parameters
+  ```js
+  export async function sendPasswordResetEmail(resetToken: string, to: string): Promise<void>  {
+    const info = (await transport.sendMail({
+      to,
+      from: 'test@example.com',
+      subject: 'Your password reset token',
+      html: makeANiceEmail(`Your Password reset token is here!
+            <a href="${process.env.FRONTEND_URL}/reset?token=${resetToken}">Click here to reset</a>
+        `),
+    })) as MailResponse;
+  }
+  ```
+- Log the `info` constant
+  ```js
+  export async function sendPasswordResetEmail(resetToken: string, to: string): Promise<void>{
+    const info = (await transport.sendMail({...})) as MailResponse;
+    console.log(info);
+  }
+  ```
+- Go to the `keystone.ts` file and import the `sendPasswordResetEmail` function
+  `import { sendPasswordResetEmail } from './lib/mail';`
+- Go to the `passwordResetLink` property and use the `sendPasswordResetEmail` in the `sendToken` function
+  ```js
+  const { withAuth } = createAuth({
+    ...
+    passwordResetLink: {
+      async sendToken(args) {
+        console.log(args);
+        await sendPasswordResetEmail();
+      },
+    },
+  });
+  ```
+- Remove the log and send `args.token` and `args.identity` to the `sendPasswordResetEmail` function
+  ```js
+  const { withAuth } = createAuth({
+    ...
+    passwordResetLink: {
+      async sendToken(args) {
+        await sendPasswordResetEmail(args.token, args.identity);
+      },
+    },
+  });
+  ```
+- Go to your terminal and on the `backend` directory start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser go to the [signin page](http://localhost:7777/signin)
+- Request a `password` reset with a valid account
+- Go to the `ethereal` inbox on your browser
+- You should have an email with the `reset` link with a `token`
+- Click the link
+- You should be redirected to the `reset` page
+- Fill the form and submit
+- You should have a successful message
+- Go to the tab that you have your `backend` local server
+- You should see a response
+- Copy it
+- On your browser go to `https://jvilk.com/MakeTypes/`
+- Open the browser dev tools
+- On the console type the following
+  `copy(JSON.stringify())`
+- On the `stringify` parenthesis; paste the response that you copy early
+- Put on the `Input: JSON Examples` section first input `MailResponse`
+- On the text area paste the content of your clipboard(Should have the content of the `stringify` that we did early)
+- Click on generate
+- On the `Output: TypeScript Interfaces` section; copy the output
+- Go back to the `mail.ts` file
+- Paste the new `interfaces` before the `sendPasswordResetEmail` function
+- Import `getTestMessageUrl` from `nodemailer`
+  `import { createTransport, getTestMessageUrl, TransportOptions } from 'nodemailer';`
+- Now we will make it easier to see the actual link of the email on the `backend` local server output. So add the following in the `sendPasswordResetEmail` function
+
+  ```js
+  export async function sendPasswordResetEmail( resetToken: string, to: string ): Promise<void> {
+    const info = (await transport.sendMail({...})) as MailResponse;
+
+    if (process.env.MAIL_USER.includes('ethereal.email')) {
+      console.log(`Message Sent! Preview it at ${getTestMessageUrl(info)}`);
+    }
+  }
+  ```
+
+- Do the same `request reset password` process
+- When it send the email; go to the terminal tab that has the `backend` local server running. You should see a link and that link will send you to the last email that you send

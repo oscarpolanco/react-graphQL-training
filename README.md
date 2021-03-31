@@ -7,6 +7,7 @@ Fullstack React and GraphQL training.
 - [Nodejs](https://nodejs.org/en/)
 - [Cloudinary](https://cloudinary.com/) account
 - [MongoDB](https://www.mongodb.com/2)(I recommend [mongo atlas](https://www.mongodb.com/cloud/atlas))
+- [Ethereal](https://ethereal.email/) email
 
 ## Tools and modules on use in the application
 
@@ -18,6 +19,8 @@ Fullstack React and GraphQL training.
 - [dotenv](https://www.npmjs.com/package/dotenv) for the `environment variables` of the application
 - [GraphQL](https://graphql.org/) for the `queries` and `mutations`
 - [Apollo](https://www.apollographql.com/) for handle the `graphQL` API and the `cache` of the `queries`
+- [Ethereal](https://ethereal.email/) for an example email service
+- [nodemailer](https://nodemailer.com/about/) to define and send an email
 
 ## Pages
 
@@ -28,6 +31,8 @@ Fullstack React and GraphQL training.
 - [Sell](http://localhost:7777/sell)
 - [Orders](http://localhost:7777/order)
 - [Account](http://localhost:7777/account)
+- [Signin page](http://localhost:7777/signin)
+- [Reset page](http://localhost:7777/reset?token=send_your_valid_token)
 - [CMS home](http://localhost:3000/)
 
 ## Steps to run the frontend side of the application
@@ -49,6 +54,10 @@ Fullstack React and GraphQL training.
   COOKIE_SECRET="random_string"
   DATABASE_URL=my_mongoDB_connection_string
   FRONTEND_URL="http://localhost:7777"
+  MAIL_HOST="smtp.ethereal.email"
+  MAIL_PORT=587
+  MAIL_USER="your_ethereal_username"
+  MAIL_PASS="your_ethereal_password"
   ```
 - On your terminal; go to the `backend` directory
 - Install all dependencies using: `npm install`
