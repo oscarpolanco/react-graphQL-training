@@ -5456,3 +5456,1539 @@ If we target the second option and come back with the items it will run the `mer
 - Now go back to your browser and refresh the page. If you got the error on the last page; it should be fix
 - Go to another `pagination` page that is not the last(so you can see the effect) and `delete` an item
 - You should see the items re adjust itself
+
+## Module 8: User registration + authentication
+
+Over the next sections, we will be working with `sign in`, `sign out`, `registration`, and `resetting` password`all the flow that is involved in the`user authentication.
+
+### Querying the current user
+
+Thankfully for us `keystone` does a pretty good job of handling all the logic begin the `user authentication and it will our job to code the `UI`of all this flow. At this moment we will begin with the`sign in`page and the option for this in the`navigation`because we already have a`logged in user`in our`keystone`admin(We already make this`user`on a previews section). Here we will show the`user`information on the`navigation`and is it not`logged in`will show a link to the`sign in` page. Let begin with the process
+
+- On your editor; go to the `frontend/components/` directory
+- Create a new file call `User.js`. This file will contain a `query` for the current `user` and a custom hook that will allow us to get the `user` information regardless the file that we are in
+- On this newly created file; export a function call `useUser`
+  `export function useUser() {}`
+- Import `gql` and `useQuery` from `@apollo/client`
+  `import { gql, useQuery } from '@apollo/client';`
+- Create a constant call `CURRENT_USER_QUERY` that have a `gql` as it value
+  ```js
+  export const CURRENT_USER_QUERY = gql``;
+  ```
+- As you may remember we set `User` as `authenticated` item but on the `query` we can just call `User` on the `query` because `keystone` makes a general name so you can set anything to be your `authenticated` item. So go to your terminal and get to the `backend` directory and start your local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Type the following `query`(make sure that you are logged in)
+  ```js
+  query {
+    authenticatedItem {}
+  }
+  ```
+- Try to let the intelligence fill what you need to `query` for the `authenticatedItem`
+- You should see that it no give you any options
+- Click on the `Docs`tab on the right side
+- Type `authenticatedItem` on the `search` input
+- Click on the `authenticatedItem` option and you will see that it doesn't return the actual `user` values; it returns a type `User` but not only that as you see it returns a `union` type that means that can return multiple types(in this case we only have a `user`)
+- So we need to do the following to grab the actual information of the `user`
+  ```js
+  query {
+    authenticatedItem {
+      ... on User {
+        id
+        email
+        name
+      }
+    }
+  }
+  ```
+  Sometimes you will have multiple subtypes on a type and you will need to follow this syntax. If you have more than one type you just need to put it below the `User` in this case
+- Click the play button
+- You will see the `user` data
+- Copy the `query` and paste it on the `CURRENT_USER_QUERY`
+  ```js
+  export const CURRENT_USER_QUERY = gql`
+    query {
+      authenticatedItem {
+        ... on User {
+          id
+          email
+          name
+          # TODO: Query the cart once we have it
+        }
+      }
+    }
+  `;
+  ```
+- Now go to the `useUser` hook and use the `useQuery` to get the `data` and return it
+
+  ```js
+  export function useUser() {
+    const { data } = useQuery(CURRENT_USER_QUERY);
+
+    return data?.authenticatedItem;
+  }
+  ```
+
+  The `query` could be undefined for a moment so we add the `?` in the return statement
+
+- Go to the `Nav` component
+- Import the `useUser` hook
+- On the `Nav` function create a constant call `user` that has the `useUser` hook as its value and log the `user` value
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    console.log(user);
+    return (...);
+  }
+  ```
+
+- On your terminal; go to the `frontend` directory and start your local server
+- Go to the `homepage`
+- Open the `dev tools` of the browser
+- You should see the `user` information on the console(Remember that you previously logged in on `keystone`)
+- Go back to the `Nav` component
+- Put a condition to show the `sell`, `order` and `account` only if the `user` is `sign in`
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    console.log(user);
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+          </>
+        )}
+      </NavStyles>
+    );
+  }
+  ```
+- Now if the user is not `sign in`; it will show a link to the `sign in` page(we will create this page in a moment)
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    console.log(user);
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+          </>
+        )}
+        {!user && (
+          <>
+            <Link href="/signin">Sing In</Link>
+          </>
+        )}
+      </NavStyles>
+    );
+  }
+  ```
+- Go to the `page` directory and create a file call `signin.js`
+- On this newly created file; export a function call `SignInPage` with the following content
+  ```js
+  export default function SingInPage() {
+    return (
+      <div>
+        <p>Sign In!!!</p>
+      </div>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see the options normally as we have before
+- Open a new browser window on incognito
+- Go to the `homepage`
+- You should see the `sign in` option
+- Click on the `sign in` option
+- You should be redirected to the `signin` page
+
+### Creating a sign-in component
+
+Now that we get the `user` information we can continue with the `sign in` page. Here are the steps:
+
+- On your editor; go to the `frontend/components` directory and create a file call `SignIn.js`
+- In this newly create file export a function call `SignIn`
+  `export default function SignIn() {}`
+- Import the `Form` component from `./styles/Form`
+  `import Form from './styles/Form';`
+- Use the `Form` component with a message on the `SignIn` function
+  ```js
+  export default function SignIn() {
+    return (
+      <Form>
+        <p>Im the sign in page!!!</p>
+      </Form>
+    );
+  }
+  ```
+- Go to the `signin.js` file on the `pages` directory
+- Import the `SignIn` component
+  `import SignIn from '../components/SignIn';`
+- Use it as a content on the `SignInPage` function
+  ```js
+  export default function SignInPage() {
+    return (
+      <div>
+        <SignIn />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [signin page](http://localhost:7777/signin)
+- You should see the message of the `SignIn` component
+- Go back to the `SignIn` component file
+- Add the `POST` method on the `Form` component
+  ```js
+  export default function SignIn() {
+    return (
+      <Form method="POST">
+        <p>Im the sign in page!!!</p>
+      </Form>
+    );
+  }
+  ```
+  We need to add the `method` in this case because by default the `forms` add on the `URL` as a `query` param the things that you submit on the `form` and somewhere on your `server` it will have that you are doing a `get` request with the `data` in it, and remember that we will be working with a `password` so we can't have any store information like this.
+- Now add the following elements of the `form`
+  ```js
+  export default function SignIn() {
+    return (
+      <Form method="POST">
+        <h2>Sing into your account</h2>
+        <fieldset>
+          <label htmlFor="email">
+            Email
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autoComplete="email"
+            />
+          </label>
+          <label htmlFor="password">
+            Password
+            <input
+              type="password"
+              name="password"
+              placeholder="password"
+              autoComplete="password"
+            />
+          </label>
+          <button type="submit">Sign In!</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+- Then we need to sync the inputs with a state and for this, we will use the `useForm` hook that we previously define; s import it
+  `import useForm from '../lib/useForm';`
+- Use the `useForm` hook on the `SignIn` function
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      password: '',
+    });
+
+    return (...);
+  }
+  ```
+
+- Add the `value` and `onChange` property using the `inputs` state and `handleChange` as it values on both `form inputs`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      password: '',
+    });
+
+    return (
+      <Form method="POST">
+        <h2>Sing into your account</h2>
+        <fieldset>
+          <label htmlFor="email">
+            Email
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autoComplete="email"
+              value={inputs.email}
+              onChange={handleChange}
+            />
+          </label>
+          <label htmlFor="password">
+            Password
+            <input
+              type="password"
+              name="password"
+              placeholder="password"
+              autoComplete="password"
+              value={inputs.password}
+              onChange={handleChange}
+            />
+          </label>
+          <button type="submit">Sign In!</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Bellow the `useForm` hook create a function call `handleSubmit` that receive the `inputs` event and call the `preventDefault`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+
+    function handleSubmit(e) {
+      e.preventDefault();
+    }
+    return (...);
+  }
+  ```
+
+  Before continuing with the next step; sometimes you may ask yourself that saving the `password` in clear text with the `input` is a security issue but that is the way that the browser work to get the `data` from the `user` but we use `HTTPS` on the site to prevent a security issue when is on the network so when we send the actual request with the `password` will be encrypted
+
+- We need to write a `mutation` to `sign in` the `user`; so first import `gql` from `@apollo/client`
+  `import { gql } from '@apollo/client';`
+- Create a constant call `SIGNIN_MUTATION` that it value is `gql`
+  ```js
+  const SIGNIN_MUTATION = gql``;
+  ```
+- Begin to write a `mutation` call `SIGNIN_MUTATION` that recive an `email` and a `password` that are `strings` and are `required`
+  ```js
+  const SIGNIN_MUTATION = gql`
+    mutation SIGNIN_MUTATION($email: String!, $password: String!) {}
+  `;
+  ```
+- Before to continue let see how this `mutation` works on the `graphQL` playground. On your terminal; go to the `backend` directory and start your local server
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Type the following
+  ```js
+  mutation {
+    authenticateUserWithPassword {}
+  }
+  ```
+- Click on the `Docs` tab on the right
+- Type `authenticateUserWithPassword` on the search input
+- You will see that returns a `union type` this means that can return more than one `type`; in this case `UserAuthenticationWithPasswordSuccess` or `UserAuthenticationWithPasswordFailure` representing the `success` or `failure` state of the operation
+- Go back to the `SingIn` component and add the following to the `SIGNIN_MUTATION` mutation
+  ```js
+  const SIGNIN_MUTATION = gql`
+    mutation SIGNIN_MUTATION($email: String!, $password: String!) {
+      authenticateUserWithPassword(email: $email, password: $password) {
+        ... on UserAuthenticationWithPasswordSuccess {
+          item {
+            id
+            email
+            name
+          }
+        }
+      }
+    }
+  `;
+  ```
+  This will return the `data` from the `user` if we got a successful `sign in` operation
+- Let test the `mutation`; first; import the `useMutation` hook
+  `import { gql, useMutation } from '@apollo/client';`
+- Use the `useMutation` hook below the `useForm` hook sending the `SIGNIN_MUTATION mutation` and the `variables` that we need
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(SIGNIN_MUTATION, {
+      variables: inputs,
+    });
+
+    function handleSubmit(e) {
+      e.preventDefault();
+    }
+    return (...);
+  }
+  ```
+
+- We need to re-fetch the `current user query` when we perform the `SIGNIN_MUTATION mutation` so we have the always up-to-date `user` information. So import the `CURRENT_USER_QUERY` from the `User` file
+  `import { CURRENT_USER_QUERY } from './User';`
+- Now add a `refetchQueries` property to the `useMutation` second parameter sending an array with an object that has the `CURRENT_USER_QUERY`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(SIGNIN_MUTATION, {
+      variables: inputs,
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+    }
+    return (...);
+  }
+  ```
+
+- Use the `signin` function on `handleSubmit` and console the response
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const res = await signin();
+      console.log(res);
+    }
+    return (...);
+  }
+  ```
+
+- On the `Form` component add a `onSubmit` property with `handleSubmit` as it value
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const res = await signin();
+      console.log(res);
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Let test this; on another tab of your console; go to the `frontend` directory and start your local server
+- Open an incognito browser
+- Go to the [Sign in page](http://localhost:7777/signin)
+- You should see the `form` that you created
+- Fill the `inputs` with the correct `email` and `password` that you use on `keystone`
+- Submit the data
+- The items on the `nav` should change to the `sign in` version
+- Check on the console of the `dev tools` that the `user data` is log
+- Now `reset` the `form` after a `sign in` and remove the `console` and the `res` constant
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now we need to catch `errors` and this will be a little different because when is a fail attend of a `sign in`; the request actually is successful but return another `type` so we need to capture the information of the request and send it to our `Error` component. So first let handle the `query`; add this second `type` to `SIGNIN_MUTATION`
+  ```js
+  const SIGNIN_MUTATION = gql`
+    mutation SIGNIN_MUTATION($email: String!, $password: String!) {
+      authenticateUserWithPassword(email: $email, password: $password) {
+        ... on UserAuthenticationWithPasswordSuccess {
+          item {
+            id
+            email
+            name
+          }
+        }
+        ... on UserAuthenticationWithPasswordFailure {
+          code
+          message
+        }
+      }
+    }
+  `;
+  ```
+  This will handle the `UserAuthenticationWithPasswordFailure` when the `sign in` was not successful
+- Then; import the `Error` component
+  `import Error from './ErrorMessage';`
+- Use it below the `h2` on the `form`
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing into your account</h2>
+        <Error />
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Create a constant call `error` with the following value below the hooks
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+    const error =
+    data?.authenticateUserWithPassword.__typename ===
+    'UserAuthenticationWithPasswordFailure'
+      ? data?.authenticateUserWithPassword
+      : undefined;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing into your account</h2>
+        <Error />
+        ...
+      </Form>
+    );
+  }
+  ```
+
+  This will take `data` if it has a value and checks the type of request of the `authenticateUserWithPassword` response and if it is a `UserAuthenticationWithPasswordFailure` we return the response and if it not the case we just return `undefined`
+
+- Send the `error` constant as a prop on the `Error` component
+
+  ```js
+  export default function SignIn() {
+    const { inputs, handleChange, resetFrom } = useForm(...);
+    const [signin, { data, loading }] = useMutation(...);
+    const error =
+    data?.authenticateUserWithPassword.__typename ===
+    'UserAuthenticationWithPasswordFailure'
+      ? data?.authenticateUserWithPassword
+      : undefined;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signin();
+      resetFrom();
+    }
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing into your account</h2>
+        <Error error={error} />
+        ...
+      </Form>
+    );
+  }
+  ```
+
+- Now let test this; close the incognito browser
+- Open another incognito tab(Shortly we will add the logout button)
+- Fill the `form` with `data` that don't are your current account
+- Submit the `data`
+- You should see an `error` pop up
+
+### Creating a sign out component
+
+At this moment we can `sign in` a valid `user` to our application and update some of the elements of the page we can continue with the `sign out` process.
+
+- First; on your editor; go to the `frontend/components` directory
+- Create a new file call `SignOut.js`
+- In this newly created file; export a function call `SignOut`
+  `export default function SignOut() {}`
+- Import `gql`; `useMutation` and the `CURRENT_USER_QUERY`
+  ```js
+  import { useMutation } from '@apollo/client';
+  import gql from 'graphql-tag';
+  import { CURRENT_USER_QUERY } from './User';
+  ```
+- Create a new constant call `SIGN_OUT_MUTATION` with `gql` as it value
+  ```js
+  const SIGN_OUT_MUTATION = gql``;
+  ```
+- Add the following `mutation`
+  ```js
+  const SIGN_OUT_MUTATION = gql`
+    mutation {
+      endSession
+    }
+  `;
+  ```
+  The `endSession mutation` doesn't recive parameter and terminate the current `session` of an `user`
+- On the `SignOut` use the `useMutation` hook sending `SIGN_OUT_MUTATION` and re-fetching the current `user query`
+  ```js
+  export default function SignOut() {
+    const [singOut] = useMutation(SIGN_OUT_MUTATION, {
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+  }
+  ```
+- Return a button with a `sign out` message and a property `onClick` that receive the function that returns the `useMutation` hook on the `SignOut` function
+
+  ```js
+  export default function SignOut() {
+    const [singOut] = useMutation(SIGN_OUT_MUTATION, {
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+
+    return (
+      <button type="button" onClick={singOut}>
+        Sing Out
+      </button>
+    );
+  }
+  ```
+
+- Go to the `Nav` component and import the `SignOut` component
+  `import SignOut from './SignOut';`
+- Call the `SignOut` component on the `Nav` function on the part that belongs to the authenticated `user`
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [sign in page](http://localhost:7777/signin)
+- `Sign in`; if you are not
+- Click on the `sign out` button
+- You should see that the items of the `nav` change; this means that you are not logged in anymore
+
+### Creating our sign up flow
+
+We can continue with the next step that is the `sign up` flow where the `user` will create a valid account. This feature will be on the `sign in` page; side by side with the `sign in form` because the `sign up form` will not `sign in` the `user`. So let get to it.
+
+- On your editor; go to the `frontend/components/` directory
+- Duplicate the content of the `SignIn` component in a new file call `SignUp.js`
+- On this newly created file update the function name from `SignIn` to `SignUp`
+  `export default function SignUp() {...}`
+- Go to the `signin` page on the `pages` directory
+- Import the `SignUp` component
+  `import SignUp from '../components/SignUp';`
+- Use the `SingUp` component below the `SignIn` component
+  ```js
+  export default function SignInPage() {
+    return (
+      <div>
+        <SignIn />
+        <SignUp />
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [Sign in page](http://localhost:7777/signin)
+- You should see the 2 `forms` on the page
+- We are going to put these 2 `forms` side by side so let create some `grid` style for it. Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a constant call `GridStyles` that is a `styled` component `div`
+  ```js
+  const GridStyles = styled.div``;
+  ```
+- Add the following styles
+  ```js
+  const GridStyles = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-gap: 2rem;
+  `;
+  ```
+  - `display: grid`: The `display` property defines whether an element is treated as a block or inline-block and the layout that is going to use; in this case will use `grid` that divide the page into major regions or defining a relationship in terms of size, position and layer between the elements
+  - `grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));`: Define the column in the function of the `grid column` that is a vertical track of the `CSS grid layout` with space between to vertical `grid` lines. We use the `repeat` function to have the same values without typing 2 times and it calculates the `width` of the `columns` with the `auto-fit` value that will fill the space of the container will the columns that you defined. Also, we set `max` and `min` values that the `columns` can not pass; in this case `300px` and `1fr`
+  - `grid-gap: 2rem;` Define the space between `columns`
+- Replace the `div` with `GridStyles`
+  ```js
+  export default function SignInPage() {
+    return (
+      <GridStyles>
+        <SignIn />
+        <SignUp />
+      </GridStyles>
+    );
+  }
+  ```
+- Go back to your browser and refresh the page
+- You should see the `forms` side by side
+- Now get back to the `SignUp` file
+- Update the `h2` title for the `sign up form`
+
+  ```js
+  export default function SignUp() {
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing up for an account</h2>
+        ...
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Add a `name` initial value on the `useForm` hooks
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      name: '',
+      password: '',
+    });
+    ...
+
+    return (...);
+  }
+  ```
+
+- Add an `input` for the `name`
+
+  ```js
+  export default function SignUp() {
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Sing up for an account</h2>
+      <Error error={error} />
+      <fieldset>
+        <label htmlFor="name">
+          Name
+          <input
+            type="text"
+            name="name"
+            placeholder="Your name"
+            autoComplete="name"
+            value={inputs.name}
+            onChange={handleChange}
+          />
+        </label>
+        <label htmlFor="email">...</label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Sign In!</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+
+- Now we need to do the `mutation` to create a `user` but first; delete `SIGNIN_MUTATION` completely
+- Create a new constant call
+  ```js
+  const SIGNUP_MUTATION = gql``;
+  ```
+- Add a `mutation` call ``SIGNIN_MUTATION` that recive a `name`; an `email` and a `password`; all are `strings` and are `required`
+  ```js
+  const SIGNUP_MUTATION = gql`
+    mutation SIGNUP_MUTATION(
+      $email: String!
+      $name: String!
+      $password: String!
+    ) {}
+  `;
+  ```
+- Then we need to use the `createUser` API that `keystone` provide to us passing the `variables` that we previously created and returning the `user data`
+  ```js
+  const SIGNUP_MUTATION = gql`
+    mutation SIGNUP_MUTATION(
+      $email: String!
+      $name: String!
+      $password: String!
+    ) {
+      createUser(data: { email: $email, name: $name, password: $password }) {
+        id
+        email
+        name
+      }
+    }
+  `;
+  ```
+- Now go to the `useMutation` hook and use `SIGNUP_MUTATION`; rename the `signin` function to `signup` and add the `error` variable on the object return as a second item of the destructuring
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {
+      variables: inputs,
+    });
+    ...
+    return (...);
+  }
+  ```
+
+  We don't need to re-fetch the `user` data because the `user` will not be logged in after creating its account
+
+- Rename the `signin` function to `signup` on the `handleSubmit` function
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {
+      variables: inputs,
+    });
+
+    const error =
+    data?.authenticateUserWithPassword.__typename ===
+    'UserAuthenticationWithPasswordFailure'
+      ? data?.authenticateUserWithPassword
+      : undefined;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signup();
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+- Remove the `error` constant
+- Now if the `user` successfully create an account; we need to let know that everything goes as expected so add the following condition to show a message at the top of the `fieldset`
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {...});
+
+    async function handleSubmit(e) {...}
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Sing up for an account</h2>
+      <Error error={error} />
+      <fieldset>
+        {data?.createUser && (
+          <p>
+            Signed up with {data.createUser.email} - Please go ahead and sign
+            in!!
+          </p>
+        )}
+        <label htmlFor="name">...</label>
+        <label htmlFor="email">... </label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Sign In!</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+
+  This will pop up when `data` have the `user` information
+
+- Finally; we already use the `error` variable to show the `error` message but we still need to catch it on the `handleSubmit` function so the application doesn't break because the `signup` function retrieve an `error`
+
+  ```js
+  export default function SignUp() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [signup, { data, error }] = useMutation(SIGNUP_MUTATION, {...});
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await signup().catch(console.error);
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Fill the `sign up form` with a not valid account(try with less than 8 characters on the `password` or an `email` that already exists) and submit
+- You should see an `error` message pop up
+- Fill the `form` with a valid `user` and submit
+- A successful message should pop up
+- Go to the [keystone admin](http://localhost:3000/)
+- Click on the `Users` tab on the left side
+- You should see the `User` that you created on the list
+
+### Password reset - Request a reset
+
+Finally, we can begin with the last part of the `authentication` flow that is the `password` reset; where the `user` will request a `password` reset and the `backend` will generate a random `token`; then an email is sent to the `user` email with an `URL` that have this random `token` on it; then the `user` will go to this `URL` and send it email and the new `password` that will be sent to the `backend` with the `token` that was generated before. The `backend` will determine that the `token` is made for the email that it receives and if that `token` has a certain amount of time since its creation. Let begin with the first part of this process.
+
+- On your editor; go to the `frontend/components` directory
+- Duplicate the content of the `SignUp` component in a new file call `RequestReset.js`
+- On this newly created file; replace the `SignUp` name of the main function to `RequestReset`
+- On the `useForm` hook eliminate the `name` and `password` on the initial values
+
+  ```js
+  export default function RequestReset() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+    });
+    ...
+
+    return (...);
+  }
+  ```
+
+- Remove the `name` and `password` inputs and update the submit button message to said `request reset`
+
+  ```js
+  export default function RequestReset() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+    });
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing up for an account</h2>
+        <Error error={error} />
+        <fieldset>
+          {data?.createUser && (
+            <p>
+              Signed up with {data.createUser.email} - Please go ahead and sign
+              in!!
+            </p>
+          )}
+          <label htmlFor="email">
+            Email
+            <input
+              type="email"
+              name="email"
+              placeholder="Your email address"
+              autoComplete="email"
+              value={inputs.email}
+              onChange={handleChange}
+            />
+          </label>
+          <button type="submit">Request Reset</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Go to the `signin` page on the `pages` directory
+- Import the `RequestReset` component
+  `import RequestReset from '../components/RequestReset';`
+- Use the `RequestReset` component bellow the `SignUp` component
+  ```js
+  export default function SignInPage() {
+    return (
+      <GridStyles>
+        <SignIn />
+        <SignUp />
+        <RequestReset />
+      </GridStyles>
+    );
+  }
+  ```
+- Go back to the `RequestReset` component and remove `SIGNUP_MUTATION` and create a new constant call `REQUEST_RESET_MUTATION`
+  ```js
+  const REQUEST_RESET_MUTATION = gql``;
+  ```
+- Make a `mutation` that will be call `REQUEST_RESET_MUTATION` that recive an `email` that is a `string` and need to be `required` and send that value to the following api function
+  ```js
+  const REQUEST_RESET_MUTATION = gql`
+    mutation REQUEST_RESET_MUTATION($email: String!) {
+      sendUserPasswordResetLink(email: $email) {}
+    }
+  `;
+  ```
+- Now on your terminal; go to the `backend` directory and start your local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Click on the `Docs` tab on the right side
+- On the `search` input; `search` for `sendUserPasswordResetLink`
+- You will not have any results. This is because we don't have it available yet
+- To make `sendUserPasswordResetLink` available we need to add some configuration on the `keystone.ts` file in the `backend` directory
+- On the `createAuth` function and add the following
+  ```js
+  const { withAuth } = createAuth({
+    listKey: 'User',
+    identityField: 'email',
+    secretField: 'password',
+    initFirstItem: {
+      fields: ['name', 'email', 'password'],
+      // TODO: Add in initial roles here
+    },
+    passwordResetLink: {
+      async sendToken(args) {
+        console.log(args);
+      },
+    },
+  });
+  ```
+  The `passwordResetLink` recive an object with a `sendToken` method
+- On your terminal go; restart the `backend` local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Click on the `Docs` tab at the rigth side
+- On the `search` input; `search` for `sendUserPasswordResetLink`
+- You should see that you have a reult on the `search`; this mean that the `sendUserPasswordResetLink` is available on our api
+- Add the following `mutation` on the playground using a valid `user` email
+  ```js
+  mutation {
+    sendUserPasswordResetLink(email: "your_valid@email.com") {
+      code
+      message
+    }
+  }
+  ```
+- Click on the play button
+- You should have a `null` result
+- Go to your terminal
+- You should see that an object is print with an `id`; a `user` and a `token`
+- Go back to the `RequestReset` component
+- Add the `code` and `message` on `REQUEST_RESET_MUTATION`
+  ```js
+  const REQUEST_RESET_MUTATION = gql`
+    mutation REQUEST_RESET_MUTATION($email: String!) {
+      sendUserPasswordResetLink(email: $email) {
+        code
+        message
+      }
+    }
+  `;
+  ```
+- Replace the welcome message of the `form` with this
+
+  ```js
+  export default function RequestReset() {
+    ...
+
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Sing up for an account</h2>
+        <Error error={error} />
+        <fieldset>
+          {data?.createUser && (
+            <p>
+              Signed up with {data.createUser.email} - Please go ahead and sign
+              in!!
+            </p>
+          )}
+          <label htmlFor="email">...</label>
+          <button type="submit">Request Reset</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Open another tab on your terminal; go to the `frontend` directory and start your local server
+- On your browser go to the [Sign in page](http://localhost:7777/signin)
+- You should see the `Request a password reset form`
+- Use a valid email and submit the data
+- You should see a success message
+- Go to the terminal with the `backend` local server and you should see an object print with the email that you just submit
+
+### Password Reset - Setting a new password
+
+At this moment we trigger the `password` reset process using a `form` that on valid `email` submit generate a `token` and we will send this `token` via a `query` param in a URL. Here are the steps
+
+- On your editor; go to the `frontend/pages/` directory
+- Since we are passing the `token` via `query` param we will need a new page so create a file on call `reset.js` on the `pages` directory
+- Create a function call `ResetPage` with the following message
+  ```js
+  export default function ResetPage() {
+    return (
+      <div>
+        <p>Reset your password</p>
+      </div>
+    );
+  }
+  ```
+- On your terminal go to the `backend` directory and start your local server
+- Then on another tab of your terminal go to the `frontend` directory and start your local server
+- On your browser go to the [reset page](http://localhost:7777/reset)
+- You should see the message that you use on the `ResetPage` component
+- Pass a `token` via `query` param like this `http://localhost:7777/reset?token=Your_test_token`
+- Go to the `reset` file
+- Receive the `query` prop as we did on other components
+  `export default function ResetPage({ query }) {...}`
+- Render the `token` as part of the page message
+  ```js
+  export default function ResetPage() {
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+      </div>
+    );
+  }
+  ```
+- Go back to your browser and refresh
+- You should see the `token` as part of the page message
+- Now we need to handle if someone enters the `reset` URL without `token` so add a condition that sends a message to use on this case
+
+  ```js
+  export default function ResetPage() {
+    if (!query?.token) {
+      return (
+        <div>
+          <p>Sorry you mus supply a token</p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+      </div>
+    );
+  }
+  ```
+
+- Then import the `RequestReset` component
+  `import RequestReset from '../components/RequestReset';`
+- Add the `RequestReset` component as part of the no `token` condition so the `user` can solicitate the `token`
+
+  ```js
+  export default function ResetPage() {
+    if (!query?.token) {
+      return (
+        <div>
+          <p>Sorry you mus supply a token</p>
+          <RequestReset />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+      </div>
+    );
+  }
+  ```
+
+- Go to your browser and remove the `token` on the URL
+- You should see the no `token` message and the `RequestReset` form
+- Go back to your editor and go to the `components` file
+- Create a new file call `Reset.js`
+- Take the content of the `RequestReset` component and add it to this newly created file
+- Update the `RequestReset` name on the function to `Reset`
+  `export default function Reset() {...}`
+- On the `useForm` hook add the `password` and `token` in the `initial` values
+  ```js
+  export default function Reset() {
+    const { inputs, handleChange, resetFrom } = useForm({
+      email: '',
+      password: '',
+      token,
+    });
+    ...
+  }
+  ```
+- Then add a new input for the `password` on the form
+
+  ```js
+  export default function Reset() {
+    ...
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+        <h2>Request a password reset</h2>
+        <Error error={error} />
+        <fieldset>
+          {data?.sendUserPasswordResetLink === null && (
+            <p>Success! Check your email for a link!!</p>
+          )}
+          <label htmlFor="email">...</label>
+          <label htmlFor="password">
+            Password
+            <input
+              type="password"
+              name="password"
+              placeholder="password"
+              autoComplete="password"
+              value={inputs.password}
+              onChange={handleChange}
+            />
+          </label>
+          <button type="submit">Request Reset</button>
+        </fieldset>
+      </Form>
+    );
+  }
+  ```
+
+- Go to the `reset.js` file
+- Import the `Reset` component
+  `import Reset from '../components/Reset';`
+- Use the `Reset` component on the bellow the `query` message
+
+  ```js
+  export default function ResetPage() {
+    if (!query?.token) {...}
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+        <Reset />
+      </div>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh the page
+- You should see the `reset` form on the page
+- Then we will work with the `mutation`; so get back to the `Reset` component
+- Update `REQUEST_RESET_MUTATION` to `RESET_MUTATION`
+- Add the following method on the `mutation`
+  ```js
+  const RESET_MUTATION = gql`
+    mutation RESET_MUTATION(
+      $email: String!
+      $password: String!
+      $token: String!
+    ) {
+      redeemUserPasswordResetToken(
+        email: $email
+        token: $token
+        password: $password
+      ) {
+        code
+        message
+      }
+    }
+  `;
+  ```
+- Update the `signup` function to `reset` on the `useMutation` hook and the `handleSubmit` function
+
+  ```js
+  export default function Reset() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [reset, { data, error }] = useMutation(RESET_MUTATION, {
+      variables: inputs,
+    });
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await reset().catch(console.error);
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+- Update the success message
+
+  ```js
+  export default function Reset() {
+    ...
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Request a password reset</h2>
+      <Error error={error} />
+      <fieldset>
+        {data?.redeemUserPasswordResetToken === null && (
+          <p>Success! You can now sign in!!</p>
+        )}
+        <label htmlFor="email">...</label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Request Reset</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+
+- Now remove the error variable from the `useMutation` hook
+- Create a new variable call `codeRequestError` with the following content
+
+  ```js
+  export default function Reset() {
+    const { inputs, handleChange, resetFrom } = useForm({...});
+    const [reset, { data }] = useMutation(RESET_MUTATION, {
+      variables: inputs,
+    });
+    const codeRequestError = data?.redeemUserPasswordResetToken?.code
+    ? data?.redeemUserPasswordResetToken
+    : undefined;
+
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      await reset().catch(console.error);
+      resetFrom();
+    }
+
+    return (...);
+  }
+  ```
+
+  This will return the unsuccessful token creation that returns a valid request. A request `error` will be caught on the `handleSubmit` function
+
+- Add the `codeRequestError` to the `Error` component
+  ```js
+  export default function Reset() {
+    ...
+    return (
+      <Form method="POST" onSubmit={handleSubmit}>
+      <h2>Request a password reset</h2>
+      <Error error={error || codeRequestError} />
+      <fieldset>
+        {data?.redeemUserPasswordResetToken === null && (
+          <p>Success! You can now sign in!!</p>
+        )}
+        <label htmlFor="email">...</label>
+        <label htmlFor="password">...</label>
+        <button type="submit">Request Reset</button>
+      </fieldset>
+    </Form>
+    );
+  }
+  ```
+- Now get back to the `reset.js` file
+- Grap the `token` and send it to the `Reset` component as a prop
+
+  ```js
+  export default function ResetPage({ query }) {
+    if (!query?.token) {...}
+
+    return (
+      <div>
+        <p>Reset your password {query.token}</p>
+        <Reset token={query.token} />
+      </div>
+    );
+  }
+  ```
+
+- On the `Reset` component receive the `token` prop
+  `export default function Reset({ token }) {...}`
+- Go to your browser and refresh the page
+- The go-to the [signin page](http://localhost:7777/signin)
+- Request for a `password reset`
+- Get back to the tab of the terminal that has the `backend` local server
+- Copy the `token`
+- Use the `token` as a `query` param on the `reset` URL
+- Fill the `Reset your password` form
+- Submit the data
+- The account should successful update the `password`
+
+### Password reset - sending the email
+
+Finally, we get to the final task of `password reset` that is send an email with the URL that has the `token` to redirect the `user` to the `reset page`. So let begin
+
+- In this example, we will use a fake service that sends an email. They are good free options like [mailtrap](https://mailtrap.io/) but we will use [ethereal](https://ethereal.email/). You need to remember that on `production` you will need a transactional email service like [postmark](https://postmarkapp.com/) or [sendgrid](https://sendgrid.com/). So go to [ethereal](https://ethereal.email/)
+- Click on `Create ethereal account`
+- You should see a `username` and `password`
+- Grab both and go to your editor
+- Go to the `.env` file in the `backend` directory
+- Add the following values and fill the `MAIL_USER` and `MAIL_PASS` with the `ethereal` information
+  ```bash
+  MAIL_HOST="smtp.ethereal.email"
+  MAIL_PORT=587
+  MAIL_USER="ethereal_account"
+  MAIL_PASS="ethereal_password"
+  ```
+- On your editor go to the `lib` directory
+- Create a new file call `mail.ts`
+- On this newly created file we will create a `transporter`. A `transporter` is going to allow us to hook up to a `smtp` api and send an email. Import `createTransport` and `TransportOptions` from `nodemailer`
+  `import { createTransport, TransportOptions } from 'nodemailer';`
+- Create a constant call `transport` with `createTransport` as it value
+  `const transport = createTransport({});`
+- On the `createTransport` configuration object add the following properties using the `environment variables`
+  ```js
+  const transport = createTransport({
+    host: process.env.MAIL_HOST,
+    port: process.env.MAIL_PORT,
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS,
+    },
+  });
+  ```
+- Since we are on `typescript` we need to specify the types that of the properties on the object and for this `nodemailer` make then avilable on the `TransportOptions`
+  ```js
+  const transport = createTransport({
+    host: process.env.MAIL_HOST,
+    port: process.env.MAIL_PORT,
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS,
+    },
+  } as TransportOptions);
+  ```
+- Now we will create a function that create our email body(There are some frameworks for this). Create a function call `makeANiceEmail` that recive `text`
+  `function makeANiceEmail(text) {}`
+- Use backtips to return the following content on the `makeANiceEmail` function
+  ```js
+  function makeANiceEmail(text) {
+    return `
+        <div style="
+            border: 1px solid black;
+            padding: 20px;
+            font-family: sans-serif;
+            line-height: 2;
+            font-size: 20px;
+        ">
+            <h2>Hello There!</h2>
+            <p>${text}</p>
+            <p>Your name</p>
+        </div>
+    `;
+  }
+  ```
+  This will be transformed to `HTML on the email content that the `user` receive
+- Since is `typescript` we need to define the `text` parameter type and what the `makeANiceEmail` returns
+  ```js
+  function makeANiceEmailtext: string): string {
+    return `
+        <div style="
+            border: 1px solid black;
+            padding: 20px;
+            font-family: sans-serif;
+            line-height: 2;
+            font-size: 20px;
+        ">
+            <h2>Hello There!</h2>
+            <p>${text}</p>
+            <p>Your name</p>
+        </div>
+    `;
+  }
+  ```
+- At this moment we will need a function that actually send the email. Export a `async` function call `sendPasswordResetEmail` that recive `resetToken` and `to`(The `user` that we will send the email)
+  `export async function sendPasswordResetEmail(resetToken, to) {}`
+- Inside of the `sendPasswordResetEmail` function; create a constant call `info` that `await` the `transport.sendMail` function
+  ```js
+  export async function sendPasswordResetEmail(resetToken, to) {
+    const info = await transport.sendMail({});
+  }
+  ```
+- On the `sendMail` configuration object add the following
+  ```js
+  export async function sendPasswordResetEmail(resetToken, to) {
+    const info = await transport.sendMail({
+      to,
+      from: 'test@example.com',
+      subject: 'Your password reset token',
+      html: makeANiceEmail(`Your Password reset token is here!
+            <a href="${process.env.FRONTEND_URL}/reset?token=${resetToken}">Click here to reset</a>
+        `),
+    });
+  }
+  ```
+  This function will send the email with the parameters that we defined and the actual content is on the `html` property
+- Maybe you don't see any errors but the `nodemailer` response return an `any` type so before having some issues with the linter so we will need to create an `interface`(our custom type) to handle this error
+  ```js
+  interface MailResponse {
+    message: string;
+  }
+  ```
+- Add the `interface` to the `info` constant value; the return value of the `sendPasswordResetEmail` function and the types of the `requestToken` and `to` parameters
+  ```js
+  export async function sendPasswordResetEmail(resetToken: string, to: string): Promise<void>  {
+    const info = (await transport.sendMail({
+      to,
+      from: 'test@example.com',
+      subject: 'Your password reset token',
+      html: makeANiceEmail(`Your Password reset token is here!
+            <a href="${process.env.FRONTEND_URL}/reset?token=${resetToken}">Click here to reset</a>
+        `),
+    })) as MailResponse;
+  }
+  ```
+- Log the `info` constant
+  ```js
+  export async function sendPasswordResetEmail(resetToken: string, to: string): Promise<void>{
+    const info = (await transport.sendMail({...})) as MailResponse;
+    console.log(info);
+  }
+  ```
+- Go to the `keystone.ts` file and import the `sendPasswordResetEmail` function
+  `import { sendPasswordResetEmail } from './lib/mail';`
+- Go to the `passwordResetLink` property and use the `sendPasswordResetEmail` in the `sendToken` function
+  ```js
+  const { withAuth } = createAuth({
+    ...
+    passwordResetLink: {
+      async sendToken(args) {
+        console.log(args);
+        await sendPasswordResetEmail();
+      },
+    },
+  });
+  ```
+- Remove the log and send `args.token` and `args.identity` to the `sendPasswordResetEmail` function
+  ```js
+  const { withAuth } = createAuth({
+    ...
+    passwordResetLink: {
+      async sendToken(args) {
+        await sendPasswordResetEmail(args.token, args.identity);
+      },
+    },
+  });
+  ```
+- Go to your terminal and on the `backend` directory start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser go to the [signin page](http://localhost:7777/signin)
+- Request a `password` reset with a valid account
+- Go to the `ethereal` inbox on your browser
+- You should have an email with the `reset` link with a `token`
+- Click the link
+- You should be redirected to the `reset` page
+- Fill the form and submit
+- You should have a successful message
+- Go to the tab that you have your `backend` local server
+- You should see a response
+- Copy it
+- On your browser go to `https://jvilk.com/MakeTypes/`
+- Open the browser dev tools
+- On the console type the following
+  `copy(JSON.stringify())`
+- On the `stringify` parenthesis; paste the response that you copy early
+- Put on the `Input: JSON Examples` section first input `MailResponse`
+- On the text area paste the content of your clipboard(Should have the content of the `stringify` that we did early)
+- Click on generate
+- On the `Output: TypeScript Interfaces` section; copy the output
+- Go back to the `mail.ts` file
+- Paste the new `interfaces` before the `sendPasswordResetEmail` function
+- Import `getTestMessageUrl` from `nodemailer`
+  `import { createTransport, getTestMessageUrl, TransportOptions } from 'nodemailer';`
+- Now we will make it easier to see the actual link of the email on the `backend` local server output. So add the following in the `sendPasswordResetEmail` function
+
+  ```js
+  export async function sendPasswordResetEmail( resetToken: string, to: string ): Promise<void> {
+    const info = (await transport.sendMail({...})) as MailResponse;
+
+    if (process.env.MAIL_USER.includes('ethereal.email')) {
+      console.log(`Message Sent! Preview it at ${getTestMessageUrl(info)}`);
+    }
+  }
+  ```
+
+- Do the same `request reset password` process
+- When it send the email; go to the terminal tab that has the `backend` local server running. You should see a link and that link will send you to the last email that you send
