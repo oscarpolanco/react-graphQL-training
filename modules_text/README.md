@@ -5457,6 +5457,31 @@ If we target the second option and come back with the items it will run the `mer
 - Go to another `pagination` page that is not the last(so you can see the effect) and `delete` an item
 - You should see the items re adjust itself
 
+### Quick fix on the pagination component
+
+We forgot to put the actual information of the `page` that we are in the `header` of the page
+
+- Go to the `Pagination` component
+- On the `title` tag add the following
+
+  ```js
+  export default function Pagination({ page }) {
+    ...
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>
+            Sick Fits - Page {page} of {pageCount}
+          </title>
+        </Head>
+        ...
+      </PaginationStyles>
+    );
+  }
+  ```
+
+- Go to your browser and test that all the information are correct navigating throw the `pagination` pages
+
 ## Module 8: User registration + authentication
 
 Over the next sections, we will be working with `sign in`, `sign out`, `registration`, and `resetting` password`all the flow that is involved in the`user authentication.
@@ -7131,3 +7156,378 @@ The first thing that we will work for the `cart` is the `backend` side of it; wh
 - Create a new `Cart Item`
 - Fill the form and submit
 - You should see the entry on the `Cart Items` list with the correct information displayed on the list
+
+### Cart - Displaying items in a custom component
+
+Now that we got our new `data type` for the `cart` we can pass to the `frontend` side to build the actual `shopping cart` and the first part of this is not only build the structure; we also are going to get `data` from the `backend` side of the application. Here are the steps:
+
+- First; we need some example `data` to build the `cart` on the `frontend` so on your terminal; go to the `backend` directory and start your local server
+- On your browser go to the [keystone admin](http://localhost:3000/)
+- Click on the `Cart Item` option on the left sidebar
+- Create some entries for the `cartItem`
+- Now on your editor; go to the `frontend/components` directory
+- Create a new file call `Cart.js`
+- On this newly created file; export a function call `Cart`
+  `export default function Cart() {}`
+- Import `CartStyles`
+  `import CartStyles from './styles/CartStyles';`
+- Return a message for the `Cart` component using `CartStyles` as it wrapper
+  ```js
+  export default function Cart() {
+    return <CartItemStyles>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+- To `open` the `shopping cart` we need to send a `prop` to the `CartItemStyles` component with a `true` value. Since we don't have the logic to handle this `prop` yet just send it mannually to the `CartItemStyles` component
+  ```js
+  export default function Cart() {
+    return <CartItemStyles open>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+  When we use `styled` components we can send `props` to those components and handle those `props` with functions as you can see on the `CartItemStyles` component in the `styles` directory. The actual function on the `CartItemStyles` component add a `trasnslateX(0)` to the main container to override the `trasnslateX(100%)`(Send out of the screen the `shopping cart`) if we got an `open prop` with a `truthy` value
+- Go to the `Header.js` file
+- Import the `Cart` component
+  `import Cart from './Cart';`
+- Add the `Cart` component below the `Search` paragraph
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">
+          <Logo>
+            <Link href="/">Sick fits</Link>
+          </Logo>
+          <Nav />
+        </div>
+        <div className="sub-bar">
+          <p>Search</p>
+        </div>
+        <Cart />
+      </HeaderStyles>
+    );
+  }
+  ```
+- On to your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- You should see that the `shopping cart` container pop up at the rigth side of the page
+- Now we need a list of all items that the current user have so we will need the `useUser` hook. Import `useUser`
+  `import { useUser } from './User';`
+- Add a constant that it content is the `useUser` hook and log the result
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    return <CartItemStyles open>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+- THen we need to update the `useUser` query to get all `cart` items. So go to the `User.js` file
+- Update the `CURRENT_USER_QUERY` as the following
+  ```js
+  export const CURRENT_USER_QUERY = gql`
+    query {
+      authenticatedItem {
+        ... on User {
+          id
+          email
+          name
+          cart {
+            id
+            quantity
+            product {
+              id
+              price
+              name
+              description
+              photo {
+                image {
+                  publicUrlTransformed
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+  ```
+  Here we will have the `cart` and the `cart` have a `relationship` with `products` and the `product` have a `relation` with the `productImage` via the `product photo` field
+- Go back to the `Cart` component
+- Add a condition that returns `null` when we don't have a `user`
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return <CartItemStyles open>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+
+- Remove the message of `CartItemStyles` and add the `user` email
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return <CartItemStyles open>{me.email}</CartItemStyles>;
+  }
+  ```
+
+- Go to your browser and refresh the page
+- You should see the `user` email on the `shopping cart`
+- Open the `dev tools` and go to the `console` section
+- You should see the `user` object information and on that object, you will see the information of all `products` of the `cartItem`
+- Go back to the `Cart` component and import the `Supreme` styled component
+  `import Supreme from './styles/Supreme';`
+- Remove the email of the `user` and add a `header` tag with the `Supremer` styled component as it contains with the following message
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return (
+      <CartItemStyles open>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+        </header>
+      </CartItemStyles>
+    );
+  }
+  ```
+
+- Now we are going to loop over all `cart` items and we will return a new component call `CartItem` that will receive every item
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return (
+      <CartItemStyles open>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+        </header>
+        <ul>
+          {me.cart.map((cartItem) => (
+            <CartItem key={cartItem.id} cartItem={cartItem} />
+          ))}
+        </ul>
+      </CartItemStyles>
+    );
+  }
+  ```
+
+- Then we need to create this `CartItem` component. Before the `Cart` component make a function call `CartItem` that recive `cartItem`
+  ```js
+  function CartItem({ cartItem }) {}
+  ```
+- Return a `h1` tag with the `id` of each `cartItem`
+  ```js
+  function CartItem({ cartItem }) {
+    return <h1>{cartItem.id}</h1>;
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see a list of every `cartItem` id that you add
+- Now we need to add some styling for the list so import `styled`
+  `import styled from 'styled-components';`
+- Then create a constant call `CartItemStyles` that will have an `h1` as its element
+  ```js
+  const CartItemStyles = styled.li``;
+  ```
+- Use the `CartItemStyles` as the container of the message on the `CartItem` component
+  ```js
+  function CartItem({ cartItem }) {
+    return <CartItemStyles>{cartItem.id}</CartItemStyles>;
+  }
+  ```
+- Add the following to `CartItemStyles`
+  ```js
+  const CartItemStyles = styled.li`
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--lightGrey);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    img {
+      margin-right: 1rem;
+    }
+    h3,
+    p {
+      margin: 0;
+    }
+  `;
+  ```
+  - `padding: 1rem 0;`: Add some spacing at the top and bottom of the element
+  - `border-bottom: 1px solid var(--lightGrey);`: Add a `light grey` border at the botton of each element
+  - `display: grid;`: Set how the elements will behave
+  - `grid-template-columns: auto 1fr auto;`: We add the `columns that we need. In this section we will add just 2 of them later we will create the third
+  - `margin-right: 1rem;`: Add some spacing at the right of the images
+  - `margin: 0;`: Reset all the defult spaces of the `h3` and `p` elements
+- Since the `products` can be deleted when you are on the `user cart` we need to add a condition that if we don't have any `products` return `null`
+
+  ```js
+  function CartItem({ cartItem }) {
+    if (!product) return null;
+
+    return <CartItemStyles>{cartItem.id}</CartItemStyles>;
+  }
+  ```
+
+- Since we are going to display the `product` information; we will make a new constant to make it easy to have access to the `products` properties
+
+  ```js
+  function CartItem({ cartItem }) {
+    const { product } = cartItem;
+    if (!product) return null;
+
+    return <CartItemStyles>{cartItem.id}</CartItemStyles>;
+  }
+  ```
+
+- Go back to the `CartItem` component and remove the current message then add an `image` tag to render the `product` image
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+      </CartItemStyles>
+    );
+  }
+  ```
+- Then create a `div` that will be a wrapper of the `h3` tag with the `product` name
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+        <div>
+          <h3>{product.name}</h3>
+        </div>
+      </CartItemStyles>
+    );
+  }
+  ```
+- We need to calculate the `price` that the `user` will pay depending the actual `product price` and the `quantity` of the same `product` and `format` that result(Remenber that we got the `price` on cents in the `backend`) so import the `formatMoney` function
+  `import formatMoney from '../lib/formatMoney';`
+- Then add the following `p` tag bellow the `product` name
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+        <div>
+          <h3>{product.name}</h3>
+          <p>{formatMoney(product.price * cartItem.quantity)}</p>
+        </div>
+      </CartItemStyles>
+    );
+  }
+  ```
+  This will format the multiplication of the `price` of the `products` in cent with the `quantity of `products`that the`user` want
+- Inside of the `p` tag add an `em` tag with the actual multiplication that we `use` to calculate the `price`
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+        <div>
+          <h3>{product.name}</h3>
+          <p>
+            {formatMoney(product.price * cartItem.quantity)} -
+            <em>
+              {cartItem.quantity} &times; {formatMoney(product.price)} each
+            </em>
+          </p>
+        </div>
+      </CartItemStyles>
+    );
+  }
+  ```
+- Finally; On the `Cart` component we need to add the `total` of the `order` that the `user` will have so add a `footer` with the following
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    if (!me) return null;
+
+    return (
+      <CartStyles open>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+        </header>
+        <ul>
+          {me.cart.map((cartItem) => (
+            <CartItem key={cartItem.id} cartItem={cartItem} />
+          ))}
+        </ul>
+        <footer>
+          <p>{formatMoney(calcTotalPrice(me.cart))}</p>
+        </footer>
+      </CartStyles>
+    );
+  }
+  ```
+
+  We still have to write the `calcTotalPrice` function
+
+- Go to the `lib` directory and create a file call `calcTotalPrice.js`
+- On this newly create file; export a function call `calcTotalPrice` that recive a `cart` parameter
+  `export default function calcTotalPrice(cart) {}`
+- Return a `reduce` of `cart` that begin the counter by default on `0`
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce(() => {}, 0);
+  }
+  ```
+- On the `reduce` callback add the `tally` acumulator and the `cartItem` variable
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce((tally, cartItem) => {}, 0);
+  }
+  ```
+- Then create a condition that return the acumulator if we don't have any `products`
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce((tally, cartItem) => {
+      if (!cartItem.product) return tally;
+    }, 0);
+  }
+  ```
+  This condition will be needed because we will able to delete items of the `cart` and still be with the `cart` open
+- Return the accumulator plus the multiplication of the `quantity and the `product` price
+
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce((tally, cartItem) => {
+      if (!cartItem.product) return tally;
+
+      return tally + cartItem.quantity * cartItem.product.price;
+    }, 0);
+  }
+  ```
+
+- Go back to the `Cart` component file and import the `calcTotalPrice` function
+  `import calcTotalPrice from '../lib/calcTotalPrice';`
+- Go to your browser and refresh the page
+- You should see every `cart` item that you added before with its `price` and the calculation that comes of the multiplication with the `quantity` also the `total amount of payment
