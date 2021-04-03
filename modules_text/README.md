@@ -6992,3 +6992,142 @@ Finally, we get to the final task of `password reset` that is send an email with
 
 - Do the same `request reset password` process
 - When it send the email; go to the terminal tab that has the `backend` local server running. You should see a link and that link will send you to the last email that you send
+
+## Module 9: Shopping cart development
+
+We get to the state that we have 2 important pieces of `data`; one is the `products` and the other the `user` information and with these 2 we can continue working with the next step of the example that is the `shopping cart` so the `user` can store various `products` that possibly it will buy.
+
+### Cart - Creating the data type and two-way relationships
+
+The first thing that we will work for the `cart` is the `backend` side of it; where we will have a new `data type` for the `shopping cart`. We will have a `user` that have a `cart` field and this `cart` field will be a relationship between the user and a new `data type`. This new `cart data type` will have the following:
+
+- A link to an existing `product`
+- A link to a user
+- A `quantity` field
+
+#### Creating our new data type and the 2-way relationship
+
+- On your editor; go to the `backend/schema` directory
+- Copy the content of the `Product` schema
+- Create a new file call `CartItems`
+- Paste the `Product` content on this newly created file
+- Rename the export configuration object from `Product` to `CartItem`
+- Remove all the `fields` content
+- Import `integer` from `@keystone-next/fields` and remove `select` and `text`
+  `import { integer, relationship } from '@keystone-next/fields';`
+- Add a `quantity` file that will be an `integer`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer(),
+    },
+  });
+  ```
+- Send the following config object to `integer`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer({
+        defaultValue: 1,
+        isRequired: true,
+      }),
+    },
+  });
+  ```
+  This options will defeault the `quantity` value as `1` and will be a `required field`
+- Then create a `relashionship` with `product`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer({
+        defaultValue: 1,
+        isRequired: true,
+      }),
+      product: relationship({ ref: 'Product' }),
+    },
+  });
+  ```
+- Now we need to add a 2 way `relashionship` betewn the `user` and `cartItem`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer({
+        defaultValue: 1,
+        isRequired: true,
+      }),
+      product: relationship({ ref: 'Product' }),
+      user: relationship({ ref: 'User.cart' }),
+    },
+  });
+  ```
+  This will allow us to have a link on the `user` to `cartItem` and a link on the `cartItem` to a `user` so we won't need to update on 1 side first then to the other; it will do an update on both at the same time
+- By default the list of `cart items` will be shown just with its `id` but we need some more information so the `user` can identify easily the actual entry that it needs so we will add some default values for the `cart item` list
+  ```js
+  export const CartItem = list({
+    ui: {
+      listView: {
+        initialColumns: ['product', 'quantity', 'user'],
+      },
+    },
+    fields: {...},
+  });
+  ```
+  This will allow to update the `ui` of the `list view` related to the `cart items` and will use as it initial values the `product`, `quantity` and `user` fields from the `CartItem` schema
+- Go to the `User.ts`
+- We need to add the `cartItem relathionship`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({
+        ref: 'CartItem.user',
+        many: true,
+      }),
+    },
+  });
+  ```
+  We add the `CartItem relationship and the `many`value we set it as`true`because a`user`can have`many relationships`with the multiple items on your`cart`
+- Then we need to add the `ui` for this new field
+  ```js
+  export const User = list({
+    fields: {
+      ...
+      cart: relationship({
+        ref: 'CartItem.user',
+        many: true,
+      }),
+      ui: {
+        createView: { fieldMode: 'hidden' },
+        itemView: { fieldMode: 'read' },
+      },
+    },
+  });
+  ```
+  This will hide the `cart` field on the `create view` and put a just `read` field on the actual `user`
+- Go to the `keystone.ts` file
+- Import the `CartItem` schema
+  `import { CartItem } from './schemas/CartItem';`
+- Add the `CartItem` schema to the schema property on the configuration object that we export
+  ```js
+  export default withAuth(
+    config({
+      ...
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+      }),
+      ...
+    })
+  );
+  ```
+- Finally; on your console; go to the `backend` directory and start your local server
+- Go to the [keystone local site](http://localhost:3000/)
+- On the left sidebar; you should see `Cart items` options
+- Click on this option
+- Create a new `Cart Item`
+- Fill the form and submit
+- You should see the entry on the `Cart Items` list with the correct information displayed on the list
