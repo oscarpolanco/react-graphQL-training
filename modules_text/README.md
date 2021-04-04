@@ -7531,3 +7531,296 @@ Now that we got our new `data type` for the `cart` we can pass to the `frontend`
   `import calcTotalPrice from '../lib/calcTotalPrice';`
 - Go to your browser and refresh the page
 - You should see every `cart` item that you added before with its `price` and the calculation that comes of the multiplication with the `quantity` also the `total amount of payment
+
+### Cart - Using react context for our cart state
+
+In this section, we will work with `context` and `local state` on `react` to handle the `open state` of the `cart`.
+
+The `local state` on a `React` application is the `state` that exists on the browser. At this moment almost all our `states` exist on our `database` and get send it over; for the moment the only `local state` that we have is on the `forms` that when you type on the `inputs` and is only there until you send it to the `backend`.
+
+The other piece of `state` that we need is; as we mentioned before; the `open state` of the `cart` but there is a different situation with this specific `state` where we will need to update it on a number of components and those components sometimes don't have a relation between them. This means that we will have the `state` that `open` the `cart` in the `cart` component and a function that updates this `state` on another component; for this, we will put this `state` on what `React` call `context`. The `context` on `React` allows us to define `data` and functionality on a very high level and you can access those on a much lower level without having to pass down via `prop`.
+
+On `context` we will have a `provider` that will live in a high-level place on the application and it will store `states` and functionality to update those `states`. Then in order to access those `states` and functionality anywhere else on the application, we use what is called a `consumer` and the `consumer` is able to talk with the `provider` without having a direct link to it.
+
+#### Step to create the cart state context
+
+- On your editor; go to the `frontend/lib` directory
+- Create a new file call `cartState.js`
+- First; import `createContext` from `React`
+  `import { createContext, useContext, useState } from 'react';`
+- Then create a constant call `LocalStateContext` using the `createContext` as it value
+  `const LocalStateContext = createContext();`
+- Now we need to expose the `provider` from our `context` in a new constant call `LocalStateProvider`
+  `const LocalStateProvider = LocalStateContext.Provider;`
+- Make a function call `CartSateProvider` that recive `children` as parameter
+  `function CartSateProvider({ children }) {}`
+  This will be our own custom `provider`. We will store `data` and functionality here and anyone can access it via the `consumer`
+- Let begin the `provider` with a little example. Add a constant call `cartOpen` that have a `true` value in the `CartSateProvider` function
+  ```js
+  function CartSateProvider({ children }) {
+    const cartOpen = true;
+  }
+  ```
+- Then return the `LocalStateProvider` with the `children` prop as it child
+
+  ```js
+  function CartSateProvider({ children }) {
+    const cartOpen = true;
+
+    return <LocalStateProvider>{children}</LocalStateProvider>;
+  }
+  ```
+
+- Add a `value` prop on the `LocalStateProvider` with an object that has the `cartOpen` value so evryone else can `consume` it
+
+  ```js
+  function CartSateProvider({ children }) {
+    const cartOpen = true;
+
+    return (
+      <LocalStateProvider value={{ cartOpen }}>{children}</LocalStateProvider>
+    );
+  }
+  ```
+
+  We add an object on the `value` prop because is the only way to send multiple things
+
+- Now export `CartSateProvider`
+  `export { CartSateProvider };`
+- At this moment we need to put our `provider` in a high level of our application in this case we will put it on the `_app.js` file but why in this file and not on the `Page` component? Is becuase we need to presert the `data` betwen `page` to `page` without reset it values on every `page` change. So import the `CartSateProvider` in the `_app.js` file
+  `import { CartSateProvider } from '../lib/cartState';`
+- Use the `CartSateProvider` as a wrapper of the `pages` bellow the `ApolloProvider`
+  ```js
+  function MyApp({ Component, pageProps, apollo }) {
+    return (
+      <ApolloProvider client={apollo}>
+        <CartSateProvider>
+          <Page>
+            <Component {...pageProps} />
+          </Page>
+        </CartSateProvider>
+      </ApolloProvider>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser go to the [homepage](http://localhost:7777/)
+- Open the `dev tools` and go to the `components` sections
+- You should see that you have the `CartSateProvider`
+- Go back to the `cartState` file
+- Now we will make a custom hook for accesing the `cart local state`. So import `useContext` from `React`
+  `import { createContext, useContext } from 'react';`
+- Create a function call `useCart` bellow the `CartSateProvider` function
+  `function useCart() {}`
+- Create a constant that its value is the `useContext` with our `LocalStateContext` as its value and return it
+  ```js
+  function useCart() {
+    const all = useContext(LocalStateContext);
+    return all;
+  }
+  ```
+  We use a `consumer` here to access the `local state` and we did a hook because when you need to access the `data` we can just simply import the hook and we will get all that we need with just one import
+- Export the `useCart` hook
+  `export { CartSateProvider, useCart };`
+- Go to the `Cart.js` file
+- Import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Create a constant call `data` that its value is the `useCart` on the `Cart` function and console its value
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const data = useCart();
+    console.log(data)
+    if (!me) return null;
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh
+- On the console of the `dev tool` you will see an object with the `cartOpen` value
+- Go back to the `Cart` component
+- Destructure the `cartOpen` state
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen } = useCart();
+    console.log(data)
+    if (!me) return null;
+
+    return (...);
+  }
+  ```
+
+- Add the `cartOpen` state to `CartStyles`
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen } = useCart();
+    console.log(data);
+    if (!me) return null;
+
+    return <CartStyles open={cartOpen}>...</CartStyles>;
+  }
+  ```
+
+- Go to the `cartState` file
+- We will update the `cartOpen` constant to be an `state` with it update function so import `useState` from `React`
+  `import { createContext, useContext, useState } from 'react';`
+- Replace the `cartOpen` constant with a `cartOpen` state with `false` as it default value
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    return (...);
+  }
+  ```
+
+- Expose the `setCartOpen` open function for our `consumers`
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    return (
+      <LocalStateProvider value={{ cartOpen, setCartOpen }}>
+        {children}
+      </LocalStateProvider>
+    );
+  }
+  ```
+
+- Then create a function call `toggleCart` to update the current value of the `open state` to the opposite and expose it to the `consumers
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    function toggleCart() {
+      setCartOpen(!cartOpen);
+    }
+
+    return (
+      <LocalStateProvider value={{ cartOpen, setCartOpen, toggleCart }}>
+        {children}
+      </LocalStateProvider>
+    );
+  }
+  ```
+
+- Create a `closeCart` and a `openCart` functions to make sure allways that we have the specific value that we want for the `cart` and expose it to the `consumers`
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    function toggleCart() {
+      setCartOpen(!cartOpen);
+    }
+
+    function closeCart() {
+      setCartOpen(false);
+    }
+
+    function openCart() {
+      setCartOpen(true);
+    }
+
+    return (
+      <LocalStateProvider
+        value={{ cartOpen, setCartOpen, toggleCart, closeCart, openCart }}
+      >
+        {children}
+      </LocalStateProvider>
+    );
+  }
+  ```
+
+- Go to the `Cart` component
+- Import `CloseButton`
+  `import CloseButton from './styles/CloseButton';`
+- Desturcture the `closeCart` function from the `useCart` hook
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen, closeCart } = useCart();
+    if (!me) return null;
+
+    return (...);
+  }
+  ```
+
+- Bellow the `Supreme` styled component add the `CloseButton` with the following prop and content
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen, closeCart } = useCart();
+    if (!me) return null;
+
+    return (
+      <CartStyles open={cartOpen}>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+          <CloseButton type="button" onClick={closeCart}>
+            &times;
+          </CloseButton>
+        </header>
+        ...
+      </CartStyles>
+    );
+  }
+  ```
+
+- Then go to the `Nav` component
+- Import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Use the `useCart` hook to get the `openCart` function
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    const { openCart } = useCart();
+
+    return (...);
+  }
+  ```
+
+- Add a button in the `signin` options of the `nav` to open the `cart`
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    const { openCart } = useCart();
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh
+- Click on the `My cart` option on the `nav`
+- The `cart` should open
+- Click on the `X` button on the `cart`
+- The `cart` should close
