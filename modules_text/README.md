@@ -7824,3 +7824,264 @@ On `context` we will have a `provider` that will live in a high-level place on t
 - The `cart` should open
 - Click on the `X` button on the `cart`
 - The `cart` should close
+
+### Cart - Adding items to cart
+
+Now we will be working with the add to `cart` functionality; first on the `backend` side; creating a custom `mutation`. You may ask yourself; why we need to add a custom `mutation` for the add to `cart` functionality? in fact we already have a `createCartItem` generate by `keystone` on the `graphQL` API but this functionality doesn't help us entirely because `createCartItem` create a new entry on the `CartItem schema` but this is not always the case on our `cart` because you can add more than one of the same item in the `cart` so the only thing we need is to update the `quantity field` instead of creating a new entry for the item that already exists on the `cart`. Luckily for us when you need to add your custom logic to a `mutation`; `keystone` allows you to add it so you can have the goal that you need.
+
+#### Steps to create a custom mutation on keystone
+
+- On your editor; go to the `backend/mutations/` directory
+- Create a new file call `index.ts`
+- Import `graphQLSchemaExtension` from `@keystone-next/keystone/schema`
+  `import { graphQLSchemaExtension } from '@keystone-next/keystone/schema';`
+- Export a new constant call `extendGraphqlSchema` that his value will be the `graphQLSchemaExtension` method
+  `export const extendGraphqlSchema = graphQLSchemaExtension({});`
+- On the `graphQLSchemaExtension` configuration object add the following
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: `
+      type Mutation {
+        addToCart(productId: ID): CartItem
+      }
+    `,
+  });
+  ```
+  The `typeDefs` define the name of the method; what arguments it recive and what it returns. In this case we define a `mutation` call `addToCart` that recive `productId` that have an `ID` type and returns a `CartItem`
+- As you see we don't have the highligth that we have on other `graphQL queries` or `mutation` that we work before because we need to pass a raw `string` and we don't need to put `gql` or `graphql` so our editor change he highlithing of the `string` but we can make our fake `graphql` tagged template literal. Before the `extendGraphqlSchema` add the following
+  `const graphql = String.raw;`
+  `String.raw` takes the backtips content of a template literal and return it
+- Add `graphql` on the `typeDefs` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`
+      type Mutation {
+        addToCart(productId: ID): CartItem
+      }
+    `,
+  });
+  ```
+  You should see that the highligth of the `string` change
+- Now we need to add the `resolvers` on the `extendGraphqlSchema` configuration object
+
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`
+      type Mutation {
+        addToCart(productId: ID): CartItem
+      }
+    `,
+    resolvers: {
+      Mutation: {
+        addToCart: function () {
+          console.log('ADD TO CART!!!');
+        },
+      },
+    },
+  });
+  ```
+
+  The `resolvers` are links to functions on `nodejs` that will be called when the `graphQL` API request it. Here we defined a function related to the `addToCart mutation`
+
+- Go to the `keystone.ts` file
+- Import `extendGraphqlSchema`
+  `import { extendGraphqlSchema } from './mutations';`
+- Bello the `lists` property add `extendGraphqlSchema`(We call it this `extendGraphqlSchema` on the `index.ts` file so we can have just the property name in here)
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({...}),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...}),
+    })
+  );
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Click in the `docs` tab at the right
+- On the `search` input type `addToCart`
+- You should see the function definition; what it returns and the argument that it needs
+- Since we can have more than one `mutation` on the `resolvers`; we will separate the custom code that we will do for each `mutation` on its separate file. So on your editor go to the `mutation` directory
+- Create a new file call `addToCart.ts`
+- On this newly created file; create a function call `addToCard` that receive `root`, an object that has a property called `productId` and a `context`
+  `function addToCart(root, { productId }, context) {}`
+- Since we are on `typescript` we need to add some types; first; `root` is an `any` type and `productId` will we an object that has a property that is a `string` and the `context` will be a `KeystoneContext` type
+  ```js
+  function addToCart(root: any, { productId }: { productId: string }, context: KeystoneContext)) {}
+  ```
+- Import `KeystoneContext` from `@keystone-next/types`
+  `import { KeystoneContext } from '@keystone-next/types';`
+- Now log a message on the `addToCart` function
+  ```js
+  function addToCart(root: any, { productId }: { productId: string }, context: KeystoneContext)) {
+    console.log('ADD TO CART!!!');
+  }
+  ```
+- Export the `addToCard` function
+  `export default addToCart;`
+- Go to the `index.ts` file
+- Import `addToCart`
+  `import addToCart from './addToCart';`
+- Remove the content of the `addToCart` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`...`,
+    resolvers: {
+      Mutation: {
+        addToCart,
+      },
+    },
+  });
+  ```
+- On your terminal; restart you `backend` local server
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Add the following `mutation`
+  ```js
+  mutation {
+    addToCart(productId: "an_example_product_id") {
+      id
+      quantity
+    }
+  }
+  ```
+- Click on the play button
+- Go to your terminal and you should see the message that you put on the `addToCard` function
+- Then go back to the `addToCard.ts` file
+- Since we are on `typescript` we need to define what the `addToCard` function returns in this case we now that will be a `CartItem` as we defined on the `typeDefs` property on the `index.ts` file and loacally for us `keystone` create all the types that we need depending of our `schemas` in this case our type is call `CartItemCreateInput` and you can import if from `../.keystone/schema-types`
+  `import { CartItemCreateInput } from '../.keystone/schema-types';`
+- Add the `CartItemCreateInput` type to the `addToCard` function
+  ```js
+  function addToCart(
+    root: any,
+    { productId }: { productId: string },
+    context: KeystoneContext)
+    ): CartItemCreateInput {
+    console.log('ADD TO CART!!!');
+  }
+  ```
+- Inside of the `addToCard` function we will use `asynchronous` code so we need to add the `async` keyword and this will change the value that we return to a `promise` that eventually return a `CartItemCreateInput`
+  ```js
+  async function addToCart(
+    root: any,
+    { productId }: { productId: string },
+    context: KeystoneContext)
+    ): Promise<CartItemCreateInput> {
+    console.log('ADD TO CART!!!');
+  }
+  ```
+- Now we need to `query` the current `user` and see if he is `signin`. For this the `context` parameter give us this information on the `session` property so create a constant that store the value of the `session` property
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session;
+  }
+  ```
+- Import the `Session` type from `types`
+  `import { Session } from '../types';`
+- Add the `Session` type as the type of the constant that you just created
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+  }
+  ```
+- Add a condition that ask for the `itemId` that give an `error` if it doesn't exists
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {
+      throw new Error('You must be logged in to do this!');
+    }
+  }
+  ```
+- Now we need to get the current `user cart`
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({
+      where: { user: { id: sesh.itemId }, product: { id: productId } },
+      resolveFields: 'id,quantity',
+    });
+  }
+  ```
+
+  Since we are on `keystone` we can directly go to our `lists`(our schemas) and run a function; in this case the `findMany`(Will find the items for use) function. That will use the `user` and `product id` to find an `item` then will return the `data` of the field that you add on the `resolveFields` property. Since no all fields of the `query` are not unique; we can't use the `findOne` method
+
+- Take the first item of the `allCartItems` using destructuring
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({...});
+    const [existingCartItem] = allCartItems;
+  }
+  ```
+
+- Then create a condition to increment by `1` the current item
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({...});
+    const [existingCartItem] = allCartItems;
+
+    if (existingCartItem) {
+    console.log(
+      `They are already ${existingCartItem.quantity}, increment by 1`
+    );
+    return context.lists.CartItem.updateOne({
+        id: existingCartItem.id,
+        data: { quantity: existingCartItem.quantity + 1 },
+      });
+    }
+  }
+  ```
+
+  The `updateOne` method will `update` one of the fields of our `product` search it by `id`. We don't need to use `await` here because we are returning the `promise`
+
+- Finally if we don't have any of the current `product` on the `cart`; we need to create a new `CartItem`
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({...});
+    const [existingCartItem] = allCartItems;
+
+    if (existingCartItem) {...}
+
+
+    return context.lists.CartItem.createOne({
+      data: {
+        product: { connect: { id: productId } },
+        user: { connect: { id: sesh.itemId } },
+      },
+    });
+  }
+  ```
+
+  We use the `createOne` method to create a new `CartItem` and we need to relate the `data` of this specific `CartItem` to the respective `product` and `user` so we use the `connect` property to make this relation
+
+- Go to your terminal and restart the `backend` local server
+- On your browser; search for a `CartItem id` in the `Cart Items` section
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Test again the `addToCart`mutation using the existing `CartItem id`
+- Click the play button
+- Go to the `Cart Item` section on the `keystone admin`
+- Click on the `CartItem` that you use the `id` for the example
+- You should see that the `quantity` increments by `1`
+- Go to the `products` section and take one `id` that is not on the `cart`
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Test again the `addToCart`mutation using the new `product id`
+- Click the play button
+- Go to the `Cart Items` section
+- You should see that a new `CartItem` is created related to the `product id` that you use
