@@ -8085,3 +8085,125 @@ Now we will be working with the add to `cart` functionality; first on the `backe
 - Click the play button
 - Go to the `Cart Items` section
 - You should see that a new `CartItem` is created related to the `product id` that you use
+
+### Cart - Adding items in React
+
+We created our custom `mutation` to handle the `cart data` so we can continue to the `frontend` part of the application to use that custom `mutation`.
+
+- First; on your editor go to the `frontend/components` directiry
+- Create a new file call `AddToCard.js`
+- In this newly created file; export a function call `AddToCard` that recive an `id` as a `prop`
+  `export default function AddToCart({ id }) {}`
+- Return a button with the following message
+  ```js
+  export default function AddToCart({ id }) {
+    return (
+      <button disable={loading} type="button">
+        Add To Cart
+      </button>
+    );
+  }
+  ```
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `ADD_TO_CART_MUTATION` that it value will be `gql`
+  ```js
+  const ADD_TO_CART_MUTATION = gql``;
+  ```
+- Add the following `mutation` to `ADD_TO_CART_MUTATION`
+  ```js
+  const ADD_TO_CART_MUTATION = gql`
+    mutation ADD_TO_CART_MUTATION($id: ID!) {
+      addToCart(productId: $id) {
+        id
+      }
+    }
+  `;
+  ```
+  Here we will have a `mutation` call `ADD_TO_CART_MUTATION` that receive an `id` that is required and use the `addToCard mutation` with the `id` that you send to create a `cartItem` or increment the `quantity` of a `cartItem` that already exists on the `cart`
+- Then import the `useMutation` hook
+  `import { useMutation } from '@apollo/client';`
+- Destructure the update function and the loading variable from the return of the `useMutation` hook and send as it parameters `ADD_TO_CART_MUTATION` and the `id` prop
+
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(ADD_TO_CART_MUTATION, {
+      variables: { id },
+    });
+    return <button type="button">Add To Cart</button>;
+  }
+  ```
+
+- Add a `onClick` property on the `button` that have the `addToCart` function as it value
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(...);
+    return (
+      <button type="button" onClick={addToCart}>
+        Add To Cart
+      </button>
+    );
+  }
+  ```
+- Add a `disabled` property on the `button` that it value will be the `loading` variable and update the `button` message on `loading` like this
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(...);
+    return (
+      <button type="button" onClick={addToCart} disable={loading}>
+        Add{loading && 'ing'} To Cart
+      </button>
+    );
+  }
+  ```
+- We need to refecth the `user query` because we are going to be updating the `cart data` that is related to it so when we `add` a `product` on the `cart` reflect it immediately. So import the `CURRENT_USER_QUERY`
+  `import { CURRENT_USER_QUERY } from './User';`
+- Add the `refetchQueries` property to the `useMutation` hook
+
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(ADD_TO_CART_MUTATION, {
+      variables: { id },
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+
+    return (
+      <button type="button" onClick={addToCart} disable={loading}>
+        Add{loading && 'ing'} To Cart
+      </button>
+    );
+  }
+  ```
+
+- Go to the `Product` component
+- Import the `AddToCart` component
+- Add the `AddToCart` component betwen the `edit` and `delete` button
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img ... />
+        <Title>...</Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+        <div className="buttonList">
+          <Link href={...}>
+            Edit ✏️
+          </Link>
+          <AddToCart id={product.id} />
+          <DeleteProduct id={product.id}>Delete</DeleteProduct>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- You should see an `add to cart` button on each item
+- Click on the `add to cart button`(on an item that doesn't exist on the `cart`)
+- Open the `cart`
+- You should see the item that you just added on the `cart`
+- Click on another `product` that exists on the `cart`
+- Open the `cart`
+- You should see that the `product` increment its `quantity` by one
