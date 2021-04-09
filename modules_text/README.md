@@ -8207,3 +8207,350 @@ We created our custom `mutation` to handle the `cart data` so we can continue to
 - Click on another `product` that exists on the `cart`
 - Open the `cart`
 - You should see that the `product` increment its `quantity` by one
+
+### Cart - Animating the Cart value
+
+Now we can add items to the `cart` on the` frontend` side of the application but we still need some visual indication that the `cart` add your value and some animation that get your attention so you will know that the update is available on your `cart` so for this we will add the number of` products` that you got on the `cart` and some animation when that number update; so let begin with the process!!
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `CartCoun.js`
+- In this newly create file; export a function call `CartCount` that recive `count` as it prop
+  `export default function CartCount({ count }) {}`
+- On the `CartCount` function return a `Dot` component with the `count` prop as it content
+  ```js
+  export default function CartCount({ count }) {
+    return <Dot>{count}</Dot>;
+  }
+  ```
+- Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Lets create the `Dot` component. Use `styled` to create a `div` that will represent `Dot`
+  ```js
+  const Dot = styled.div``;
+  ```
+- Add the following styles
+  ```js
+  const Dot = styled.div`
+    background: var(--red);
+    color: white;
+    border-radius: 50%;
+    padding: 0.5rem;
+    line-height: 2rem;
+    min-width: 3rem;
+    margin-left: 1rem;
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  `;
+  ```
+  - `background: var(--red);`: Add a `red` backgrount to the `div`
+  - `color: white;`: Add the text color of the `div` as `white`
+  - `border-radius: 50%;`: Round the borders of the `div` by `50%`
+  - `padding: 0.5rem;`: Add some space around all the `div`
+  - `line-height: 2rem;`: The space that will have the lines of the `div`
+  - `min-width: 3rem;`: Set the minimum `width` that will have the `div`
+  - `margin-left: 1rem;`: Add some space at the `left` of the `div`
+  - `font-feature-settings: 'tnum';`: When you add a `product` to the `cart` and the number update will be a little movement depending on the number because some numbers are wider than others. The `font-feature-settings` will help us control some advanced features of OpenType; in this case, we use `tnum`(tabular numbers) so the `numbers` always have the same wider
+  - `font-variant-numeric: tabular-nums;`: This is the same as `font-feature-settings` is just for support
+- Go to the `Nav` component
+- Import the `CartCount` component
+  `import CartCount from './CartCount';`
+- On the `My Cart` button adds the `CartCount` component
+
+  ```js
+  export default function Nav() {
+    ...
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+              <CartCount />
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+- Now add the `count` prop with the following content
+
+  ```js
+  export default function Nav() {
+    ...
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+              <CartCount
+              count={user.cart.reduce(
+                (tally, cartItem) => tally + cartItem.quantity,
+                0
+              )}
+            />
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+  We use a `reduce` method so we can loop throw every `cart` item and use the `quantity` of each of them to have the total `count` of the `products` that are on the current `user cart`(begin with `0` the `count`)
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- You should see that the `cart` button on the `nav` have the number of `products` that you have on your `cart` with the style that we added
+- Go back to the `CartCount.js` file
+- Now we will add some animation when the number of the total of `product` of the `cart` updates but first import `CSSTransition` and `TransitionGroup` from `react-transition-grou`
+  `import { CSSTransition, TransitionGroup } from 'react-transition-group';`
+- Wrap the `Dot` component using the `TransitionGroup` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <TransitionGroup>
+        <Dot>{count}</Dot>
+      </TransitionGroup>
+    );
+  }
+  ```
+- Then wrap the `Dot` component again in the `CSSTransition` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <TransitionGroup>
+        <CSSTransition>
+          <Dot>{count}</Dot>
+        </CSSTransition>
+      </TransitionGroup>
+    );
+  }
+  ```
+- Add the following props to the `CSSTransition` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <TransitionGroup>
+        <CSSTransition
+          unmountOnExit
+          className="count"
+          classNames="count"
+          key={count}
+          timeout={{ enter: 5000, exit: 5000 }}
+        >
+          <Dot>{count}</Dot>
+        </CSSTransition>
+      </TransitionGroup>
+    );
+  }
+  ```
+  - `unmountOnExit`: Will umount the component when the transition finish
+  - `className="count"`: Reprecent the complete container
+  - `classNames="count"`: Will add `count-` on the classes that `CSSTransition` adds
+  - `key={count}`: This value will tell when the component needs to update; that is why we add what will change in this case the `count`
+  - `timeout={{ enter: 5000, exit: 5000 }}`: This will set the timer when the update will begin and finish. Is on milliseconds and we put 5 seconds so we can see the process; later we will update this value
+- Go to your browser and refresh the page
+- Open your `dev tool`
+- Search for the `cart` number of `products` on the `html` section
+- Click on the `add to cart` button
+- You should see on the `HTML` that the number of `products` of the `cart` changes it and appear the old value and the new value. This will help us to use the `classes` that `react-transition-group` add to those elements to animate when the value enter and exit
+- Now go back to the `CartCount.js` file
+- Add a new constant call `AnimationStyles` that its value will be a `styled span`
+  ```js
+  const AnimationStyles = styled.span``;
+  ```
+- Add the following styles to `AnimationStyles`
+
+```js
+const AnimationStyles = styled.span`
+  position: relative;
+
+  .count-enter {
+    backgroundL green
+  }
+
+  .count-enter-active {
+    background: yellow;
+  }
+
+  .count-exit {
+    background: blue
+  }
+
+  .count-exit-active {
+    background: pink
+  }
+`;
+```
+
+- Wrap the `CartCound` component content using `AnimationStyles`
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <AnimationStyles>
+        <TransitionGroup>
+          <CSSTransition
+            unmountOnExit
+            className="count"
+            classNames="count"
+            key={count}
+            timeout={{ enter: 5000, exit: 5000 }}
+          >
+            <Dot>{count}</Dot>
+          </CSSTransition>
+        </TransitionGroup>
+      </AnimationStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Click on the `add to cart` button
+- You will see `yellow` and `pink` counters then it will be back to the `red` one with the updated value(We don't see the `enter` and `exit` colors because it was a very quick transition)
+- Go back to the `CartCount` component
+- On the `AnimationStyles`; select all elements with the `count` className and add the following style
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {
+      display: block;
+      position: relative;
+      transition: transform 0.4s;
+      backface-visibility: hidden;
+    }
+  
+    ...
+  `;
+  ```
+
+  - `display: block;`: Set that the container will be the threat it as a `block` item
+  - `position: relative;`: Set the position according to the normal flow of the document
+  - `transition: transform 0.4s;`: Control the animation speed when it changing(We will have some animation next). Is important to align this value with the `timeout` prop of the `CSSTransition`(We will update the `timeout` prop later we add `5000` for testing)
+  - `backface-visibility: hidden;`: Hide the back of the item(We will do a backflip on the item and we don't want to show the back)
+
+- Now we need to update the `count-enter` class
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {
+      transform: scale(4) rotateX(0.5turn);
+    }
+    ...
+  `;
+  ```
+
+  - `transform: scale(4) rotateX(0.5turn);`: The `transform` property let `scale`, `rotate`, `skew` or `translate` and element. In this case we will `scale` the item and we will `rotate` it on the horizontal axis by half a `turn`(Can be `180` deggress)
+
+- Then went the element is `active`; we are going to `rotate` back to the original position
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {...}
+  
+    .count-enter-active {
+      transform: rotateX(0);
+    }
+    ...
+  `;
+  ```
+
+- We need to begin to handle the `exit` element
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {...}
+  
+    .count-enter-active {...}
+  
+    .count-exit {
+      top: 0;
+      position: absolute;
+      transform: rotateX(0);
+    }
+    ...
+  `;
+  ```
+
+  - `top: 0;`: We make sure that there is no space at the `top` of the element
+  - `position: absolute;`: We set the `position` of the element, in this case, it will be `absolute` to eliminate the normal flow of the elements on the page and put it on top of the other existing element
+  - `transform: rotateX(0);`: We will set as initial state of the `rotation`
+
+- Then we need to add the `exit active` element
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {...}
+  
+    .count-enter-active {...}
+  
+    .count-exit {...}
+    
+    .count-exit-active {
+      transform: scale(4) rotateX(0.5turn);
+    }
+  `;
+  ```
+
+  - `transform: scale(4) rotateX(0.5turn);`: We will `scale` the element and make half of a `turn` on it
+
+- Now yoyu can go to your browser and refresh the page
+- Click on the `add to cart` button
+- You should see an animation when the value is update on the `cart` button on the `navbar`
+- Go back to the `CartCount` component
+- Update the `timeout` prop on the `CSSTransition` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <AnimationStyles>
+        <TransitionGroup>
+          <CSSTransition
+            unmountOnExit
+            className="count"
+            classNames="count"
+            key={count}
+            timeout={{ enter: 400, exit: 400 }}
+          >
+            <Dot>{count}</Dot>
+          </CSSTransition>
+        </TransitionGroup>
+      </AnimationStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Now the animation on the `cart` button in the `navbar` should be quicker
