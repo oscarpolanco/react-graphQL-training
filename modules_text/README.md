@@ -8554,3 +8554,49 @@ const AnimationStyles = styled.span`
   ```
 - Go to your browser and refresh the page
 - Now the animation on the `cart` button in the `navbar` should be quicker
+
+#### Extra challenge: Open the cart after adding an item
+
+This was a challenge propose when the `cart` counter animation finish that consists of `open` the `cart` when you add an item. For this, we need to wait that the animation to finish so will need the help of one of the [transition](http://reactcommunity.org/react-transition-group/transition) properties in this case the [onExited](http://reactcommunity.org/react-transition-group/transition#Transition-prop-onExited) prop that trigger a `callback` function when the `exited` status is applied.
+
+- Go to the `CartCount` component
+- Import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Use the `useCart` hook to get the `openCart` function
+
+  ```js
+  export default function CartCount({ count }) {
+    const { openCart } = useCart();
+
+    return (...);
+  }
+  ```
+
+- Add a prop call `onExited` in the `CSSTransition` component that it value is the `openCart` function
+
+  ```js
+  export default function CartCount({ count }) {
+    const { openCart } = useCart();
+
+    return (
+      <AnimationStyles>
+        <TransitionGroup>
+          <CSSTransition
+            unmountOnExit
+            className="count"
+            classNames="count"
+            key={count}
+            timeout={{ enter: 400, exit: 400 }}
+            onExited={openCart}
+          >
+            <Dot>{count}</Dot>
+          </CSSTransition>
+        </TransitionGroup>
+      </AnimationStyles>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh the page
+- Click on the `add to cart` button
+- You should see the animation on the `cart` button on the `navbar` then when the animation finishes the `cart` should open itself
