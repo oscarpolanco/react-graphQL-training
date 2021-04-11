@@ -8600,3 +8600,172 @@ This was a challenge propose when the `cart` counter animation finish that consi
 - Go back to your browser and refresh the page
 - Click on the `add to cart` button
 - You should see the animation on the `cart` button on the `navbar` then when the animation finishes the `cart` should open itself
+
+### Cart - Remove from cart button
+
+In this section, we will add the `remove cart` button that will remove a complete item from the `cart`. Here are the steps:
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `RemoveFromCart.js` file
+- In this newly created file; export a function call `RemoveFromCart` that receive a prop called `id`
+  `export default function RemoveFromCart({ id }) {}`
+- Return a button that has an `X` with a title that represents the information of the `button`
+  ```js
+  export default function RemoveFromCart({ id }) {
+    return (
+      return (
+      <button
+        title="Remove this item from cart"
+        type="button"
+      >
+        &times;
+      </button>
+    );
+  }
+  ```
+- Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a constant call `BigButton` that it value is `styled.button`
+  ```js
+  const BigButton = styled.button``;
+  ```
+- Add the following style
+  ```js
+  const BigButton = styled.button`
+    font-size: 3rem;
+    background: none;
+    border: 0;
+    &:hover {
+      color: var(--red);
+      cursor: pointer;
+    }
+  `;
+  ```
+- Replace the button tag with `BigButton`
+  ```js
+  export default function RemoveFromCart({ id }) {
+    return (
+      return (
+      <BigButton
+        title="Remove this item from cart"
+        type="button"
+      >
+        &times;
+      </BigButton>
+    );
+  }
+  ```
+- Go to the `Cart.js` file
+- Import `RemoveFromCart`
+  `import RemoveFromCart from './RemoveFromCart';`
+- Use the `RemoveFromCart` component on `CartItem` as a last item of the `CartItemStyles` wrapper. Sent the `cartItem id` as a prop of the `RemoveFromCart` component
+
+  ```js
+  function CartItem({ cartItem }) {
+    ...
+
+    return (
+      <CartItemStyles>
+        <img ... />
+        <div>
+          <h3>{product.name}</h3>
+          <p>
+            {formatMoney(product.price * cartItem.quantity)} -
+            <em>
+              {cartItem.quantity} &times; {formatMoney(product.price)} each
+            </em>
+          </p>
+        </div>
+        <RemoveFromCart id={cartItem.id} />
+      </CartItemStyles>
+    );
+  }
+  ```
+
+- Go back to the `RemoveFromCart` and import `gql`
+  `import gql from 'graphql-tag';`
+- Create a constant call `REMOVE_FROM_CART_MUTATION` that it value is `gql`
+  ```js
+  REMOVE_FROM_CART_MUTATION = gql``;
+  ```
+- Use the `deleteCartItem mutation` that recive an `id` that is require and return an `id`
+  ```js
+  REMOVE_FROM_CART_MUTATION = gql`
+    mutation REMOVE_FROM_CART_MUTATION($id: ID!) {
+      deleteCartItem(id: $id) {
+        id
+      }
+    }
+  `;
+  ```
+- Import `useMutation`
+  `import { useMutation } from '@apollo/client';`
+- On the `RemoveFromCart` use the `useMutation` hook returning the update function and the `loading` variable and that recive `REMOVE_FROM_CART_MUTATION` and the `id`
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+    const [removeFromCart, { loading }] = useMutation(REMOVE_FROM_CART_MUTATION, {
+      variables: { id },
+    });
+
+    return (
+      return (
+      <BigButton ...>
+        &times;
+      </BigButton>
+    );
+  }
+  ```
+
+- Add the `onClick` property with the `removeFromCart` function as it value
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+  const [removeFromCart, { loading }] = useMutation(REMOVE_FROM_CART_MUTATION, {
+    variables: { id },
+  });
+
+  return (
+    return (
+    <BigButton
+      title="Remove this item from cart"
+      type="button"
+      onClick={removeFromCart}
+    >
+      &times;
+    </BigButton>
+  );
+  }
+  ```
+
+- Add a `disabled` property that its value is the `loading` variable
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+  const [removeFromCart, { loading }] = useMutation(REMOVE_FROM_CART_MUTATION, {
+    variables: { id },
+  });
+
+  return (
+    return (
+    <BigButton
+      title="Remove this item from cart"
+      type="button"
+      disabled={loading}
+      onClick={removeFromCart}
+    >
+      &times;
+    </BigButton>
+  );
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- You should see an `X` button on each item with the style that we added
+- Click on one of the items in the `cart`
+- Refresh the page
+- Open the `cart`
+- The item that you eliminate should not be on the `cart`(On another section we will make the deleting visible at the moment you click on it)
