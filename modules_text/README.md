@@ -5457,6 +5457,31 @@ If we target the second option and come back with the items it will run the `mer
 - Go to another `pagination` page that is not the last(so you can see the effect) and `delete` an item
 - You should see the items re adjust itself
 
+### Quick fix on the pagination component
+
+We forgot to put the actual information of the `page` that we are in the `header` of the page
+
+- Go to the `Pagination` component
+- On the `title` tag add the following
+
+  ```js
+  export default function Pagination({ page }) {
+    ...
+    return (
+      <PaginationStyles>
+        <Head>
+          <title>
+            Sick Fits - Page {page} of {pageCount}
+          </title>
+        </Head>
+        ...
+      </PaginationStyles>
+    );
+  }
+  ```
+
+- Go to your browser and test that all the information are correct navigating throw the `pagination` pages
+
 ## Module 8: User registration + authentication
 
 Over the next sections, we will be working with `sign in`, `sign out`, `registration`, and `resetting` password`all the flow that is involved in the`user authentication.
@@ -6992,3 +7017,1793 @@ Finally, we get to the final task of `password reset` that is send an email with
 
 - Do the same `request reset password` process
 - When it send the email; go to the terminal tab that has the `backend` local server running. You should see a link and that link will send you to the last email that you send
+
+## Module 9: Shopping cart development
+
+We get to the state that we have 2 important pieces of `data`; one is the `products` and the other the `user` information and with these 2 we can continue working with the next step of the example that is the `shopping cart` so the `user` can store various `products` that possibly it will buy.
+
+### Cart - Creating the data type and two-way relationships
+
+The first thing that we will work for the `cart` is the `backend` side of it; where we will have a new `data type` for the `shopping cart`. We will have a `user` that have a `cart` field and this `cart` field will be a relationship between the user and a new `data type`. This new `cart data type` will have the following:
+
+- A link to an existing `product`
+- A link to a user
+- A `quantity` field
+
+#### Creating our new data type and the 2-way relationship
+
+- On your editor; go to the `backend/schema` directory
+- Copy the content of the `Product` schema
+- Create a new file call `CartItems`
+- Paste the `Product` content on this newly created file
+- Rename the export configuration object from `Product` to `CartItem`
+- Remove all the `fields` content
+- Import `integer` from `@keystone-next/fields` and remove `select` and `text`
+  `import { integer, relationship } from '@keystone-next/fields';`
+- Add a `quantity` file that will be an `integer`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer(),
+    },
+  });
+  ```
+- Send the following config object to `integer`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer({
+        defaultValue: 1,
+        isRequired: true,
+      }),
+    },
+  });
+  ```
+  This options will defeault the `quantity` value as `1` and will be a `required field`
+- Then create a `relashionship` with `product`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer({
+        defaultValue: 1,
+        isRequired: true,
+      }),
+      product: relationship({ ref: 'Product' }),
+    },
+  });
+  ```
+- Now we need to add a 2 way `relashionship` betewn the `user` and `cartItem`
+  ```js
+  export const CartItem = list({
+    fields: {
+      quantity: integer({
+        defaultValue: 1,
+        isRequired: true,
+      }),
+      product: relationship({ ref: 'Product' }),
+      user: relationship({ ref: 'User.cart' }),
+    },
+  });
+  ```
+  This will allow us to have a link on the `user` to `cartItem` and a link on the `cartItem` to a `user` so we won't need to update on 1 side first then to the other; it will do an update on both at the same time
+- By default the list of `cart items` will be shown just with its `id` but we need some more information so the `user` can identify easily the actual entry that it needs so we will add some default values for the `cart item` list
+  ```js
+  export const CartItem = list({
+    ui: {
+      listView: {
+        initialColumns: ['product', 'quantity', 'user'],
+      },
+    },
+    fields: {...},
+  });
+  ```
+  This will allow to update the `ui` of the `list view` related to the `cart items` and will use as it initial values the `product`, `quantity` and `user` fields from the `CartItem` schema
+- Go to the `User.ts`
+- We need to add the `cartItem relathionship`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({
+        ref: 'CartItem.user',
+        many: true,
+      }),
+    },
+  });
+  ```
+  We add the `CartItem relationship and the `many`value we set it as`true`because a`user`can have`many relationships`with the multiple items on your`cart`
+- Then we need to add the `ui` for this new field
+  ```js
+  export const User = list({
+    fields: {
+      ...
+      cart: relationship({
+        ref: 'CartItem.user',
+        many: true,
+      }),
+      ui: {
+        createView: { fieldMode: 'hidden' },
+        itemView: { fieldMode: 'read' },
+      },
+    },
+  });
+  ```
+  This will hide the `cart` field on the `create view` and put a just `read` field on the actual `user`
+- Go to the `keystone.ts` file
+- Import the `CartItem` schema
+  `import { CartItem } from './schemas/CartItem';`
+- Add the `CartItem` schema to the schema property on the configuration object that we export
+  ```js
+  export default withAuth(
+    config({
+      ...
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+      }),
+      ...
+    })
+  );
+  ```
+- Finally; on your console; go to the `backend` directory and start your local server
+- Go to the [keystone local site](http://localhost:3000/)
+- On the left sidebar; you should see `Cart items` options
+- Click on this option
+- Create a new `Cart Item`
+- Fill the form and submit
+- You should see the entry on the `Cart Items` list with the correct information displayed on the list
+
+### Cart - Displaying items in a custom component
+
+Now that we got our new `data type` for the `cart` we can pass to the `frontend` side to build the actual `shopping cart` and the first part of this is not only build the structure; we also are going to get `data` from the `backend` side of the application. Here are the steps:
+
+- First; we need some example `data` to build the `cart` on the `frontend` so on your terminal; go to the `backend` directory and start your local server
+- On your browser go to the [keystone admin](http://localhost:3000/)
+- Click on the `Cart Item` option on the left sidebar
+- Create some entries for the `cartItem`
+- Now on your editor; go to the `frontend/components` directory
+- Create a new file call `Cart.js`
+- On this newly created file; export a function call `Cart`
+  `export default function Cart() {}`
+- Import `CartStyles`
+  `import CartStyles from './styles/CartStyles';`
+- Return a message for the `Cart` component using `CartStyles` as it wrapper
+  ```js
+  export default function Cart() {
+    return <CartItemStyles>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+- To `open` the `shopping cart` we need to send a `prop` to the `CartItemStyles` component with a `true` value. Since we don't have the logic to handle this `prop` yet just send it mannually to the `CartItemStyles` component
+  ```js
+  export default function Cart() {
+    return <CartItemStyles open>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+  When we use `styled` components we can send `props` to those components and handle those `props` with functions as you can see on the `CartItemStyles` component in the `styles` directory. The actual function on the `CartItemStyles` component add a `trasnslateX(0)` to the main container to override the `trasnslateX(100%)`(Send out of the screen the `shopping cart`) if we got an `open prop` with a `truthy` value
+- Go to the `Header.js` file
+- Import the `Cart` component
+  `import Cart from './Cart';`
+- Add the `Cart` component below the `Search` paragraph
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">
+          <Logo>
+            <Link href="/">Sick fits</Link>
+          </Logo>
+          <Nav />
+        </div>
+        <div className="sub-bar">
+          <p>Search</p>
+        </div>
+        <Cart />
+      </HeaderStyles>
+    );
+  }
+  ```
+- On to your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- You should see that the `shopping cart` container pop up at the rigth side of the page
+- Now we need a list of all items that the current user have so we will need the `useUser` hook. Import `useUser`
+  `import { useUser } from './User';`
+- Add a constant that it content is the `useUser` hook and log the result
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    return <CartItemStyles open>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+- THen we need to update the `useUser` query to get all `cart` items. So go to the `User.js` file
+- Update the `CURRENT_USER_QUERY` as the following
+  ```js
+  export const CURRENT_USER_QUERY = gql`
+    query {
+      authenticatedItem {
+        ... on User {
+          id
+          email
+          name
+          cart {
+            id
+            quantity
+            product {
+              id
+              price
+              name
+              description
+              photo {
+                image {
+                  publicUrlTransformed
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+  ```
+  Here we will have the `cart` and the `cart` have a `relationship` with `products` and the `product` have a `relation` with the `productImage` via the `product photo` field
+- Go back to the `Cart` component
+- Add a condition that returns `null` when we don't have a `user`
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return <CartItemStyles open>Hello from the shopping cart</CartItemStyles>;
+  }
+  ```
+
+- Remove the message of `CartItemStyles` and add the `user` email
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return <CartItemStyles open>{me.email}</CartItemStyles>;
+  }
+  ```
+
+- Go to your browser and refresh the page
+- You should see the `user` email on the `shopping cart`
+- Open the `dev tools` and go to the `console` section
+- You should see the `user` object information and on that object, you will see the information of all `products` of the `cartItem`
+- Go back to the `Cart` component and import the `Supreme` styled component
+  `import Supreme from './styles/Supreme';`
+- Remove the email of the `user` and add a `header` tag with the `Supremer` styled component as it contains with the following message
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return (
+      <CartItemStyles open>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+        </header>
+      </CartItemStyles>
+    );
+  }
+  ```
+
+- Now we are going to loop over all `cart` items and we will return a new component call `CartItem` that will receive every item
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    console.log(me);
+    if (!me) return null;
+
+    return (
+      <CartItemStyles open>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+        </header>
+        <ul>
+          {me.cart.map((cartItem) => (
+            <CartItem key={cartItem.id} cartItem={cartItem} />
+          ))}
+        </ul>
+      </CartItemStyles>
+    );
+  }
+  ```
+
+- Then we need to create this `CartItem` component. Before the `Cart` component make a function call `CartItem` that recive `cartItem`
+  ```js
+  function CartItem({ cartItem }) {}
+  ```
+- Return a `h1` tag with the `id` of each `cartItem`
+  ```js
+  function CartItem({ cartItem }) {
+    return <h1>{cartItem.id}</h1>;
+  }
+  ```
+- Go to your browser and refresh the page
+- You should see a list of every `cartItem` id that you add
+- Now we need to add some styling for the list so import `styled`
+  `import styled from 'styled-components';`
+- Then create a constant call `CartItemStyles` that will have an `h1` as its element
+  ```js
+  const CartItemStyles = styled.li``;
+  ```
+- Use the `CartItemStyles` as the container of the message on the `CartItem` component
+  ```js
+  function CartItem({ cartItem }) {
+    return <CartItemStyles>{cartItem.id}</CartItemStyles>;
+  }
+  ```
+- Add the following to `CartItemStyles`
+  ```js
+  const CartItemStyles = styled.li`
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--lightGrey);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    img {
+      margin-right: 1rem;
+    }
+    h3,
+    p {
+      margin: 0;
+    }
+  `;
+  ```
+  - `padding: 1rem 0;`: Add some spacing at the top and bottom of the element
+  - `border-bottom: 1px solid var(--lightGrey);`: Add a `light grey` border at the botton of each element
+  - `display: grid;`: Set how the elements will behave
+  - `grid-template-columns: auto 1fr auto;`: We add the `columns that we need. In this section we will add just 2 of them later we will create the third
+  - `margin-right: 1rem;`: Add some spacing at the right of the images
+  - `margin: 0;`: Reset all the defult spaces of the `h3` and `p` elements
+- Since the `products` can be deleted when you are on the `user cart` we need to add a condition that if we don't have any `products` return `null`
+
+  ```js
+  function CartItem({ cartItem }) {
+    if (!product) return null;
+
+    return <CartItemStyles>{cartItem.id}</CartItemStyles>;
+  }
+  ```
+
+- Since we are going to display the `product` information; we will make a new constant to make it easy to have access to the `products` properties
+
+  ```js
+  function CartItem({ cartItem }) {
+    const { product } = cartItem;
+    if (!product) return null;
+
+    return <CartItemStyles>{cartItem.id}</CartItemStyles>;
+  }
+  ```
+
+- Go back to the `CartItem` component and remove the current message then add an `image` tag to render the `product` image
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+      </CartItemStyles>
+    );
+  }
+  ```
+- Then create a `div` that will be a wrapper of the `h3` tag with the `product` name
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+        <div>
+          <h3>{product.name}</h3>
+        </div>
+      </CartItemStyles>
+    );
+  }
+  ```
+- We need to calculate the `price` that the `user` will pay depending the actual `product price` and the `quantity` of the same `product` and `format` that result(Remenber that we got the `price` on cents in the `backend`) so import the `formatMoney` function
+  `import formatMoney from '../lib/formatMoney';`
+- Then add the following `p` tag bellow the `product` name
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+        <div>
+          <h3>{product.name}</h3>
+          <p>{formatMoney(product.price * cartItem.quantity)}</p>
+        </div>
+      </CartItemStyles>
+    );
+  }
+  ```
+  This will format the multiplication of the `price` of the `products` in cent with the `quantity of `products`that the`user` want
+- Inside of the `p` tag add an `em` tag with the actual multiplication that we `use` to calculate the `price`
+  ```js
+  function CartItem({ cartItem }) {
+    return (
+      <CartItemStyles>
+        <img
+          width="100"
+          src={product.photo.image.publicUrlTransformed}
+          alt={product.name}
+        />
+        <div>
+          <h3>{product.name}</h3>
+          <p>
+            {formatMoney(product.price * cartItem.quantity)} -
+            <em>
+              {cartItem.quantity} &times; {formatMoney(product.price)} each
+            </em>
+          </p>
+        </div>
+      </CartItemStyles>
+    );
+  }
+  ```
+- Finally; On the `Cart` component we need to add the `total` of the `order` that the `user` will have so add a `footer` with the following
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    if (!me) return null;
+
+    return (
+      <CartStyles open>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+        </header>
+        <ul>
+          {me.cart.map((cartItem) => (
+            <CartItem key={cartItem.id} cartItem={cartItem} />
+          ))}
+        </ul>
+        <footer>
+          <p>{formatMoney(calcTotalPrice(me.cart))}</p>
+        </footer>
+      </CartStyles>
+    );
+  }
+  ```
+
+  We still have to write the `calcTotalPrice` function
+
+- Go to the `lib` directory and create a file call `calcTotalPrice.js`
+- On this newly create file; export a function call `calcTotalPrice` that recive a `cart` parameter
+  `export default function calcTotalPrice(cart) {}`
+- Return a `reduce` of `cart` that begin the counter by default on `0`
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce(() => {}, 0);
+  }
+  ```
+- On the `reduce` callback add the `tally` acumulator and the `cartItem` variable
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce((tally, cartItem) => {}, 0);
+  }
+  ```
+- Then create a condition that return the acumulator if we don't have any `products`
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce((tally, cartItem) => {
+      if (!cartItem.product) return tally;
+    }, 0);
+  }
+  ```
+  This condition will be needed because we will able to delete items of the `cart` and still be with the `cart` open
+- Return the accumulator plus the multiplication of the `quantity and the `product` price
+
+  ```js
+  export default function calcTotalPrice(cart) {
+    return cart.reduce((tally, cartItem) => {
+      if (!cartItem.product) return tally;
+
+      return tally + cartItem.quantity * cartItem.product.price;
+    }, 0);
+  }
+  ```
+
+- Go back to the `Cart` component file and import the `calcTotalPrice` function
+  `import calcTotalPrice from '../lib/calcTotalPrice';`
+- Go to your browser and refresh the page
+- You should see every `cart` item that you added before with its `price` and the calculation that comes of the multiplication with the `quantity` also the `total amount of payment
+
+### Cart - Using react context for our cart state
+
+In this section, we will work with `context` and `local state` on `react` to handle the `open state` of the `cart`.
+
+The `local state` on a `React` application is the `state` that exists on the browser. At this moment almost all our `states` exist on our `database` and get send it over; for the moment the only `local state` that we have is on the `forms` that when you type on the `inputs` and is only there until you send it to the `backend`.
+
+The other piece of `state` that we need is; as we mentioned before; the `open state` of the `cart` but there is a different situation with this specific `state` where we will need to update it on a number of components and those components sometimes don't have a relation between them. This means that we will have the `state` that `open` the `cart` in the `cart` component and a function that updates this `state` on another component; for this, we will put this `state` on what `React` call `context`. The `context` on `React` allows us to define `data` and functionality on a very high level and you can access those on a much lower level without having to pass down via `prop`.
+
+On `context` we will have a `provider` that will live in a high-level place on the application and it will store `states` and functionality to update those `states`. Then in order to access those `states` and functionality anywhere else on the application, we use what is called a `consumer` and the `consumer` is able to talk with the `provider` without having a direct link to it.
+
+#### Step to create the cart state context
+
+- On your editor; go to the `frontend/lib` directory
+- Create a new file call `cartState.js`
+- First; import `createContext` from `React`
+  `import { createContext, useContext, useState } from 'react';`
+- Then create a constant call `LocalStateContext` using the `createContext` as it value
+  `const LocalStateContext = createContext();`
+- Now we need to expose the `provider` from our `context` in a new constant call `LocalStateProvider`
+  `const LocalStateProvider = LocalStateContext.Provider;`
+- Make a function call `CartSateProvider` that recive `children` as parameter
+  `function CartSateProvider({ children }) {}`
+  This will be our own custom `provider`. We will store `data` and functionality here and anyone can access it via the `consumer`
+- Let begin the `provider` with a little example. Add a constant call `cartOpen` that have a `true` value in the `CartSateProvider` function
+  ```js
+  function CartSateProvider({ children }) {
+    const cartOpen = true;
+  }
+  ```
+- Then return the `LocalStateProvider` with the `children` prop as it child
+
+  ```js
+  function CartSateProvider({ children }) {
+    const cartOpen = true;
+
+    return <LocalStateProvider>{children}</LocalStateProvider>;
+  }
+  ```
+
+- Add a `value` prop on the `LocalStateProvider` with an object that has the `cartOpen` value so evryone else can `consume` it
+
+  ```js
+  function CartSateProvider({ children }) {
+    const cartOpen = true;
+
+    return (
+      <LocalStateProvider value={{ cartOpen }}>{children}</LocalStateProvider>
+    );
+  }
+  ```
+
+  We add an object on the `value` prop because is the only way to send multiple things
+
+- Now export `CartSateProvider`
+  `export { CartSateProvider };`
+- At this moment we need to put our `provider` in a high level of our application in this case we will put it on the `_app.js` file but why in this file and not on the `Page` component? Is becuase we need to presert the `data` betwen `page` to `page` without reset it values on every `page` change. So import the `CartSateProvider` in the `_app.js` file
+  `import { CartSateProvider } from '../lib/cartState';`
+- Use the `CartSateProvider` as a wrapper of the `pages` bellow the `ApolloProvider`
+  ```js
+  function MyApp({ Component, pageProps, apollo }) {
+    return (
+      <ApolloProvider client={apollo}>
+        <CartSateProvider>
+          <Page>
+            <Component {...pageProps} />
+          </Page>
+        </CartSateProvider>
+      </ApolloProvider>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser go to the [homepage](http://localhost:7777/)
+- Open the `dev tools` and go to the `components` sections
+- You should see that you have the `CartSateProvider`
+- Go back to the `cartState` file
+- Now we will make a custom hook for accesing the `cart local state`. So import `useContext` from `React`
+  `import { createContext, useContext } from 'react';`
+- Create a function call `useCart` bellow the `CartSateProvider` function
+  `function useCart() {}`
+- Create a constant that its value is the `useContext` with our `LocalStateContext` as its value and return it
+  ```js
+  function useCart() {
+    const all = useContext(LocalStateContext);
+    return all;
+  }
+  ```
+  We use a `consumer` here to access the `local state` and we did a hook because when you need to access the `data` we can just simply import the hook and we will get all that we need with just one import
+- Export the `useCart` hook
+  `export { CartSateProvider, useCart };`
+- Go to the `Cart.js` file
+- Import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Create a constant call `data` that its value is the `useCart` on the `Cart` function and console its value
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const data = useCart();
+    console.log(data)
+    if (!me) return null;
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh
+- On the console of the `dev tool` you will see an object with the `cartOpen` value
+- Go back to the `Cart` component
+- Destructure the `cartOpen` state
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen } = useCart();
+    console.log(data)
+    if (!me) return null;
+
+    return (...);
+  }
+  ```
+
+- Add the `cartOpen` state to `CartStyles`
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen } = useCart();
+    console.log(data);
+    if (!me) return null;
+
+    return <CartStyles open={cartOpen}>...</CartStyles>;
+  }
+  ```
+
+- Go to the `cartState` file
+- We will update the `cartOpen` constant to be an `state` with it update function so import `useState` from `React`
+  `import { createContext, useContext, useState } from 'react';`
+- Replace the `cartOpen` constant with a `cartOpen` state with `false` as it default value
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    return (...);
+  }
+  ```
+
+- Expose the `setCartOpen` open function for our `consumers`
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    return (
+      <LocalStateProvider value={{ cartOpen, setCartOpen }}>
+        {children}
+      </LocalStateProvider>
+    );
+  }
+  ```
+
+- Then create a function call `toggleCart` to update the current value of the `open state` to the opposite and expose it to the `consumers
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    function toggleCart() {
+      setCartOpen(!cartOpen);
+    }
+
+    return (
+      <LocalStateProvider value={{ cartOpen, setCartOpen, toggleCart }}>
+        {children}
+      </LocalStateProvider>
+    );
+  }
+  ```
+
+- Create a `closeCart` and a `openCart` functions to make sure allways that we have the specific value that we want for the `cart` and expose it to the `consumers`
+
+  ```js
+  function CartSateProvider({ children }) {
+    const [cartOpen, setCartOpen] = useState(false);
+
+    function toggleCart() {
+      setCartOpen(!cartOpen);
+    }
+
+    function closeCart() {
+      setCartOpen(false);
+    }
+
+    function openCart() {
+      setCartOpen(true);
+    }
+
+    return (
+      <LocalStateProvider
+        value={{ cartOpen, setCartOpen, toggleCart, closeCart, openCart }}
+      >
+        {children}
+      </LocalStateProvider>
+    );
+  }
+  ```
+
+- Go to the `Cart` component
+- Import `CloseButton`
+  `import CloseButton from './styles/CloseButton';`
+- Desturcture the `closeCart` function from the `useCart` hook
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen, closeCart } = useCart();
+    if (!me) return null;
+
+    return (...);
+  }
+  ```
+
+- Bellow the `Supreme` styled component add the `CloseButton` with the following prop and content
+
+  ```js
+  export default function Cart() {
+    const me = useUser();
+    const { cartOpen, closeCart } = useCart();
+    if (!me) return null;
+
+    return (
+      <CartStyles open={cartOpen}>
+        <header>
+          <Supreme>{me.name} Cart</Supreme>
+          <CloseButton type="button" onClick={closeCart}>
+            &times;
+          </CloseButton>
+        </header>
+        ...
+      </CartStyles>
+    );
+  }
+  ```
+
+- Then go to the `Nav` component
+- Import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Use the `useCart` hook to get the `openCart` function
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    const { openCart } = useCart();
+
+    return (...);
+  }
+  ```
+
+- Add a button in the `signin` options of the `nav` to open the `cart`
+
+  ```js
+  export default function Nav() {
+    const user = useUser();
+    const { openCart } = useCart();
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh
+- Click on the `My cart` option on the `nav`
+- The `cart` should open
+- Click on the `X` button on the `cart`
+- The `cart` should close
+
+### Cart - Adding items to cart
+
+Now we will be working with the add to `cart` functionality; first on the `backend` side; creating a custom `mutation`. You may ask yourself; why we need to add a custom `mutation` for the add to `cart` functionality? in fact we already have a `createCartItem` generate by `keystone` on the `graphQL` API but this functionality doesn't help us entirely because `createCartItem` create a new entry on the `CartItem schema` but this is not always the case on our `cart` because you can add more than one of the same item in the `cart` so the only thing we need is to update the `quantity field` instead of creating a new entry for the item that already exists on the `cart`. Luckily for us when you need to add your custom logic to a `mutation`; `keystone` allows you to add it so you can have the goal that you need.
+
+#### Steps to create a custom mutation on keystone
+
+- On your editor; go to the `backend/mutations/` directory
+- Create a new file call `index.ts`
+- Import `graphQLSchemaExtension` from `@keystone-next/keystone/schema`
+  `import { graphQLSchemaExtension } from '@keystone-next/keystone/schema';`
+- Export a new constant call `extendGraphqlSchema` that his value will be the `graphQLSchemaExtension` method
+  `export const extendGraphqlSchema = graphQLSchemaExtension({});`
+- On the `graphQLSchemaExtension` configuration object add the following
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: `
+      type Mutation {
+        addToCart(productId: ID): CartItem
+      }
+    `,
+  });
+  ```
+  The `typeDefs` define the name of the method; what arguments it recive and what it returns. In this case we define a `mutation` call `addToCart` that recive `productId` that have an `ID` type and returns a `CartItem`
+- As you see we don't have the highligth that we have on other `graphQL queries` or `mutation` that we work before because we need to pass a raw `string` and we don't need to put `gql` or `graphql` so our editor change he highlithing of the `string` but we can make our fake `graphql` tagged template literal. Before the `extendGraphqlSchema` add the following
+  `const graphql = String.raw;`
+  `String.raw` takes the backtips content of a template literal and return it
+- Add `graphql` on the `typeDefs` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`
+      type Mutation {
+        addToCart(productId: ID): CartItem
+      }
+    `,
+  });
+  ```
+  You should see that the highligth of the `string` change
+- Now we need to add the `resolvers` on the `extendGraphqlSchema` configuration object
+
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`
+      type Mutation {
+        addToCart(productId: ID): CartItem
+      }
+    `,
+    resolvers: {
+      Mutation: {
+        addToCart: function () {
+          console.log('ADD TO CART!!!');
+        },
+      },
+    },
+  });
+  ```
+
+  The `resolvers` are links to functions on `nodejs` that will be called when the `graphQL` API request it. Here we defined a function related to the `addToCart mutation`
+
+- Go to the `keystone.ts` file
+- Import `extendGraphqlSchema`
+  `import { extendGraphqlSchema } from './mutations';`
+- Bello the `lists` property add `extendGraphqlSchema`(We call it this `extendGraphqlSchema` on the `index.ts` file so we can have just the property name in here)
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({...}),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...}),
+    })
+  );
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Click in the `docs` tab at the right
+- On the `search` input type `addToCart`
+- You should see the function definition; what it returns and the argument that it needs
+- Since we can have more than one `mutation` on the `resolvers`; we will separate the custom code that we will do for each `mutation` on its separate file. So on your editor go to the `mutation` directory
+- Create a new file call `addToCart.ts`
+- On this newly created file; create a function call `addToCard` that receive `root`, an object that has a property called `productId` and a `context`
+  `function addToCart(root, { productId }, context) {}`
+- Since we are on `typescript` we need to add some types; first; `root` is an `any` type and `productId` will we an object that has a property that is a `string` and the `context` will be a `KeystoneContext` type
+  ```js
+  function addToCart(root: any, { productId }: { productId: string }, context: KeystoneContext)) {}
+  ```
+- Import `KeystoneContext` from `@keystone-next/types`
+  `import { KeystoneContext } from '@keystone-next/types';`
+- Now log a message on the `addToCart` function
+  ```js
+  function addToCart(root: any, { productId }: { productId: string }, context: KeystoneContext)) {
+    console.log('ADD TO CART!!!');
+  }
+  ```
+- Export the `addToCard` function
+  `export default addToCart;`
+- Go to the `index.ts` file
+- Import `addToCart`
+  `import addToCart from './addToCart';`
+- Remove the content of the `addToCart` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`...`,
+    resolvers: {
+      Mutation: {
+        addToCart,
+      },
+    },
+  });
+  ```
+- On your terminal; restart you `backend` local server
+- On your browser; go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Add the following `mutation`
+  ```js
+  mutation {
+    addToCart(productId: "an_example_product_id") {
+      id
+      quantity
+    }
+  }
+  ```
+- Click on the play button
+- Go to your terminal and you should see the message that you put on the `addToCard` function
+- Then go back to the `addToCard.ts` file
+- Since we are on `typescript` we need to define what the `addToCard` function returns in this case we now that will be a `CartItem` as we defined on the `typeDefs` property on the `index.ts` file and loacally for us `keystone` create all the types that we need depending of our `schemas` in this case our type is call `CartItemCreateInput` and you can import if from `../.keystone/schema-types`
+  `import { CartItemCreateInput } from '../.keystone/schema-types';`
+- Add the `CartItemCreateInput` type to the `addToCard` function
+  ```js
+  function addToCart(
+    root: any,
+    { productId }: { productId: string },
+    context: KeystoneContext)
+    ): CartItemCreateInput {
+    console.log('ADD TO CART!!!');
+  }
+  ```
+- Inside of the `addToCard` function we will use `asynchronous` code so we need to add the `async` keyword and this will change the value that we return to a `promise` that eventually return a `CartItemCreateInput`
+  ```js
+  async function addToCart(
+    root: any,
+    { productId }: { productId: string },
+    context: KeystoneContext)
+    ): Promise<CartItemCreateInput> {
+    console.log('ADD TO CART!!!');
+  }
+  ```
+- Now we need to `query` the current `user` and see if he is `signin`. For this the `context` parameter give us this information on the `session` property so create a constant that store the value of the `session` property
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session;
+  }
+  ```
+- Import the `Session` type from `types`
+  `import { Session } from '../types';`
+- Add the `Session` type as the type of the constant that you just created
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+  }
+  ```
+- Add a condition that ask for the `itemId` that give an `error` if it doesn't exists
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {
+      throw new Error('You must be logged in to do this!');
+    }
+  }
+  ```
+- Now we need to get the current `user cart`
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({
+      where: { user: { id: sesh.itemId }, product: { id: productId } },
+      resolveFields: 'id,quantity',
+    });
+  }
+  ```
+
+  Since we are on `keystone` we can directly go to our `lists`(our schemas) and run a function; in this case the `findMany`(Will find the items for use) function. That will use the `user` and `product id` to find an `item` then will return the `data` of the field that you add on the `resolveFields` property. Since no all fields of the `query` are not unique; we can't use the `findOne` method
+
+- Take the first item of the `allCartItems` using destructuring
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({...});
+    const [existingCartItem] = allCartItems;
+  }
+  ```
+
+- Then create a condition to increment by `1` the current item
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({...});
+    const [existingCartItem] = allCartItems;
+
+    if (existingCartItem) {
+    console.log(
+      `They are already ${existingCartItem.quantity}, increment by 1`
+    );
+    return context.lists.CartItem.updateOne({
+        id: existingCartItem.id,
+        data: { quantity: existingCartItem.quantity + 1 },
+      });
+    }
+  }
+  ```
+
+  The `updateOne` method will `update` one of the fields of our `product` search it by `id`. We don't need to use `await` here because we are returning the `promise`
+
+- Finally if we don't have any of the current `product` on the `cart`; we need to create a new `CartItem`
+
+  ```js
+  async function addToCart(...): Promise<CartItemCreateInput> {
+    const sesh = context.session as Session;
+    if (!sesh.itemId) {...}
+
+    const allCartItems = await context.lists.CartItem.findMany({...});
+    const [existingCartItem] = allCartItems;
+
+    if (existingCartItem) {...}
+
+
+    return context.lists.CartItem.createOne({
+      data: {
+        product: { connect: { id: productId } },
+        user: { connect: { id: sesh.itemId } },
+      },
+    });
+  }
+  ```
+
+  We use the `createOne` method to create a new `CartItem` and we need to relate the `data` of this specific `CartItem` to the respective `product` and `user` so we use the `connect` property to make this relation
+
+- Go to your terminal and restart the `backend` local server
+- On your browser; search for a `CartItem id` in the `Cart Items` section
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Test again the `addToCart`mutation using the existing `CartItem id`
+- Click the play button
+- Go to the `Cart Item` section on the `keystone admin`
+- Click on the `CartItem` that you use the `id` for the example
+- You should see that the `quantity` increments by `1`
+- Go to the `products` section and take one `id` that is not on the `cart`
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Test again the `addToCart`mutation using the new `product id`
+- Click the play button
+- Go to the `Cart Items` section
+- You should see that a new `CartItem` is created related to the `product id` that you use
+
+### Cart - Adding items in React
+
+We created our custom `mutation` to handle the `cart data` so we can continue to the `frontend` part of the application to use that custom `mutation`.
+
+- First; on your editor go to the `frontend/components` directiry
+- Create a new file call `AddToCard.js`
+- In this newly created file; export a function call `AddToCard` that recive an `id` as a `prop`
+  `export default function AddToCart({ id }) {}`
+- Return a button with the following message
+  ```js
+  export default function AddToCart({ id }) {
+    return (
+      <button disable={loading} type="button">
+        Add To Cart
+      </button>
+    );
+  }
+  ```
+- Import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `ADD_TO_CART_MUTATION` that it value will be `gql`
+  ```js
+  const ADD_TO_CART_MUTATION = gql``;
+  ```
+- Add the following `mutation` to `ADD_TO_CART_MUTATION`
+  ```js
+  const ADD_TO_CART_MUTATION = gql`
+    mutation ADD_TO_CART_MUTATION($id: ID!) {
+      addToCart(productId: $id) {
+        id
+      }
+    }
+  `;
+  ```
+  Here we will have a `mutation` call `ADD_TO_CART_MUTATION` that receive an `id` that is required and use the `addToCard mutation` with the `id` that you send to create a `cartItem` or increment the `quantity` of a `cartItem` that already exists on the `cart`
+- Then import the `useMutation` hook
+  `import { useMutation } from '@apollo/client';`
+- Destructure the update function and the loading variable from the return of the `useMutation` hook and send as it parameters `ADD_TO_CART_MUTATION` and the `id` prop
+
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(ADD_TO_CART_MUTATION, {
+      variables: { id },
+    });
+    return <button type="button">Add To Cart</button>;
+  }
+  ```
+
+- Add a `onClick` property on the `button` that have the `addToCart` function as it value
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(...);
+    return (
+      <button type="button" onClick={addToCart}>
+        Add To Cart
+      </button>
+    );
+  }
+  ```
+- Add a `disabled` property on the `button` that it value will be the `loading` variable and update the `button` message on `loading` like this
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(...);
+    return (
+      <button type="button" onClick={addToCart} disable={loading}>
+        Add{loading && 'ing'} To Cart
+      </button>
+    );
+  }
+  ```
+- We need to refecth the `user query` because we are going to be updating the `cart data` that is related to it so when we `add` a `product` on the `cart` reflect it immediately. So import the `CURRENT_USER_QUERY`
+  `import { CURRENT_USER_QUERY } from './User';`
+- Add the `refetchQueries` property to the `useMutation` hook
+
+  ```js
+  export default function AddToCart({ id }) {
+    const [addToCart, { loading }] = useMutation(ADD_TO_CART_MUTATION, {
+      variables: { id },
+      refetchQueries: [{ query: CURRENT_USER_QUERY }],
+    });
+
+    return (
+      <button type="button" onClick={addToCart} disable={loading}>
+        Add{loading && 'ing'} To Cart
+      </button>
+    );
+  }
+  ```
+
+- Go to the `Product` component
+- Import the `AddToCart` component
+- Add the `AddToCart` component betwen the `edit` and `delete` button
+  ```js
+  export default function Product({ product }) {
+    return (
+      <ItemStyles>
+        <img ... />
+        <Title>...</Title>
+        <PriceTag>{formatMoney(product.price)}</PriceTag>
+        <p>{product.description}</p>
+        <div className="buttonList">
+          <Link href={...}>
+            Edit ✏️
+          </Link>
+          <AddToCart id={product.id} />
+          <DeleteProduct id={product.id}>Delete</DeleteProduct>
+        </div>
+      </ItemStyles>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- You should see an `add to cart` button on each item
+- Click on the `add to cart button`(on an item that doesn't exist on the `cart`)
+- Open the `cart`
+- You should see the item that you just added on the `cart`
+- Click on another `product` that exists on the `cart`
+- Open the `cart`
+- You should see that the `product` increment its `quantity` by one
+
+### Cart - Animating the Cart value
+
+Now we can add items to the `cart` on the` frontend` side of the application but we still need some visual indication that the `cart` add your value and some animation that get your attention so you will know that the update is available on your `cart` so for this we will add the number of` products` that you got on the `cart` and some animation when that number update; so let begin with the process!!
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `CartCoun.js`
+- In this newly create file; export a function call `CartCount` that recive `count` as it prop
+  `export default function CartCount({ count }) {}`
+- On the `CartCount` function return a `Dot` component with the `count` prop as it content
+  ```js
+  export default function CartCount({ count }) {
+    return <Dot>{count}</Dot>;
+  }
+  ```
+- Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Lets create the `Dot` component. Use `styled` to create a `div` that will represent `Dot`
+  ```js
+  const Dot = styled.div``;
+  ```
+- Add the following styles
+  ```js
+  const Dot = styled.div`
+    background: var(--red);
+    color: white;
+    border-radius: 50%;
+    padding: 0.5rem;
+    line-height: 2rem;
+    min-width: 3rem;
+    margin-left: 1rem;
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  `;
+  ```
+  - `background: var(--red);`: Add a `red` backgrount to the `div`
+  - `color: white;`: Add the text color of the `div` as `white`
+  - `border-radius: 50%;`: Round the borders of the `div` by `50%`
+  - `padding: 0.5rem;`: Add some space around all the `div`
+  - `line-height: 2rem;`: The space that will have the lines of the `div`
+  - `min-width: 3rem;`: Set the minimum `width` that will have the `div`
+  - `margin-left: 1rem;`: Add some space at the `left` of the `div`
+  - `font-feature-settings: 'tnum';`: When you add a `product` to the `cart` and the number update will be a little movement depending on the number because some numbers are wider than others. The `font-feature-settings` will help us control some advanced features of OpenType; in this case, we use `tnum`(tabular numbers) so the `numbers` always have the same wider
+  - `font-variant-numeric: tabular-nums;`: This is the same as `font-feature-settings` is just for support
+- Go to the `Nav` component
+- Import the `CartCount` component
+  `import CartCount from './CartCount';`
+- On the `My Cart` button adds the `CartCount` component
+
+  ```js
+  export default function Nav() {
+    ...
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+              <CartCount />
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+- Now add the `count` prop with the following content
+
+  ```js
+  export default function Nav() {
+    ...
+
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+              <CartCount
+              count={user.cart.reduce(
+                (tally, cartItem) => tally + cartItem.quantity,
+                0
+              )}
+            />
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+  We use a `reduce` method so we can loop throw every `cart` item and use the `quantity` of each of them to have the total `count` of the `products` that are on the current `user cart`(begin with `0` the `count`)
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- You should see that the `cart` button on the `nav` have the number of `products` that you have on your `cart` with the style that we added
+- Go back to the `CartCount.js` file
+- Now we will add some animation when the number of the total of `product` of the `cart` updates but first import `CSSTransition` and `TransitionGroup` from `react-transition-grou`
+  `import { CSSTransition, TransitionGroup } from 'react-transition-group';`
+- Wrap the `Dot` component using the `TransitionGroup` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <TransitionGroup>
+        <Dot>{count}</Dot>
+      </TransitionGroup>
+    );
+  }
+  ```
+- Then wrap the `Dot` component again in the `CSSTransition` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <TransitionGroup>
+        <CSSTransition>
+          <Dot>{count}</Dot>
+        </CSSTransition>
+      </TransitionGroup>
+    );
+  }
+  ```
+- Add the following props to the `CSSTransition` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <TransitionGroup>
+        <CSSTransition
+          unmountOnExit
+          className="count"
+          classNames="count"
+          key={count}
+          timeout={{ enter: 5000, exit: 5000 }}
+        >
+          <Dot>{count}</Dot>
+        </CSSTransition>
+      </TransitionGroup>
+    );
+  }
+  ```
+  - `unmountOnExit`: Will umount the component when the transition finish
+  - `className="count"`: Reprecent the complete container
+  - `classNames="count"`: Will add `count-` on the classes that `CSSTransition` adds
+  - `key={count}`: This value will tell when the component needs to update; that is why we add what will change in this case the `count`
+  - `timeout={{ enter: 5000, exit: 5000 }}`: This will set the timer when the update will begin and finish. Is on milliseconds and we put 5 seconds so we can see the process; later we will update this value
+- Go to your browser and refresh the page
+- Open your `dev tool`
+- Search for the `cart` number of `products` on the `html` section
+- Click on the `add to cart` button
+- You should see on the `HTML` that the number of `products` of the `cart` changes it and appear the old value and the new value. This will help us to use the `classes` that `react-transition-group` add to those elements to animate when the value enter and exit
+- Now go back to the `CartCount.js` file
+- Add a new constant call `AnimationStyles` that its value will be a `styled span`
+  ```js
+  const AnimationStyles = styled.span``;
+  ```
+- Add the following styles to `AnimationStyles`
+
+```js
+const AnimationStyles = styled.span`
+  position: relative;
+
+  .count-enter {
+    backgroundL green
+  }
+
+  .count-enter-active {
+    background: yellow;
+  }
+
+  .count-exit {
+    background: blue
+  }
+
+  .count-exit-active {
+    background: pink
+  }
+`;
+```
+
+- Wrap the `CartCound` component content using `AnimationStyles`
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <AnimationStyles>
+        <TransitionGroup>
+          <CSSTransition
+            unmountOnExit
+            className="count"
+            classNames="count"
+            key={count}
+            timeout={{ enter: 5000, exit: 5000 }}
+          >
+            <Dot>{count}</Dot>
+          </CSSTransition>
+        </TransitionGroup>
+      </AnimationStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Click on the `add to cart` button
+- You will see `yellow` and `pink` counters then it will be back to the `red` one with the updated value(We don't see the `enter` and `exit` colors because it was a very quick transition)
+- Go back to the `CartCount` component
+- On the `AnimationStyles`; select all elements with the `count` className and add the following style
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {
+      display: block;
+      position: relative;
+      transition: transform 0.4s;
+      backface-visibility: hidden;
+    }
+  
+    ...
+  `;
+  ```
+
+  - `display: block;`: Set that the container will be the threat it as a `block` item
+  - `position: relative;`: Set the position according to the normal flow of the document
+  - `transition: transform 0.4s;`: Control the animation speed when it changing(We will have some animation next). Is important to align this value with the `timeout` prop of the `CSSTransition`(We will update the `timeout` prop later we add `5000` for testing)
+  - `backface-visibility: hidden;`: Hide the back of the item(We will do a backflip on the item and we don't want to show the back)
+
+- Now we need to update the `count-enter` class
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {
+      transform: scale(4) rotateX(0.5turn);
+    }
+    ...
+  `;
+  ```
+
+  - `transform: scale(4) rotateX(0.5turn);`: The `transform` property let `scale`, `rotate`, `skew` or `translate` and element. In this case we will `scale` the item and we will `rotate` it on the horizontal axis by half a `turn`(Can be `180` deggress)
+
+- Then went the element is `active`; we are going to `rotate` back to the original position
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {...}
+  
+    .count-enter-active {
+      transform: rotateX(0);
+    }
+    ...
+  `;
+  ```
+
+- We need to begin to handle the `exit` element
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {...}
+  
+    .count-enter-active {...}
+  
+    .count-exit {
+      top: 0;
+      position: absolute;
+      transform: rotateX(0);
+    }
+    ...
+  `;
+  ```
+
+  - `top: 0;`: We make sure that there is no space at the `top` of the element
+  - `position: absolute;`: We set the `position` of the element, in this case, it will be `absolute` to eliminate the normal flow of the elements on the page and put it on top of the other existing element
+  - `transform: rotateX(0);`: We will set as initial state of the `rotation`
+
+- Then we need to add the `exit active` element
+
+  ```js
+  const AnimationStyles = styled.span`
+    position: relative;
+  
+    .count {...}
+  
+    .count-enter {...}
+  
+    .count-enter-active {...}
+  
+    .count-exit {...}
+    
+    .count-exit-active {
+      transform: scale(4) rotateX(0.5turn);
+    }
+  `;
+  ```
+
+  - `transform: scale(4) rotateX(0.5turn);`: We will `scale` the element and make half of a `turn` on it
+
+- Now yoyu can go to your browser and refresh the page
+- Click on the `add to cart` button
+- You should see an animation when the value is update on the `cart` button on the `navbar`
+- Go back to the `CartCount` component
+- Update the `timeout` prop on the `CSSTransition` component
+  ```js
+  export default function CartCount({ count }) {
+    return (
+      <AnimationStyles>
+        <TransitionGroup>
+          <CSSTransition
+            unmountOnExit
+            className="count"
+            classNames="count"
+            key={count}
+            timeout={{ enter: 400, exit: 400 }}
+          >
+            <Dot>{count}</Dot>
+          </CSSTransition>
+        </TransitionGroup>
+      </AnimationStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Now the animation on the `cart` button in the `navbar` should be quicker
+
+#### Extra challenge: Open the cart after adding an item
+
+This was a challenge propose when the `cart` counter animation finish that consists of `open` the `cart` when you add an item. For this, we need to wait that the animation to finish so will need the help of one of the [transition](http://reactcommunity.org/react-transition-group/transition) properties in this case the [onExited](http://reactcommunity.org/react-transition-group/transition#Transition-prop-onExited) prop that trigger a `callback` function when the `exited` status is applied.
+
+- Go to the `CartCount` component
+- Import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Use the `useCart` hook to get the `openCart` function
+
+  ```js
+  export default function CartCount({ count }) {
+    const { openCart } = useCart();
+
+    return (...);
+  }
+  ```
+
+- Add a prop call `onExited` in the `CSSTransition` component that it value is the `openCart` function
+
+  ```js
+  export default function CartCount({ count }) {
+    const { openCart } = useCart();
+
+    return (
+      <AnimationStyles>
+        <TransitionGroup>
+          <CSSTransition
+            unmountOnExit
+            className="count"
+            classNames="count"
+            key={count}
+            timeout={{ enter: 400, exit: 400 }}
+            onExited={openCart}
+          >
+            <Dot>{count}</Dot>
+          </CSSTransition>
+        </TransitionGroup>
+      </AnimationStyles>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh the page
+- Click on the `add to cart` button
+- You should see the animation on the `cart` button on the `navbar` then when the animation finishes the `cart` should open itself
+
+### Cart - Remove from cart button
+
+In this section, we will add the `remove cart` button that will remove a complete item from the `cart`. Here are the steps:
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `RemoveFromCart.js` file
+- In this newly created file; export a function call `RemoveFromCart` that receive a prop called `id`
+  `export default function RemoveFromCart({ id }) {}`
+- Return a button that has an `X` with a title that represents the information of the `button`
+  ```js
+  export default function RemoveFromCart({ id }) {
+    return (
+      return (
+      <button
+        title="Remove this item from cart"
+        type="button"
+      >
+        &times;
+      </button>
+    );
+  }
+  ```
+- Import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a constant call `BigButton` that it value is `styled.button`
+  ```js
+  const BigButton = styled.button``;
+  ```
+- Add the following style
+  ```js
+  const BigButton = styled.button`
+    font-size: 3rem;
+    background: none;
+    border: 0;
+    &:hover {
+      color: var(--red);
+      cursor: pointer;
+    }
+  `;
+  ```
+- Replace the button tag with `BigButton`
+  ```js
+  export default function RemoveFromCart({ id }) {
+    return (
+      return (
+      <BigButton
+        title="Remove this item from cart"
+        type="button"
+      >
+        &times;
+      </BigButton>
+    );
+  }
+  ```
+- Go to the `Cart.js` file
+- Import `RemoveFromCart`
+  `import RemoveFromCart from './RemoveFromCart';`
+- Use the `RemoveFromCart` component on `CartItem` as a last item of the `CartItemStyles` wrapper. Sent the `cartItem id` as a prop of the `RemoveFromCart` component
+
+  ```js
+  function CartItem({ cartItem }) {
+    ...
+
+    return (
+      <CartItemStyles>
+        <img ... />
+        <div>
+          <h3>{product.name}</h3>
+          <p>
+            {formatMoney(product.price * cartItem.quantity)} -
+            <em>
+              {cartItem.quantity} &times; {formatMoney(product.price)} each
+            </em>
+          </p>
+        </div>
+        <RemoveFromCart id={cartItem.id} />
+      </CartItemStyles>
+    );
+  }
+  ```
+
+- Go back to the `RemoveFromCart` and import `gql`
+  `import gql from 'graphql-tag';`
+- Create a constant call `REMOVE_FROM_CART_MUTATION` that it value is `gql`
+  ```js
+  REMOVE_FROM_CART_MUTATION = gql``;
+  ```
+- Use the `deleteCartItem mutation` that recive an `id` that is require and return an `id`
+  ```js
+  REMOVE_FROM_CART_MUTATION = gql`
+    mutation REMOVE_FROM_CART_MUTATION($id: ID!) {
+      deleteCartItem(id: $id) {
+        id
+      }
+    }
+  `;
+  ```
+- Import `useMutation`
+  `import { useMutation } from '@apollo/client';`
+- On the `RemoveFromCart` use the `useMutation` hook returning the update function and the `loading` variable and that recive `REMOVE_FROM_CART_MUTATION` and the `id`
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+    const [removeFromCart, { loading }] = useMutation(REMOVE_FROM_CART_MUTATION, {
+      variables: { id },
+    });
+
+    return (
+      return (
+      <BigButton ...>
+        &times;
+      </BigButton>
+    );
+  }
+  ```
+
+- Add the `onClick` property with the `removeFromCart` function as it value
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+  const [removeFromCart, { loading }] = useMutation(REMOVE_FROM_CART_MUTATION, {
+    variables: { id },
+  });
+
+  return (
+    return (
+    <BigButton
+      title="Remove this item from cart"
+      type="button"
+      onClick={removeFromCart}
+    >
+      &times;
+    </BigButton>
+  );
+  }
+  ```
+
+- Add a `disabled` property that its value is the `loading` variable
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+  const [removeFromCart, { loading }] = useMutation(REMOVE_FROM_CART_MUTATION, {
+    variables: { id },
+  });
+
+  return (
+    return (
+    <BigButton
+      title="Remove this item from cart"
+      type="button"
+      disabled={loading}
+      onClick={removeFromCart}
+    >
+      &times;
+    </BigButton>
+  );
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- You should see an `X` button on each item with the style that we added
+- Click on one of the items in the `cart`
+- Refresh the page
+- Open the `cart`
+- The item that you eliminate should not be on the `cart`(On another section we will make the deleting visible at the moment you click on it)
+
+### Cart - Evicting cart items from the cache
+
+Now that we got the `remove` functionality of the `cart`; we will need to eliminate the item from the UI so we don't need to refresh the page every time we eliminate an item. We could `re-fetch the `user query`that will have the`cart`on it but there is another way a little bit faster since we don't need to go to the`server`for the`data`and simply is to put out the item from the`cache`(or `evict`the item from the`cache`).
+
+- On your editor; go to the `RemoveFromCart` component in the `frontend/components` directory
+- In the `RemoveFromCart` function create a new function call `update` and that function will recive `cache` and `payload`
+  `function update(cache, payload) {}`
+  The `cache` and `payload` will be pass when the function is call. The `payload` have the value of was is return on the `mutation` that we use on the `useMutation` hook
+- Add the following to the `update` function
+  ```js
+  function update(cache, payload) {
+    cache.evict(cache.identify(payload.data.deleteCartItem));
+  }
+  ```
+  The `evict` function will eliminate an item from the `cache` using the identification that you send. In this case, you could send a `string` like this: `CartItem:12233445555`(The number is random to represent an `id`) but is better to use the `cache.identify` API because it will generate the `id` for us. Every response that we do on the application will have an `__typename` that will identify the `mutation` that we use in this case `deleteCartItem` and as we made before it will return the `id`
+- Now go to the `useMutation` hook and add the `update` property and use the `update` function as its value
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+    const [removeFromCart, { loading }] = useMutation(
+      REMOVE_FROM_CART_MUTATION,
+      {
+        variables: { id },
+        update,
+      }
+    );
+
+    return (...);
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- Eliminate an item from the `cart`
+- You should see that the item is eliminated
