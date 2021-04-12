@@ -8769,3 +8769,41 @@ In this section, we will add the `remove cart` button that will remove a complet
 - Refresh the page
 - Open the `cart`
 - The item that you eliminate should not be on the `cart`(On another section we will make the deleting visible at the moment you click on it)
+
+### Cart - Evicting cart items from the cache
+
+Now that we got the `remove` functionality of the `cart`; we will need to eliminate the item from the UI so we don't need to refresh the page every time we eliminate an item. We could `re-fetch the `user query`that will have the`cart`on it but there is another way a little bit faster since we don't need to go to the`server`for the`data`and simply is to put out the item from the`cache`(or `evict`the item from the`cache`).
+
+- On your editor; go to the `RemoveFromCart` component in the `frontend/components` directory
+- In the `RemoveFromCart` function create a new function call `update` and that function will recive `cache` and `payload`
+  `function update(cache, payload) {}`
+  The `cache` and `payload` will be pass when the function is call. The `payload` have the value of was is return on the `mutation` that we use on the `useMutation` hook
+- Add the following to the `update` function
+  ```js
+  function update(cache, payload) {
+    cache.evict(cache.identify(payload.data.deleteCartItem));
+  }
+  ```
+  The `evict` function will eliminate an item from the `cache` using the identification that you send. In this case, you could send a `string` like this: `CartItem:12233445555`(The number is random to represent an `id`) but is better to use the `cache.identify` API because it will generate the `id` for us. Every response that we do on the application will have an `__typename` that will identify the `mutation` that we use in this case `deleteCartItem` and as we made before it will return the `id`
+- Now go to the `useMutation` hook and add the `update` property and use the `update` function as its value
+
+  ```js
+  export default function RemoveFromCart({ id }) {
+    const [removeFromCart, { loading }] = useMutation(
+      REMOVE_FROM_CART_MUTATION,
+      {
+        variables: { id },
+        update,
+      }
+    );
+
+    return (...);
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- Eliminate an item from the `cart`
+- You should see that the item is eliminated
