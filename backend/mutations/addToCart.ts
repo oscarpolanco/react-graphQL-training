@@ -2,6 +2,11 @@ import { KeystoneContext } from '@keystone-next/types';
 import { CartItemCreateInput } from '../.keystone/schema-types';
 import { Session } from '../types';
 
+export interface ExistingCartItem {
+  id: string;
+  quantity: number;
+}
+
 async function addToCart(
   root: any,
   { productId }: { productId: string },
@@ -22,7 +27,7 @@ async function addToCart(
 
   // 3. See if the current item is in their cart
   // 3.1. If it is, increment by 1
-  const [existingCartItem] = allCartItems;
+  const [existingCartItem] = allCartItems as [ExistingCartItem];
   if (existingCartItem) {
     console.log(
       `They are already ${existingCartItem.quantity}, increment by 1`
@@ -30,7 +35,7 @@ async function addToCart(
     return context.lists.CartItem.updateOne({
       id: existingCartItem.id,
       data: { quantity: existingCartItem.quantity + 1 },
-    });
+    }) as Promise<CartItemCreateInput>;
   }
   // 4 If it isn't, create a new cart item!
   return context.lists.CartItem.createOne({
@@ -38,7 +43,7 @@ async function addToCart(
       product: { connect: { id: productId } },
       user: { connect: { id: sesh.itemId } },
     },
-  });
+  }) as Promise<CartItemCreateInput>;
 }
 
 export default addToCart;
