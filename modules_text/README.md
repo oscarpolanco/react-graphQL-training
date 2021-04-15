@@ -9392,7 +9392,7 @@ In this section, we will work on the `search` component that will give users the
         <div {...getComboboxProps()}>...</div>
         <DropDown {...getMenuProps()}>
           {items.map((item, index) => (
-              <DropDownItem  key={item.id} {...getItemProps({ item })} highlighted={index === highlightedIndex}>
+              <DropDownItem  key={item.id} {...getItemProps({ item, index })} highlighted={index === highlightedIndex}>
                   <img
                   src={item.photo.image.publicUrlTransformed}
                   alt={item.name}
@@ -9437,7 +9437,7 @@ In this section, we will work on the `search` component that will give users the
         <div {...getComboboxProps()}>...</div>
         <DropDown {...getMenuProps()}>
           {isOpen && items.map((item, index) => (
-              <DropDownItem  key={item.id} {...getItemProps({ item })} highlighted={index === highlightedIndex}>
+              <DropDownItem  key={item.id} {...getItemProps({ item, index })} highlighted={index === highlightedIndex}>
                   <img
                   src={item.photo.image.publicUrlTransformed}
                   alt={item.name}
