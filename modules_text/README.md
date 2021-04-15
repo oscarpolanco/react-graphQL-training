@@ -8807,3 +8807,781 @@ Now that we got the `remove` functionality of the `cart`; we will need to elimin
 - Open the `cart`
 - Eliminate an item from the `cart`
 - You should see that the item is eliminated
+
+## Module 10: Search
+
+In this section, we will work on the `search` component that will give users the` products` information depending on what we type on an `input`. This component will be a mix of `search`; `lazy searching` and a` dropdown` autocomplete using a library called `downshift` that will make super easy the things that we need for the` search` component. Let begin with the process !!
+
+- On your editor; go to the `frontend/components` directory and create a new file call `Search.js`
+- On this newly created file import `SearchStyles`
+  `import { SearchStyles } from './styles/DropDown';`
+- Then export a function call `Search`
+  `export default function Search() {}`
+- Return the follwing content
+  ```js
+  export default function Search() {
+    return (
+      <SearchStyles>
+        <p>Search</p>
+      </SearchStyles>
+    );
+  }
+  ```
+- Go to the `Header` component and import the `Search` component
+  `import Search from './Search';`
+- Sustitute the `search` word for the `Search` component
+  ```js
+  export default function Header() {
+    return (
+      <HeaderStyles>
+        <div className="bar">...</div>
+        <div className="sub-bar">
+          <Search />
+        </div>
+        <Cart />
+      </HeaderStyles>
+    );
+  }
+  ```
+- Go back to the `Search` component and add a `div` with an `input` instead of the `p` tag
+  ```js
+  export default function Search() {
+    return (
+      <SearchStyles>
+        <div>
+          <input type="search" />
+        </div>
+      </SearchStyles>
+    );
+  }
+  ```
+- Now import `DropDown` and `DropDownItem` from the `styles` directory
+  `import { DropDown, DropDownItem, SearchStyles } from './styles/DropDown';`
+- Use `DropDown` bellow of the `input` container and inside of `DropDown` add the `DropDownItem` with a message(repeat it a couple of times)
+  ```js
+  export default function Search() {
+    return (
+      <SearchStyles>
+        <div>
+          <input type="search" />
+        </div>
+        <DropDown>
+          <DropDownItem>Item</DropDownItem>
+          <DropDownItem>Item</DropDownItem>
+          <DropDownItem>Item</DropDownItem>
+          <DropDownItem>Item</DropDownItem>
+          <DropDownItem>Item</DropDownItem>
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- You will see the `search` input with some items displayed. This will be the base render of all the things that we want; now when we want to add the functionality we are going to use the `downshift`(No only this library will help us with the functionally it also will make accessible the `dropdown` and we won't need to take care the logic to achieve that)
+- Import `useCombobox` from `downshift`
+  `import { useCombobox } from 'downshift';`
+- Use the `useCombobox` hook and destructure the following variables on the `Search` component
+  ```js
+  export default function Search() {
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox()
+    return (...);
+  }
+  ```
+  - `getMenuProps`:
+  - `getInputProps`:
+  - `getComboboxProps`:
+- Pass the following configuration to the `useCombobox` hook
+  ```js
+  export default function Search() {
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({
+      items: [],
+      onInputValueChange() {
+        console.log('Input Changed!');
+      }
+      onSelectedItemChange() {
+        console.log('Selected Items change!')
+      }
+    })
+    return (...);
+  }
+  ```
+  - `items`:
+  - `onInputValueChange`: Method that fires when someone type in the input
+  - `onSelectedItemChange`: Method that fires when someone select an item on the `dropdown` in our case means that someone wants to go in the `single product` of that specific selection
+- Now we need to `spread` all this method on the different elements of the `Search` component that will give the functionallity that we need and make it accessible. So on the `div` container of the `input`; `spread` the `getComboboxProps` method
+  ```js
+  export default function Search() {
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>
+          <input type="search" />
+        </div>
+        <DropDown>...</DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+- Then eliminate the `type="search"` from the `input` and add the `getInputProps`
+  ```js
+  export default function Search() {
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>
+          <input ...getInputProps() />
+        </div>
+        <DropDown>...</DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+- We need to send any additional configuration to the `getInputProps`; at this case the `type` of the `input` that it will be `search`; it will have a `placeholder`; an `id` and a `loading` class that we will update programacly when we got the `query`(For the moment just add the `className` property)
+  ```js
+  export default function Search() {
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>
+          <input ...getInputProps({
+            type: 'search',
+            placeholder: 'Search for an item',
+            id: 'search',
+            className: 'loading',
+          }) />
+        </div>
+        <DropDown>...</DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Open `devTools` and check the `console` section
+- You will see an `error` that informs you that the `aria-control` that you have given one name on the `server` and another name on the `client`. This is because `downshift` always add a unique identifier to each element
+- To fix the preview issue; go back to the `Search` component and import `resetIdCounter` from `downshift`
+  `import { resetCounter, useCombobox } from 'downshift';`
+- At the top of the `Search` function call the `Search` method
+  ```js
+  export default function Search() {
+    resetIdCounter();
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (...);
+  }
+  ```
+  This will take care of any `server` side issues that you may have
+- Now on the `DropDown` component; add the `getMenuProps`
+  ```js
+  export default function Search() {
+    resetIdCounter();
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>
+          <input ...getInputProps({...}) />
+        </div>
+        <DropDown {...getMenuProps()}>...</DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+- We need to write a `query` that gives us all `products` depending on the `term` that we have on our `input`. So first; import `gql`
+  `import gql from 'graphql-tag';`
+- Create a constant that store the `gql query` call `SEARCH_PRODUCT_QUERY`
+  ```js
+  const SEARCH_PRODUCT_QUERY = gql``;
+  ```
+- Use the `allProducts query` and sending a `require` variable call `searchTerm` that is a `string` and name the `query` as `searchTerms`
+  ```js
+  const SEARCH_PRODUCT_QUERY = gql`
+    query SEARCH_PRODUCT_QUERY($searchTerms: String!) {
+      searchTerms: allProducts() {
+        id
+        name
+        photo {
+          image {
+            publicUrlTransformed
+          }
+        }
+      }
+    }
+  `;
+  ```
+  When you put a name in front of the `query` it should take that name when you go the result
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Add the following `query`
+  ```js
+  query	{
+    allProducts() {
+      id
+      name
+    }
+  }
+  ```
+- Click on the `play` button
+- You should see the information of all `products` on the right side
+- Now add the following as a parameter of the `allProducts query`
+  ```js
+  query	{
+    allProducts(where: {
+      name_contains_i: "yeti"
+    }) {
+      id
+      name
+    }
+  }
+  ```
+  This `where` clause will give you the ability to filter the `products` that you will have on the result. We are using the `name_contains_i` property that will `search` for all `products` that have the `string` that we defined on its` name` property and will be `case insensitive`
+- Click the `play` button and you should see all the `products` that contains `yeti` on its` name`
+- Imagine that not only the name you will need to filter the `products` you also need the `description`. To handle this situation we will use the `OR` property as you can see next
+  ```js
+  query	{
+    allProducts(where: {
+      OR: [
+        {name_contains_i: "yeti"},
+        {description_contains_i: "shoes"}
+      ]
+    }) {
+      id
+      name
+    }
+  }
+  ```
+  The `OR` property will receive an `array` of objects with the parameters that you need to filter the `query` in this case we use the `name_contains_i` that we use before and the `description_contains_i` that is similar to the `name_contains_i` one but with the `description` of the `product`
+- Click on the `play` button and you will see that a list of all `products` that have `yeti` on their` name` or `shoes` on its a description
+- Go back to the `Search` component and add the following to `SEARCH_PRODUCT_QUERY`
+  ```js
+  const SEARCH_PRODUCT_QUERY = gql`
+    query SEARCH_PRODUCT_QUERY($searchTerms: String!) {
+      searchTerms: allProducts(
+        where: {
+          OR: [
+            { name_contains_i: $searchTerms }
+            { description_contains_i: $searchTerms }
+          ]
+        }
+      ) {
+        id
+        name
+        photo {
+          image {
+            publicUrlTransformed
+          }
+        }
+      }
+    }
+  `;
+  ```
+- Normally we run the `query` on page `render` but actually we want to run the `query` when the user type something on the `search input` so for this we use the `useLazyQuery` hook. Import `useLazyQuery` from `@apollo/client`
+  `import { useLazyQuery } from '@apollo/client';`
+- On the `Search` component use the `useLazyQuery` hook destructturing it result as the following
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery();
+    resetIdCounter();
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (...);
+  }
+  ```
+- Add the `query` that we create and the `fetPolicy` whit a value of `no-cache` option as parameters of the `useLazyQuery` hook
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {
+      fetchPolicy: 'no-cache',
+    });
+    resetIdCounter();
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (...);
+  }
+  ```
+  The `fetchPolicy` with the `no-cache` option will pass the `apollo cache` and will always go to the `network` because we don't want to store all the result that we have in the determine `search` and if we pull from the `apollo cache` we will bring the `products` that we have a store on the current page
+- Now that we have the `findItems` function; we can begin to call it on the `onInputValueChange` method that we defined before but as you may suspect; the `query` will be trigger on each thing that the `user` type on the `search input` and we don't want that the function hit the `network` so often(This last thing is called `debounce` where we hold a function to fire for a little of time). So import `debounce` from `lodash`
+  `import debounce from 'lodash.debounce';`
+- In the `Search` function create a constant call `findItemsButChill` with the `debounce` method as its value and add the following parameters
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {
+      fetchPolicy: 'no-cache',
+    });
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({...})
+    return (...);
+  }
+  ```
+  The first parameter of the `debounce` method is the function that you want to trigger and the second one is the time on milliseconds that the function will wait to trigger
+- Go to the `onInputValueChange` method and run `findItemsButChill`
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { getMenuProps, getInputProps, getComboboxProps } = useCombobox({
+      items: [],
+      onInputValueChange() {
+        console.log('Input Changed!');
+        findItemsButChill();
+      }
+      onSelectedItemChange() {
+        console.log('Selected Items change!');
+      }
+    });
+
+    return (...);
+  }
+  ```
+
+- We need to pass the value of the `input` on every `user` change and we can do it 2 ways; one is a parameter that is sent to the `onInputValueChange` method and the other one is a variable that returns the `useCombobox` hook. We will use the second one so add the `inputValue` variable like this
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps } = useCombobox({
+      items: [],
+      onInputValueChange() {
+        console.log('Input Changed!');
+        findItemsButChill();
+      }
+      onSelectedItemChange() {
+        console.log('Selected Items change!');
+      }
+    });
+
+    return (...);
+  }
+  ```
+
+- Then send an object to the `findItemsButChill` method with the `variable` property and its value will be the `inputValue` variable
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps } = useCombobox({
+      items: [],
+      onInputValueChange() {
+        console.log('Input Changed!');
+        findItemsButChill({
+          variables: {
+            searchTerms: inputValue,
+          },
+        });
+      }
+      onSelectedItemChange() {
+        console.log('Selected Items change!');
+      }
+    });
+
+    return (...);
+  }
+  ```
+
+- We should receiving `data` from the `query` at this moment so `log` the `data` variable
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    console.log(data);
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps } = useCombobox({...});
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Open your devTools
+- Type something on the `search input`(Be sure that you type something that matches to see the result)
+- You should see that we got `data`
+- Go back to the `Search` component
+- Remove the `console.log`
+- Now we can begin to use the `data` on our `DropDown items` but first make a variable call `items` with the following value
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps } = useCombobox({...});
+
+    return (...);
+  }
+  ```
+
+  This will get the `items` or fall back to an empty `array`
+
+- Go to the `DropDown` component and remove the `DropdownItems`; then `map` throw the elements of the `items` variable to build the following structure
+
+  ```js
+  export default function Search() {
+    ...
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {items.map((item) => (
+              <DropDownItem>{item.name}</DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+
+- Go back to your browser and refresh the page
+- Type something on the `search input`(Make sure that you type something that match)
+- You will see the names of the `products` that match on the `dropdown`
+- Now look on top of the `search input` and you will see a glowing part as you type and this is because of the `loading` class that we add on `input` configuration. We need to control this class and we will do it with the `loading` variable that we get from the `useLazy` hook
+  ```js
+  export default function Search() {
+    ...
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>
+          <input
+            {...getInputProps({
+              ...
+              className: loading ? 'loading' : '',
+            })}
+          />
+        </div>
+        <DropDown {...getMenuProps()}>
+          {items.map((item) => (
+              <DropDownItem>{item.name}</DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+  This will only add the `loading` class until we get the `data` from the `query`
+- We need to display the `image` on the `dropdown items`
+  ```js
+  export default function Search() {
+    ...
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {items.map((item) => (
+              <DropDownItem>
+                  <img
+                  src={item.photo.image.publicUrlTransformed}
+                  alt={item.name}
+                  width="50"
+                />
+                {item.name}
+              </DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+- As you type something on the `search input` and want to choose one of the items on the `dropdown`; we need to highlight the option that you currently in and make available that you can move with the keyword's key and click `enter` and `ESC` to perform an action on the `dropdown` and luckily for us `downshift` provide us with an adittional method call `getItemProps` that will help us to do that. So add it on the `useCombobox` call and spread it on the `DropDownItem` component passing the current `item` as a parameter also add the `key` property to the `DropDownItem` component since we are looping the items
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps } = useCombobox({...});
+
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {items.map((item) => (
+              <DropDownItem  key={item.id} {...getItemProps({ item })}>
+                  <img
+                  src={item.photo.image.publicUrlTransformed}
+                  alt={item.name}
+                  width="50"
+                />
+                {item.name}
+              </DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+
+- We need to let `downshift` now every possible item that we will have so go to the `useCombobox` configuration object and in the `items` property add the `items` variable that gets its to value from the `query`
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps } = useCombobox({
+      items,
+      onInputValueChange() {...},
+      onSelectedItemChange() {...}
+    });
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Open your `devTools`
+- Type something that matches the `search input`
+- Search the `dropdown` items`on the`HTML`section of the`dev tools`
+- Click on the `search input`
+- Use your `keywords` arrows to navigate in the `items`
+- You should see that an `aria-selected` property is updating depending on your current item
+- Go back to the `Search` component
+- We will need the `index` of the items to control the `highlight` of the `dropdown` so added on the the `map` function parameters
+
+  ```js
+  export default function Search() {
+    ...
+
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {items.map((item, index) => (
+              <DropDownItem  key={item.id} {...getItemProps({ item })}>
+                  <img
+                  src={item.photo.image.publicUrlTransformed}
+                  alt={item.name}
+                  width="50"
+                />
+                {item.name}
+              </DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+
+- Go to the `useCombobox` hook and add the `highlightedIndex` variable
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps, highlightedIndex } = useCombobox({...});
+
+    return (...);
+  }
+  ```
+
+- Use the `highlighted` property on the `DropDownItem` component with a condition that asks if the `index` is equal to the `highlightedIndex`
+
+  ```js
+  export default function Search() {
+    ...
+
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {items.map((item, index) => (
+              <DropDownItem  key={item.id} {...getItemProps({ item })} highlighted={index === highlightedIndex}>
+                  <img
+                  src={item.photo.image.publicUrlTransformed}
+                  alt={item.name}
+                  width="50"
+                />
+                {item.name}
+              </DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something that matches multiple items
+- Us the arrows keys to move on the `dropdown` items
+- You should see some styling on the current item
+- Go back to the `Search` component
+- Now we need to handle when we use the `ESC` key or click outside of the `dropdown` so we will need the `isOpen` variable that the `useCombobox` hook will give to you
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { isOpen, inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps, highlightedIndex } = useCombobox({...});
+
+    return (...);
+  }
+  ```
+
+- Go to the `items` map and ask if the `isOpen` variable is `true`
+
+  ```js
+  export default function Search() {
+    ...
+
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {isOpen && items.map((item, index) => (
+              <DropDownItem  key={item.id} {...getItemProps({ item })} highlighted={index === highlightedIndex}>
+                  <img
+                  src={item.photo.image.publicUrlTransformed}
+                  alt={item.name}
+                  width="50"
+                />
+                {item.name}
+              </DropDownItem>
+            ))}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something on the `search input` that match
+- Click on the `ESC` key
+- The `dropdown` should close
+- Type again on the `search input`
+- Click outside of the `dropdown`
+- The dropdown should close
+- Go back to the `Search` component
+- Now we need to handle when the `query` returns nothing. Add the following condition and message
+
+  ```js
+  export default function Search() {
+    ...
+
+    return (
+      <SearchStyles>
+        <div {...getComboboxProps()}>...</div>
+        <DropDown {...getMenuProps()}>
+          {isOpen && items.map((item, index) => (...))}
+          {isOpen && !items.length && !loading && (
+            <DropDownItem>Sorry, No items found for {inputValue}</DropDownItem>
+          )}
+        </DropDown>
+      </SearchStyles>
+    );
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something on the `search input` that don't match with any `product`
+- You will see the no match message
+- Now we need to handle when the `user` click on one of these items so go to the `Search` component
+- In the `onSelectedItemChange` add a `selectedItem` and `console.log` it
+
+  ```js
+  export default function Search() {
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { isOpen, inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps, highlightedIndex } = useCombobox({
+      items,
+      onInputValueChange() {...},
+      onSelectedItemChange({ selectedItem }) {
+        console.log(selectedItem);
+        console.log('Selected item change!');
+      }
+    });
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something on the `search input` that match
+- Use the arrow key to get to an item
+- Click enter
+- Go to the `devTools`
+- You should see the item information
+- Go back to the `Search` component
+- Now we need to redirect the `user` to the `product` page of the one that it chooses so import `useRouter` from `next/dist/client/router'`
+  `import { useRouter } from 'next/dist/client/router';`
+- Use the `useRouter` hook on the `search function`
+
+  ```js
+  export default function Search() {
+    const router = useRouter();
+    ...
+
+    return (...);
+  }
+  ```
+
+- Go to the `onSelectedItemChange` and use the `push` method of the `router` variable sending to the single `product` page
+
+  ```js
+  export default function Search() {
+    const router = useRouter();
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { isOpen, inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps, highlightedIndex } = useCombobox({
+      items,
+      onInputValueChange() {...},
+      onSelectedItemChange({ selectedItem }) {
+        router.push({
+          pathname: `/product/${selectedItem.id}`,
+        });
+      }
+    });
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Type something on the `search input` that match
+- Using your arrows keys get to an item
+- Click enter on the current item
+- You should be redirected to the single `product` page of the `product` that you choose
+- As you can see we have `[object object]` when we use the enter key so we will need to fix this. Go back to the `Search` component
+- Add the `itemToString` property on the configuration object of the `useCombobox` hook with the following condition
+
+  ```js
+  export default function Search() {
+    const router = useRouter();
+    const [findItems, { loading, data }] = useLazyQuery(SEARCH_PRODUCT_QUERY, {...});
+    const items = data?.searchTerms || [];
+    const findItemsButChill = debounce(findItems, 350);
+    resetIdCounter();
+    const { isOpen, inputValue, getMenuProps, getInputProps, getComboboxProps, getItemProps, highlightedIndex } = useCombobox({
+      items,
+      onInputValueChange() {...},
+      onSelectedItemChange({ selectedItem }) {
+        router.push({
+          pathname: `/product/${selectedItem.id}`,
+        });
+      }
+      itemToString: (item) => item?.name || '',
+    });
+
+    return (...);
+  }
+  ```
+
+  This will allow you to control the message that it shows when you perform an action like the enter key that we just did. In this case, we will use the name of the item that you choose
+
+- Go to your browser and refresh the page
+- Type something on the `search input` that match
+- Use the arrow keys to navigate the items
+- Click enter on one of the items
+- You should be redirected to the single `product` page of the item that you choose and the input should have that item name
