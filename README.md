@@ -21,6 +21,8 @@ Fullstack React and GraphQL training.
 - [Apollo](https://www.apollographql.com/) for handle the `graphQL` API and the `cache` of the `queries`
 - [Ethereal](https://ethereal.email/) for an example email service
 - [nodemailer](https://nodemailer.com/about/) to define and send an email
+- [react-transition-group](https://reactcommunity.org/react-transition-group/) to animate the `cart` counter
+- [downshift](https://www.downshift-js.com/) to handle the `search`
 
 ## Pages
 
