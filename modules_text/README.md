@@ -9585,3 +9585,175 @@ In this section, we will work on the `search` component that will give users the
 - Use the arrow keys to navigate the items
 - Click enter on one of the items
 - You should be redirected to the single `product` page of the item that you choose and the input should have that item name
+
+## Module 11: Order Creation and checkout
+
+We will continue working with the `checkout` process and to work with this process we will use [stripe] (https://stripe.com/) and we will be writing some custom` mutations` on our `backend` to process all the `data` of the` checkout` process. The `stripe checkout` process has 2 steps:
+
+- First; you catch the `user` information such as` credit card` or other relevant information that you need on the `client` and send it to` stripe`
+- `Stripe` comes back with a` token` that with the `charge`; then you send it back to your `backend` to process the transaction
+
+Why `stripe` follow this process? Is because you don't need to handle the actual `user credit card` number on your` server` because there will be a lot of logic that you will need to do to handle this `data` properly but with` stripe` you won't need to do a bunch of logic to handle this `data` because it will use` tokens` not the actual sensitive `data` of the` user`.
+
+### Setting up our stripe checkout
+
+- First; you will need to go to [stripe](https://stripe.com/) and create an account
+- When you are singing; make sure that your account is on `test` mode
+- Then go to the `developers section on the sidebar
+- Click on `API keys`
+- Copy your `Publishiable key`
+- Now we need to add an `environment variable` to our `frontend`. So far we only add `environment variables` on the `backend` side of the application but `nextJs` allow us to add a file to store these `variables`. You just need to create a file on the `root` of the `frontend` directory called`.env.local`
+- Inside of this newly created file add an `environment variable` call `NEXT_PUBLIC_STRIPE_KEY` and paste the `Publishable key` as its value
+  `NEXT_PUBLIC_STRIPE_KEY="my_test_key"`
+  If you want to expose an `environment variable` to the browser you just need to put the `NEXT_PUBLIC_` prefix to the name of the `environment variable`. If your `server` is running you will need to restart it to make available this `environment variable`
+- Now we will create our `checkout` component. Go to the `components` directory and create a file call `Checkout.js`
+- On this newly created file; export a function called `Checkout` and return some content
+  ```js
+  export default function Checkout() {
+    return <p>Checkout!!!</p>;
+  }
+  ```
+- Import `styled` from `styled-component`
+  `import styled from 'styled-components';`
+- Create a constant that is call `CheckoutFormStyles` that it value will be a `styled.form`
+  ```js
+  const CheckoutFormStyles = styled.form``;
+  ```
+- Add the following style to `CheckoutFormStyles`
+  ```js
+  const CheckoutFormStyles = styled.form`
+    box-shadow: 0 1px 2px 2px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 5px;
+    padding: 1rem;
+    display: grid;
+    grid-gap: 1rem;
+  `;
+  ```
+  - `box-shadow: 0 1px 2px 2px rgba(0, 0, 0, 0.04);`: Add shadow effects around an element.
+  - `border: 1px solid rgba(0, 0, 0, 0.06);`: Add some borders to the element
+  - `border-radius: 5px;`: Round the corners of a element outer border edge;
+  - ` padding: 1rem;`: Add some spacing around the content of the element
+  - `display: grid;`: Set how the element will be treated in this case will use `grid`
+  - `grid-gap: 1rem;`: Set some space betwen elements
+- Wrap the content of the `Checkout` component using `CheckoutFormStyles`
+  ```js
+  export default function Checkout() {
+    return (
+      <CheckoutFormStyles>
+        <p>Checkout!!!</p>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+  There is a reason to not use our existing `form` and is because we actually will not be handling the `inputs` for the `user`; we will use `stripe` elements and the `stripe` elements handle all the `inputs` for us
+- Go to the `Cart` component
+- Import the `Checkout` component
+  `import Checkout from './Checkout';`
+- Use the `Checkout` component at the button of the `Cart` component on the `footer` section below the `formatMoney` function
+
+  ```js
+  export default function Cart() {
+    ...
+    return (
+      <CartStyles open={cartOpen}>
+        <header>...</header>
+        <ul>...</ul>
+        <footer>
+          <p>{formatMoney(calcTotalPrice(me.cart))}</p>
+          <Checkout />
+        </footer>
+      </CartStyles>
+    );
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- You should see at the bottom of the `cart`; the message of the `Checkout` component
+- Go back to the `Checkout` component
+- Now we need to load in the `stripe` elements. The `stripe` elements are a package that `stripe` offers that allows you to embed `credit cards` fields into your application so you don't have to touch any `credit card` numbers yourself that actually happen on the `stripe` form. So import `loadStripe` from `@stripe/stripe-js`
+  `import { loadStripe } from '@stripe/stripe-js';`
+- Create a constant call `stripeLib` that its value will be the `loadStripe` method and send as its parameter the `NEXT_PUBLIC_STRIPE_KEY environment variable`
+  `const stripeLib = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY);`
+  `Stripe` will provide you with 2 libraries: `stripe-js` that is the base and `react-stripe-js` that is the `React` adaptation of the `inputs`. Make sure that this variable is outside of the `Checkout` component so you will require this once and not every time that the `Checkout` component render
+- Import `Elements` from `@stripe/react-stripe-js`
+  `import { Elements } from '@stripe/react-stripe-js';`
+- Now we need to wrap the `Checkout` component content on the `stripe` provider. Use the `Elements` component and give access to the `stripe` library so we need to send the `stripe` prop with `stripeLib` as it value
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <p>Checkout!!!</p>
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+- Next we need to embed the `credit card` form element so import `CardElement` from `@stripe/react-stripe-js`
+  `import { CardElement, Elements } from '@stripe/react-stripe-js';`
+- Remove the content that you add on the `p` tag and replace it with `CardElement`
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <CardElement />
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Open the `cart`
+- You should see the `credit cart` input
+- There is an issue having the `total` amount side by side with the `credit cart` input. We will need to make those element to be one on top of the other. Go to the `CartStyles` on the `components/styles` directory
+- On the `footer` styles remove the `display: grid` and `grid-template-colums: auto auto`
+- Go back to your browser and refresh the page
+- You should see the total `amount` of the purchase on top of the `credit card` input
+- Go back to the `Checkout` component
+- We will need to add a button to submit the `stripe` form. So import the `SickButton` styles
+  `import SickButton from './styles/SickButton';`
+- Use `SickButton` bellow the `CardElement` with a message
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <CardElement />
+          <SickButton>Check out now</SickButton>
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+- Now when someone submits the form we need some logic to create a function call `handleSubmit` and console a message
+
+  ```js
+  export default function Checkout() {
+    function handleSubmit(e) {
+      e.preventDefault();
+      console.log('We gotta do some work..');
+    }
+
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <CardElement />
+          <SickButton>Check out now</SickButton>
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+
+- Send a `onSubmit` prop on the `CheckoutFormStyles` with the `handleSubmit` function as it value
+- Go to your browser and refresh the page
+- Open the `cart`
+- You should see the `checkout` button
+- Open the console of `dev tools
+- Click on the `checkout` button
+- You should see the message that you add on the `handleSubmit` function
