@@ -9757,3 +9757,313 @@ Why `stripe` follow this process? Is because you don't need to handle the actual
 - Open the console of `dev tools
 - Click on the `checkout` button
 - You should see the message that you add on the `handleSubmit` function
+
+### Writing our client-side checkout logic
+
+We have the elements that will handle the `user` information so we are in good shape to continue to handle the submit of the `checkout` form and we will follow the next process:
+
+- Stop the form from submitting and turn the `loader` on
+- Start the page transition
+- Create the `payment` method via `stripe`(The `token` comes back here if successful)
+- Handle any `errors` from `stripe`(The `errors` will be like: `credit card` not accepted; there's not enough currency on the `card`; the `card` is not accepted in this country. Basically all the `credit card errors` will be handle by `stripe`)
+- Send the `token` that came to our `keystone` server via a custom `mutation`
+- Change the page to view the `order`
+- Close the `card`
+- Turn the `loader` off
+
+Let get to this process!!!
+
+- On your editor; go to the `frontend/components` directory
+- We will need to create some `states` to handle the `errors` and `loading`. Normally we used the variables return from our `mutation` to handle these `states` but here we will go throw a number of steps that are a part of the `mutation` that need to trigger those `states`. Import `useState` from `React`
+  `import { useState } from 'react';`
+- Add the following on the `Checkout` component
+
+  ```js
+  export default function Checkout() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+
+    function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Now we need access to the `stripe` object and we do it with the `useStripe` hook but there is an issue with the `Checkout` component and this hook because we need to wrap the `useStripe` hook on the `stripe` provider. So we will need to move the `stripe` provider to another component then call the form. Change the name of the `Checkout` component to `CheckoutForm`
+  `export default function CheckoutForm() {...}`
+- Create a new component call `Checkout` bellow the `CheckoutForm` component
+  `export default function Checkout() {}`
+- Use the `CheckoutForm` and wrap it on the `Elements` component
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutForm />
+      </Elements>
+    );
+  }
+  ```
+- Remove the `Elements` component from the `CheckoutForm`
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+
+    function handleSubmit(e) {...}
+
+    return (
+      <CheckoutFormStyles onSubmit={handleSubmit}>
+        <CardElement />
+        <SickButton>Check out now</SickButton>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+
+- Now import the `useStripe` hook from `@stripe/react-stripe-js`
+  `import { CardElement, Elements, useElements } from '@stripe/react-stripe-js';`
+- Use the `useStripe` hook on the `CheckoutForm` component
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+
+    function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Now that we have the `loading` state we can set it to `true` so we can begin with the `checkout` process
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+    }
+
+    return (...);
+  }
+  ```
+
+- Then we need to begin with the page transition using `nProgress` so import `nProgress` from `nprogress`
+  `import nProgress from 'nprogress';`
+- On the `CheckoutForm` use the `start` method of `nProgress`
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+    }
+
+    return (...);
+  }
+  ```
+
+- On to your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- Click on the `checkout` button
+- The progress bar at the top of the page should show up
+- Go back to the `Checkout` file
+- Import the `useElements` from `@stripe/react-stripe-js`
+  `import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';`
+- On the `CheckoutForm` component creates a constant call `elements` that its value is the `useElements` hook
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+    }
+
+    return (...);
+  }
+  ```
+
+- Now we will create our `payment` method via `stripe` so we will use the `createPaymentMethod` with the following options and grabbing the `error` and `paymentMethod` that it returns
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+    }
+
+    return (...);
+  }
+  ```
+
+  - `type: 'card'`: `Stripe` lets you pay with another couple options such as `ACH`(Automatic clearing house) but we will choose the `credit card` method
+  - `card: elements.getElement(CardElement),`: It will receive a reference of the actual `credit card` input of the `CardElement`. The `elements` variable will give you the access that you need to the `element` of the form and is smart enough to render `CarElement` just once so you don't need to use a `ref` or something like that to reference the form
+
+- The `createPaymentMethod` is an `asynchronous` function so we will need to use the `async/await` keywords and log the `paymentMethod`
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+      console.log(paymentMethod);
+    }
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Now we are going to test the response of `stripe` and for this, we need a test `credit card`; you can find it on the [stripe test card page](https://stripe.com/docs/testing). I like to use `4242 4242 4242 4242` with a future `date` because is easy to type but on the test page, you can find `cards` with specific `responses` and `errors` that you can use. So fill the `credit card` form and click the `checkout` button
+- Open the browser `dev tools` on the console option
+- You will see an object that represents the information that comes back from `stripe` and on that object is an `id` that is the `token` that we need
+- Go to the `Checkout` file
+- On the `CheckoutForm` component add a condition using the `error` variable to set the `error` state
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+
+      if (error) {
+        setError(error);
+      }
+    }
+
+    return (...);
+  }
+  ```
+
+- Bellow of the `CheckoutFormStyles` add a condition that shows the `error` message if an `error` exist(Add a little bit of style so we have a small `font` )
+
+  ```js
+  export default function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {...}
+    }
+
+    return (
+      <CheckoutFormStyles onSubmit={handleSubmit}>
+        {error && <p style={{ fontSize: 12 }}>{error.message}</p>}
+        <CardElement />
+        <SickButton>Check out now</SickButton>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+
+- Go to the browser and refresh the page
+- Open the `cart`
+- Fill the `credit card` form with some `error` on the fields
+- You will see an `error` displayed on the top of the `credit card` form
+- Go back to the `CheckoutForm` component
+- Set the `loading` state to `false`(Because we finalize the transaction and want to finish the `loading` state)
+
+  ```js
+  export default function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+
+      if (error) {
+        setError(error);
+      }
+
+      setLoading(false);
+    }
+
+    return (...);
+  }
+  ```
+
+- Stop the `nProgress` with the `done` method
+
+  ```js
+  export default function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+
+      if (error) {
+        setError(error);
+      }
+
+      setLoading(false);
+      nProgress.done();
+    }
+
+    return (...);
+  }
+  ```
+
+  We will finish the other part of the logic on the other sections of this module
