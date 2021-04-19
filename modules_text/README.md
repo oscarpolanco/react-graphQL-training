@@ -10067,3 +10067,162 @@ Let get to this process!!!
   ```
 
   We will finish the other part of the logic on the other sections of this module
+
+### Creating our Order and OrderItem data types
+
+Now we are going to the `backend` side of the application to begin to work in our custom `mutation` for the `order` after doing the `checkout` process on the `frontend` side of the application but the first step will be to create those `data types` that will store our `order`.
+
+The `order data type` will have a `charge`(That will be some kind of `id` that we get on the `checkout` process), the `total` amount of the purchase, the `user` that will be related to this `order` and the `products` that the `user` buy; you may think that this will only be a relation between the `order` and `products` but we need to store the actual `product` that the `user` is buying so will not accept changes like the `name` or `image` in the `product` so we can't relate it with the `products data type` so we don't have the latest version of the `product`; we need the actual `product` that the `user` is buying. For this, we will create an `OrderItem data type`.
+
+- On your editor; go to the `backend/schema`
+- Copy the content of the `Product.js` file
+- Create a new file call `OrderItem.js`
+- On this newly created file; paste the content of the `Product.js` file
+- Update the `list` name from `Product` to `OrderItem`
+  `export const OrderItem = list({...});`
+- We will reference to a `ProductImage` for the `images` and is not a 2-way relationship so remove `.product` from the `ref` property of the `photo`
+  ```js
+  export const OrderItem = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({...}),
+      photo: relationship({
+        ref: 'ProductImage',
+        ui: {...},
+      }),
+      ...
+    },
+  });
+  ```
+- Eliminate the `status` field
+- Below of the `price` field add the following
+  ```js
+  export const OrderItem = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({...}),
+      photo: relationship({
+        ref: 'ProductImage',
+        ui: {...},
+      }),
+      price: integer(),
+      quantity: integer(),
+      order: relationship({ ref: 'Order.items' }),
+    },
+  });
+  ```
+  The `quantity` will store the amount of items that the `user` purchase and the `order` will be a relashionship with the `Order data type` on its `item` field(The `Order` is not created yet)
+- Eliminate the imports that we don't use
+- Go to the `keystone.ts` file
+- Import the `OrderItem` file
+  `import { OrderItem } from './schemas/OrderItem';`
+- Add the `OrderItem` to the `createSchema` configuration object on the `list` property
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+        OrderItem,
+      }),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...}),
+    })
+  );
+  ```
+- Now go to the `OrderItem` file
+- Copy the content of the file
+- On the `schema` directory create a new file call `Order.js`
+- Paste the content of the `OrderItem` file in this newly created file
+- Update the `list` item from `OrderItem` to `Order`
+  `export const Order = list({...});`
+- Remove all the content of the `fields` property
+- Add the following fields
+  ```js
+  export const Order = list({
+    fields: {
+      total: integer(),
+      items: relationship({ ref: 'OrderItem.order', many: true }),
+      user: relationship({ ref: 'User.orders' }),
+      charge: text(),
+    },
+  });
+  ```
+  We will have a `total` that will represent the amount that the `user` pay; the `items` that is a relasionship withe the `OrderItem` and can have multiple items on one `order`; the `user` that make the purchase and the `charge` that will some `id` that we get
+- Now go to the `User.ts`
+- We need to complete the relationship with the `order` so we will need to add an `orders` field and specify that an `user` can have `many orders`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({...}),
+      orders: relationship({ ref: 'Order.user', many: true }),
+    },
+  });
+  ```
+- Go to the `keystone.ts` file
+- Import `Order`
+  `import { Order } from './schemas/Order';`
+- Add the `Order` to the `createSchema` configuration object on the `list` property
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+        OrderItem,
+        Order,
+      }),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...}),
+    })
+  );
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone frontpage](http://localhost:3000/)
+- You should see an `Order Items` and `Order` on the sidebar
+- Click on the `Order Items` option
+- Click on the `Create Order Item`
+- Fill the form and create the `OrderItem`
+- You should successfully create an `OrderItem`
+- Click on the `Orders` option in the sidebar
+- Click on the `Create Order` button
+- Fill the form(On the items add the `OrderItem` that you create early)
+- You should be able to create an `Order`
+- Click on the `Order Item` sidebar option
+- Click on the `Order Item` that you created before
+- It should be related to the `Order` that you just created
+- Click on the `Order Items` options again
+- You see that the list of `OrderItems` has the `id`. This may be confusing for our `users` so we will add a `label` on the field and on that `label` we will use a `virtual` field that is something that is calculated on demand and not actually a value store on the `database`. Go to the `Order.js` file and import `virtual`
+  `import { integer, relationship, text, virtual } from '@keystone-next/fields';`
+- Add the following on the `fields` property
+  ```js
+  export const Order = list({
+    fields: {
+      label: virtual({
+        graphQLReturnType: 'String',
+        resolver(item: { total: number }): string {
+          return `${formatMoney(item.total)}`;
+        },
+      }),
+      ...
+    },
+  });
+  ```
+  - `graphQLReturnType: 'String'`: This will tell the type that will be returning for this `label` because is not defined on the `database`
+  - `resolver(item: { total: number }): string {...}`: The `resolver` property will have a function that receives an `item`(In this case the `OrderItem` itself) and return the value that you need. In this case, we use the `total` and format to have the value on dollars and not cents
+- On your terminal; restart your `backend` local server
+- Go to the `Order Item` list page
+- You should see the `total` amount of the `order` on the list of items
