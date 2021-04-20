@@ -10226,3 +10226,287 @@ The `order data type` will have a `charge`(That will be some kind of `id` that w
 - On your terminal; restart your `backend` local server
 - Go to the `Order Item` list page
 - You should see the `total` amount of the `order` on the list of items
+
+### Writing our client-side checkout handler logic
+
+Now we can begin to do the custom `mutation` to create the `charge`. Remember real quick the flow:
+
+- The `user` fill the `checkout` form with its `credit card` information and send it to `stripe`
+- `Stripe` response with an object that has a `token`
+- We take the `token` to our `backend`
+- Then we send the `token` with the `charge` information to `stripe`
+- `Stripe` will respond with the approved
+
+Now let begin with the custom `mutation` process:
+
+- On your editor; go to the `index.ts` file on the `backend/mutations` directory
+- The `mutation` will be call `checkout` that recive a `token` that is `required` and return an `Order`. Add the following on the `typeDefs` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`
+      type Mutation {
+        addToCart(productId: ID): CartItem
+        checkout(token: String!): Order
+      }
+    `,
+    resolvers: {...},
+  });
+  ```
+- On the `mutations` directory create a file call `checkout.ts`
+- On this newly created file export a function call `checkout`
+
+  ```js
+  function checkout() {}
+
+  export default checkout;
+  ```
+
+- Go back to the `index.ts` file and import the `checkout` function
+  `import checkout from './checkout';`
+- Add on the `Mutation` object on the `resolver` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`...`,
+    resolvers: {
+      Mutation: {
+        addToCart,
+        checkout,
+      },
+    },
+  });
+  ```
+- Go to the `addToCart.ts` file and copy the content
+- Go to the newly create `checkout.ts` file and paste the content(Eliminate the content that you add before)
+- In the `checkout.ts` file; replace the `addToCard` function name to `checkout`
+- Eliminate the content of the `checkout` function
+- Import `OrderCreateInput` from
+  `import { CartItemCreateInput, OrderCreateInput, } from '../.keystone/schema-types';`
+- Replace the parameters with the following
+  ```js
+  async function checkout(
+    root: any,
+    { token }: { token: string },
+    context: KeystoneContext
+  ): Promise<OrderCreateInput> {}
+  ```
+  The `checkout` function will recive the `root` parameter; the `token`(That is an `string`) and the `conttext` variable(That is a `KeystoneContext` type) and will return a `promise` when is resolve will return an `order`
+- Update the `export` at the bottom
+  `export default checkout;`
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Click on the `docs` tab and on the input `search` type `checkout`
+- You should see the `checkout` information on the `docs`
+- Go back to the `checkout` file
+- Now we will make sure that the `user` is signed in and the `context` variable will hel us with this so create a constant call `userId` that `context.session.itemId` is it value
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+  }
+  ```
+- Create a condition that triggers an `error` when there's not any `userId`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {
+      throw new Error('Sorry! You must be signed in to create an order');
+    }
+  }
+  ```
+
+- Now we need to `query` the current `user` because the current `user` has the `cart` on it and this will help us to make all the calculations that we need. Create a constant call `user` that has the following value
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {
+      throw new Error('Sorry! You must be signed in to create an order');
+    }
+
+    const user = await context.lists.User.findOne({
+      where: { id: userId },
+      resolveFields: `
+        id
+        name
+        email
+        cart {
+          id
+          quantity
+          product {
+            name
+            price
+            description
+            id
+            photo {
+              id
+              image {
+                id
+                publicUrlTransformed
+              }
+            }
+          }
+        }
+      `,
+    });
+  }
+  ```
+
+  To get the `user` value we will use the `context` variable that has the `user` schema on it(`list` for `keystone`) and we use the `mongoose` function call `findOne`(Return the item depending on a unique condition) where the `id` of the `user` will be the `userId` that we previously get. The `resolvers` fields will be the things that we are going to show as a result of the `query`
+
+- We need the highlights that we got on another `queries` that we use so we need to use again the `String.raw` trick. To create a constant call `graphql` that its value is `String.raw`
+  `const graphql = String.raw;`
+- Add `graphql` to the `string` of the `resolverFields` property
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {
+      throw new Error('Sorry! You must be signed in to create an order');
+    }
+
+    const user = await context.lists.User.findOne({
+      where: { id: userId },
+      resolveFields: graphql`...`,
+    });
+  }
+  ```
+
+- Console the `user` variable
+- On your terminal; restart your local server
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Add the following `mutation`(At this moment don't matter the `token` that you send)
+  ```js
+  mutation {
+    checkout(token: "ABC123") {
+      id
+    }
+  }
+  ```
+- Click the play button
+- Go to the terminal and you should see the `user` information
+- Go back to the `checkout` file
+- We could have a `cartItem` on the `user` that doesn't have any items but exist and we need to filter those values so we will `filter` the `user cart` to eliminate the `cartItem` without `products`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+  }
+  ```
+
+- Now we can calculate the `amount` of the `charge`. To create a constant call `amount` that its value is a `reduce` of the `cartItems`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {
+      return tally + cartItem.quantity * cartItem.product.price;
+    }, 0);
+  }
+  ```
+
+- Console de `amount` variable
+- Go to your terminal and restart your local server
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Run the `mutation` that you did before
+- Go to your terminal and you should see the `amount` value log
+- Now we need to configure `stripe` to work on our `server` side and for this we will need the `stripe` secret key so go to your `stripe` dashboard and copy your secret key(DO NOT SHARE IT WITH ANYBODY)
+- Go to the `.env` file in the `backend` directory and add the following `enviroment variable` with your secret `stripe` key
+  `STRIPE_SECRET="my_secret_key"`
+- Go to the `lib` directory and create a new file call `stripe.ts`
+- On this newly created file import `Stripe` from `stripe`
+  `import Stripe from 'stripe';`
+- Add a constant call `stripeConfig` with the following value
+  ```js
+  const stripeConfig = new Stripe(process.env.STRIPE_SECRET || '', {
+    apiVersion: '2020-08-27',
+  });
+  ```
+  The first value will be our secret key and the second will be our API version(`stripe` changes the API all the time and we need to set the specific version that we want to use)
+- Export the `stripeConfig`
+  `export default stripeConfig;`
+- Go back to the `checkout` file
+- Import `stripeConfig`
+  `import stripeConfig from '../lib/stripe';`
+- On the `checkout` function we will need to create the `charge` with the `paymentIntents.create` method from `stripe`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {...}, 0);
+    const charge = await stripeConfig.paymentIntents.create({});
+  }
+  ```
+
+- Now send the following on the `charge` configuration object
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {...}, 0);
+    const charge = await stripeConfig.paymentIntents.create({
+      amount,
+      currency: 'USD',
+      confirm: true,
+      payment_method: token,
+    });
+  }
+  ```
+
+  - `amount`: The `amount` of the `charge`. `Stripe` deal with cents so we don't need to transform the value
+  - `currency: 'USD'`: The type of the `currency`
+  - `confirm: true`: When this is set to `true` you immediately confirm the `charge` because previously you have to create a payment intend and wait for the `stripe` response but in most case, you will want to `charge` the `card` initially
+  - `payment_method: token`: Here is where you add the `token` that we get
+
+- Add a `catch` in case there is an `error` with the `charge`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {...}, 0);
+    const charge = await stripeConfig.paymentIntents.create({
+      amount,
+      currency: 'USD',
+      confirm: true,
+      payment_method: token,
+    })
+    .catch((err) => {
+      console.log(err);
+      throw new Error(err.message);
+    });;
+  }
+  ```
+
+  This implementation will be finish in one of the later sections
