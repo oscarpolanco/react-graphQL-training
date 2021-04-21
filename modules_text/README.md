@@ -10510,3 +10510,156 @@ Now let begin with the custom `mutation` process:
   ```
 
   This implementation will be finish in one of the later sections
+
+### Linking up our frontend to the custom backend checkout mutation
+
+We need to test the code that we are so far for the `checkout` process on both `frontend` and `backend`. So let do this!!
+
+- On your editor; go to the `frontend/components` directory
+- On the `Checkout` component; console the `paymentMethod` variable
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal, go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- Open the `card`
+- Fill the `credit card` form
+- Click the `checkout` button
+- Open the `dev tools`
+- You should see the `paymentMethod` object
+- Copy the `id`
+- On your editor; go to the `checkout` file on the `backend/mutations` directory
+- Console the `charge` constant
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Use the `checkout mutation` that you use before but paste the `id` in the `token` property(This `tokens` are good for one try so if something when bad you will need to generate another one)
+- Click the play button
+- Go to the `backend` local server logs on the terminal
+- You should see the successful `charge` response from `stripe`
+- On your browser; go to your `stripe` dashboard
+- Click on the `payments` option at the left
+- You should see the `payment` that you just did
+- Now we can add the `checkout mutation` to the `Checkout` component on the `frontend`. So go to the `Checkcout` component and import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `CREATE_ORDER_MUTATION` that its value will be `gql`
+  ```js
+  const CREATE_ORDER_MUTATION = gql``;
+  ```
+- Add the `checkout mutation` that will recive a `token` variable and return the following
+  ```js
+  const CREATE_ORDER_MUTATION = gql`
+    mutation CREATE_ORDER_MUTATION($token: String!) {
+      checkout(token: $token) {
+        id
+        charge
+        total
+        items {
+          id
+          name
+        }
+      }
+    }
+  `;
+  ```
+- Import `useMutation` from `@apollo/client`
+  `import { useMutation } from '@apollo/client';`
+- Go to the `CheckoutForm` and use the `useMutation` hook to use the `checkout mutation`
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const [checkout, { error: graphQLError }] = useMutation(
+      CREATE_ORDER_MUTATION
+    );
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+  Since we already have an `error` variable we need to destructure the `error` that the `useMutation` hook return to give it another name also we don't have the `token` yet so we can't add the `variables` here yet
+
+- Bellow the `error` message add the same but with the `graphQLError` message
+  ```js
+  function CheckoutForm() {
+    ...
+    return (
+      <CheckoutFormStyles onSubmit={handleSubmit}>
+        {error && <p style={{ fontSize: 12 }}>{error.message}</p>}
+        {graphQLError && <p style={{ fontSize: 12 }}>{graphQLError.message}</p>}
+        <CardElement />
+        <SickButton>Check out now</SickButton>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+- On the `error` condition on the `handleSubmit` function we will need to `stop` the `nProgress` load and add a `return` so the `checkout` process doesn't continue
+
+  ```js
+  function CheckoutForm() {
+    ....
+
+   async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    nProgress.start();
+    const { error, paymentMethod } = await stripe.createPaymentMethod({...});
+    console.log(paymentMethod);
+
+    if (error) {
+      setError(error);
+      nProgress.done();
+      return;
+    }
+
+    setLoading(false);
+    nProgress.done();
+  }
+
+    return (...);
+  }
+  ```
+
+- Now we can send the `token` via our custom `mutation`; so create a constant call `order` and use the `checkout` function as its value sending the `token` variable and console the `order` variable
+
+  ```js
+  function CheckoutForm() {
+    ....
+
+   async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    nProgress.start();
+    const { error, paymentMethod } = await stripe.createPaymentMethod({...});
+    console.log(paymentMethod);
+
+    if (error) {
+      setError(error);
+      nProgress.done();
+      return;
+    }
+
+    const order = await checkout({
+      variables: {
+        token: paymentMethod.id,
+      },
+    });
+
+    console.log(order);
+    setLoading(false);
+    nProgress.done();
+  }
+
+
+    return (...);
+  }
+  ```
+
+- On your browser go to the [homepage](http://localhost:7777/) and refresh the page
+- Open the `cart`
+- Fill the `credit card` form
+- Click the `checkout` button
+- Go to your `stripe` dashboard
+- Click on the `payment` section at the left
+- You should have a new `payment` with the value that you just submit
