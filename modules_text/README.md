@@ -10663,3 +10663,218 @@ We need to test the code that we are so far for the `checkout` process on both `
 - Go to your `stripe` dashboard
 - Click on the `payment` section at the left
 - You should have a new `payment` with the value that you just submit
+
+### Creating our Order and OrderItems in our mutation
+
+Now we can continue with the creation of the `order` after a successful `payment`
+
+- On your editor go to the `backend/mutations` directory and enter to the `checkout.js` file
+- At this moment we need to convert our `cartItems` to `orderItems` so we will need to loop over the `cartItems` that we have at the moment and make a new object. Bellow of the `charge` create an object called `orderItems` that its value will be a `map` result of the `cartItems`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map();
+  }
+  ```
+
+- Add the following to the `map` function
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map((cartItem) => {
+      const orderItem = {
+        name: cartItem.product.name,
+        description: cartItem.product.description,
+        price: cartItem.product.price,
+        quantity: cartItem.quantity,
+        photo: { connect: { id: cartItem.product.photo.id } },
+      };
+      return orderItem;
+    });
+  }
+  ```
+
+  Here we add a callback function that will use every `cartItem` and make a new object that will represent each `orderItem`
+
+- Then we need to create the `order` and return it so bellow of the `orderItems` add a constant call `order` with the `createOne` function that we use before as its value but targeting the `Order` schema
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({});
+  }
+  ```
+
+- On the `createOne` configuration object add the following
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({
+      data: {
+        total: charge.amount,
+        charge: charge.id,
+        items: { create: orderItems },
+        user: { connect: { id: session.itemId } },
+      },
+      resolveFields: false,
+    });
+  }
+  ```
+
+  We add the `data` object that will represent all the values that we will add to the new `order` using the `charge` information; creating the `orderItems` with the information that we get before and relating those with the `order`(When we use the `create` property it will `create` the item first; in this case, the `orderItem` then will provide to create and relate the `order` with those items) and relate the `order` with the `user`.
+
+- Then we need to clean any old `cartItems` so create a constant call `cartItemIds` that its value will be a `map` function of the `cart` of the current `user` to return each `id` of every `cart` item
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({...});
+    const cartItemIds = user.cart.map((cartItem) => cartItem.id);
+  }
+  ```
+
+- Use the `deleteMany`(This is an asynchronous function) function on the `CartItem` schema sending the `ids` that we get before
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({...});
+    const cartItemIds = user.cart.map((cartItem) => cartItem.id);
+    await context.lists.CartItem.deleteMany({
+      ids: cartItemIds,
+    });
+  }
+  ```
+
+- Finally return the `order`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({...});
+    const cartItemIds = user.cart.map((cartItem) => cartItem.id);
+    await context.lists.CartItem.deleteMany({...});
+
+    return order
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- Fill the `credit card` form and submit the form
+- On your terminal, you should not see errors. Wait until the process finish
+- You should go to your [keystone admin](http://localhost:3000/)
+- Click on the `Orders` option at the left
+- You should see your new `order`
+- Go to the `stripe` dashboard
+- Click on the `payment` option
+- You should see the `payment` that you just did
+- On the `homepage` of the page you can refresh the page and the items on the `cart` should be gone
