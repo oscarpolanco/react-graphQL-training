@@ -8,6 +8,7 @@ Fullstack React and GraphQL training.
 - [Cloudinary](https://cloudinary.com/) account
 - [MongoDB](https://www.mongodb.com/2)(I recommend [mongo atlas](https://www.mongodb.com/cloud/atlas))
 - [Ethereal](https://ethereal.email/) email
+- [Stripe](https://stripe.com/) account
 
 ## Tools and modules on use in the application
 
@@ -23,6 +24,7 @@ Fullstack React and GraphQL training.
 - [nodemailer](https://nodemailer.com/about/) to define and send an email
 - [react-transition-group](https://reactcommunity.org/react-transition-group/) to animate the `cart` counter
 - [downshift](https://www.downshift-js.com/) to handle the `search`
+- [Stripe](https://stripe.com/) to handle the `payments` on the application
 
 ## Pages
 
@@ -33,12 +35,18 @@ Fullstack React and GraphQL training.
 - [Sell](http://localhost:7777/sell)
 - [Orders](http://localhost:7777/order)
 - [Account](http://localhost:7777/account)
-- [Signin page](http://localhost:7777/signin)
+- [Sign in page](http://localhost:7777/signin)
 - [Reset page](http://localhost:7777/reset?token=send_your_valid_token)
 - [CMS home](http://localhost:3000/)
 
 ## Steps to run the frontend side of the application
 
+- On your editor go to the `frontend` directory
+- Create a file called `env.local`
+- Add the following content to the `env.local`
+  ```bash
+  NEXT_PUBLIC_STRIPE_KEY="my_stripe_public_key"
+  ```
 - On your terminal go to the `frontend` directory
 - Install all dependencies using: `npm install`
 - Run your local server using: `npm run dev`
@@ -48,7 +56,6 @@ Fullstack React and GraphQL training.
 
 - On the root of the `backend` directory create a file called `.env`
 - Add the following content to your newly created file
-- Add the following content
   ```bash
   CLOUDINARY_CLOUD_NAME=my_cloudenay_cloud_name
   CLOUDINARY_KEY=my_cloudenary_api_number
@@ -60,6 +67,7 @@ Fullstack React and GraphQL training.
   MAIL_PORT=587
   MAIL_USER="your_ethereal_username"
   MAIL_PASS="your_ethereal_password"
+  STRIPE_SECRET="my_secret_stripe_key"
   ```
 - On your terminal; go to the `backend` directory
 - Install all dependencies using: `npm install`

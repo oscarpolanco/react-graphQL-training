@@ -9585,3 +9585,1467 @@ In this section, we will work on the `search` component that will give users the
 - Use the arrow keys to navigate the items
 - Click enter on one of the items
 - You should be redirected to the single `product` page of the item that you choose and the input should have that item name
+
+## Module 11: Order Creation and checkout
+
+We will continue working with the `checkout` process and to work with this process we will use [stripe] (https://stripe.com/) and we will be writing some custom` mutations` on our `backend` to process all the `data` of the` checkout` process. The `stripe checkout` process has 2 steps:
+
+- First; you catch the `user` information such as` credit card` or other relevant information that you need on the `client` and send it to` stripe`
+- `Stripe` comes back with a` token` that with the `charge`; then you send it back to your `backend` to process the transaction
+
+Why `stripe` follow this process? Is because you don't need to handle the actual `user credit card` number on your` server` because there will be a lot of logic that you will need to do to handle this `data` properly but with` stripe` you won't need to do a bunch of logic to handle this `data` because it will use` tokens` not the actual sensitive `data` of the` user`.
+
+### Setting up our stripe checkout
+
+- First; you will need to go to [stripe](https://stripe.com/) and create an account
+- When you are singing; make sure that your account is on `test` mode
+- Then go to the `developers section on the sidebar
+- Click on `API keys`
+- Copy your `Publishiable key`
+- Now we need to add an `environment variable` to our `frontend`. So far we only add `environment variables` on the `backend` side of the application but `nextJs` allow us to add a file to store these `variables`. You just need to create a file on the `root` of the `frontend` directory called`.env.local`
+- Inside of this newly created file add an `environment variable` call `NEXT_PUBLIC_STRIPE_KEY` and paste the `Publishable key` as its value
+  `NEXT_PUBLIC_STRIPE_KEY="my_test_key"`
+  If you want to expose an `environment variable` to the browser you just need to put the `NEXT_PUBLIC_` prefix to the name of the `environment variable`. If your `server` is running you will need to restart it to make available this `environment variable`
+- Now we will create our `checkout` component. Go to the `components` directory and create a file call `Checkout.js`
+- On this newly created file; export a function called `Checkout` and return some content
+  ```js
+  export default function Checkout() {
+    return <p>Checkout!!!</p>;
+  }
+  ```
+- Import `styled` from `styled-component`
+  `import styled from 'styled-components';`
+- Create a constant that is call `CheckoutFormStyles` that it value will be a `styled.form`
+  ```js
+  const CheckoutFormStyles = styled.form``;
+  ```
+- Add the following style to `CheckoutFormStyles`
+  ```js
+  const CheckoutFormStyles = styled.form`
+    box-shadow: 0 1px 2px 2px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 5px;
+    padding: 1rem;
+    display: grid;
+    grid-gap: 1rem;
+  `;
+  ```
+  - `box-shadow: 0 1px 2px 2px rgba(0, 0, 0, 0.04);`: Add shadow effects around an element.
+  - `border: 1px solid rgba(0, 0, 0, 0.06);`: Add some borders to the element
+  - `border-radius: 5px;`: Round the corners of a element outer border edge;
+  - ` padding: 1rem;`: Add some spacing around the content of the element
+  - `display: grid;`: Set how the element will be treated in this case will use `grid`
+  - `grid-gap: 1rem;`: Set some space betwen elements
+- Wrap the content of the `Checkout` component using `CheckoutFormStyles`
+  ```js
+  export default function Checkout() {
+    return (
+      <CheckoutFormStyles>
+        <p>Checkout!!!</p>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+  There is a reason to not use our existing `form` and is because we actually will not be handling the `inputs` for the `user`; we will use `stripe` elements and the `stripe` elements handle all the `inputs` for us
+- Go to the `Cart` component
+- Import the `Checkout` component
+  `import Checkout from './Checkout';`
+- Use the `Checkout` component at the button of the `Cart` component on the `footer` section below the `formatMoney` function
+
+  ```js
+  export default function Cart() {
+    ...
+    return (
+      <CartStyles open={cartOpen}>
+        <header>...</header>
+        <ul>...</ul>
+        <footer>
+          <p>{formatMoney(calcTotalPrice(me.cart))}</p>
+          <Checkout />
+        </footer>
+      </CartStyles>
+    );
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- You should see at the bottom of the `cart`; the message of the `Checkout` component
+- Go back to the `Checkout` component
+- Now we need to load in the `stripe` elements. The `stripe` elements are a package that `stripe` offers that allows you to embed `credit cards` fields into your application so you don't have to touch any `credit card` numbers yourself that actually happen on the `stripe` form. So import `loadStripe` from `@stripe/stripe-js`
+  `import { loadStripe } from '@stripe/stripe-js';`
+- Create a constant call `stripeLib` that its value will be the `loadStripe` method and send as its parameter the `NEXT_PUBLIC_STRIPE_KEY environment variable`
+  `const stripeLib = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY);`
+  `Stripe` will provide you with 2 libraries: `stripe-js` that is the base and `react-stripe-js` that is the `React` adaptation of the `inputs`. Make sure that this variable is outside of the `Checkout` component so you will require this once and not every time that the `Checkout` component render
+- Import `Elements` from `@stripe/react-stripe-js`
+  `import { Elements } from '@stripe/react-stripe-js';`
+- Now we need to wrap the `Checkout` component content on the `stripe` provider. Use the `Elements` component and give access to the `stripe` library so we need to send the `stripe` prop with `stripeLib` as it value
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <p>Checkout!!!</p>
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+- Next we need to embed the `credit card` form element so import `CardElement` from `@stripe/react-stripe-js`
+  `import { CardElement, Elements } from '@stripe/react-stripe-js';`
+- Remove the content that you add on the `p` tag and replace it with `CardElement`
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <CardElement />
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+- Go to your browser and refresh the page
+- Open the `cart`
+- You should see the `credit cart` input
+- There is an issue having the `total` amount side by side with the `credit cart` input. We will need to make those element to be one on top of the other. Go to the `CartStyles` on the `components/styles` directory
+- On the `footer` styles remove the `display: grid` and `grid-template-colums: auto auto`
+- Go back to your browser and refresh the page
+- You should see the total `amount` of the purchase on top of the `credit card` input
+- Go back to the `Checkout` component
+- We will need to add a button to submit the `stripe` form. So import the `SickButton` styles
+  `import SickButton from './styles/SickButton';`
+- Use `SickButton` bellow the `CardElement` with a message
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <CardElement />
+          <SickButton>Check out now</SickButton>
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+- Now when someone submits the form we need some logic to create a function call `handleSubmit` and console a message
+
+  ```js
+  export default function Checkout() {
+    function handleSubmit(e) {
+      e.preventDefault();
+      console.log('We gotta do some work..');
+    }
+
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutFormStyles>
+          <CardElement />
+          <SickButton>Check out now</SickButton>
+        </CheckoutFormStyles>
+      </Elements>
+    );
+  }
+  ```
+
+- Send a `onSubmit` prop on the `CheckoutFormStyles` with the `handleSubmit` function as it value
+- Go to your browser and refresh the page
+- Open the `cart`
+- You should see the `checkout` button
+- Open the console of `dev tools
+- Click on the `checkout` button
+- You should see the message that you add on the `handleSubmit` function
+
+### Writing our client-side checkout logic
+
+We have the elements that will handle the `user` information so we are in good shape to continue to handle the submit of the `checkout` form and we will follow the next process:
+
+- Stop the form from submitting and turn the `loader` on
+- Start the page transition
+- Create the `payment` method via `stripe`(The `token` comes back here if successful)
+- Handle any `errors` from `stripe`(The `errors` will be like: `credit card` not accepted; there's not enough currency on the `card`; the `card` is not accepted in this country. Basically all the `credit card errors` will be handle by `stripe`)
+- Send the `token` that came to our `keystone` server via a custom `mutation`
+- Change the page to view the `order`
+- Close the `card`
+- Turn the `loader` off
+
+Let get to this process!!!
+
+- On your editor; go to the `frontend/components` directory
+- We will need to create some `states` to handle the `errors` and `loading`. Normally we used the variables return from our `mutation` to handle these `states` but here we will go throw a number of steps that are a part of the `mutation` that need to trigger those `states`. Import `useState` from `React`
+  `import { useState } from 'react';`
+- Add the following on the `Checkout` component
+
+  ```js
+  export default function Checkout() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+
+    function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Now we need access to the `stripe` object and we do it with the `useStripe` hook but there is an issue with the `Checkout` component and this hook because we need to wrap the `useStripe` hook on the `stripe` provider. So we will need to move the `stripe` provider to another component then call the form. Change the name of the `Checkout` component to `CheckoutForm`
+  `export default function CheckoutForm() {...}`
+- Create a new component call `Checkout` bellow the `CheckoutForm` component
+  `export default function Checkout() {}`
+- Use the `CheckoutForm` and wrap it on the `Elements` component
+  ```js
+  export default function Checkout() {
+    return (
+      <Elements stripe={stripeLib}>
+        <CheckoutForm />
+      </Elements>
+    );
+  }
+  ```
+- Remove the `Elements` component from the `CheckoutForm`
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+
+    function handleSubmit(e) {...}
+
+    return (
+      <CheckoutFormStyles onSubmit={handleSubmit}>
+        <CardElement />
+        <SickButton>Check out now</SickButton>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+
+- Now import the `useStripe` hook from `@stripe/react-stripe-js`
+  `import { CardElement, Elements, useElements } from '@stripe/react-stripe-js';`
+- Use the `useStripe` hook on the `CheckoutForm` component
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+
+    function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Now that we have the `loading` state we can set it to `true` so we can begin with the `checkout` process
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+    }
+
+    return (...);
+  }
+  ```
+
+- Then we need to begin with the page transition using `nProgress` so import `nProgress` from `nprogress`
+  `import nProgress from 'nprogress';`
+- On the `CheckoutForm` use the `start` method of `nProgress`
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+    }
+
+    return (...);
+  }
+  ```
+
+- On to your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- Click on the `checkout` button
+- The progress bar at the top of the page should show up
+- Go back to the `Checkout` file
+- Import the `useElements` from `@stripe/react-stripe-js`
+  `import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';`
+- On the `CheckoutForm` component creates a constant call `elements` that its value is the `useElements` hook
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+    }
+
+    return (...);
+  }
+  ```
+
+- Now we will create our `payment` method via `stripe` so we will use the `createPaymentMethod` with the following options and grabbing the `error` and `paymentMethod` that it returns
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+    }
+
+    return (...);
+  }
+  ```
+
+  - `type: 'card'`: `Stripe` lets you pay with another couple options such as `ACH`(Automatic clearing house) but we will choose the `credit card` method
+  - `card: elements.getElement(CardElement),`: It will receive a reference of the actual `credit card` input of the `CardElement`. The `elements` variable will give you the access that you need to the `element` of the form and is smart enough to render `CarElement` just once so you don't need to use a `ref` or something like that to reference the form
+
+- The `createPaymentMethod` is an `asynchronous` function so we will need to use the `async/await` keywords and log the `paymentMethod`
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+      console.log(paymentMethod);
+    }
+
+    return (...);
+  }
+  ```
+
+- Go to your browser and refresh the page
+- Now we are going to test the response of `stripe` and for this, we need a test `credit card`; you can find it on the [stripe test card page](https://stripe.com/docs/testing). I like to use `4242 4242 4242 4242` with a future `date` because is easy to type but on the test page, you can find `cards` with specific `responses` and `errors` that you can use. So fill the `credit card` form and click the `checkout` button
+- Open the browser `dev tools` on the console option
+- You will see an object that represents the information that comes back from `stripe` and on that object is an `id` that is the `token` that we need
+- Go to the `Checkout` file
+- On the `CheckoutForm` component add a condition using the `error` variable to set the `error` state
+
+  ```js
+  export default function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+
+      if (error) {
+        setError(error);
+      }
+    }
+
+    return (...);
+  }
+  ```
+
+- Bellow of the `CheckoutFormStyles` add a condition that shows the `error` message if an `error` exist(Add a little bit of style so we have a small `font` )
+
+  ```js
+  export default function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {...}
+    }
+
+    return (
+      <CheckoutFormStyles onSubmit={handleSubmit}>
+        {error && <p style={{ fontSize: 12 }}>{error.message}</p>}
+        <CardElement />
+        <SickButton>Check out now</SickButton>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+
+- Go to the browser and refresh the page
+- Open the `cart`
+- Fill the `credit card` form with some `error` on the fields
+- You will see an `error` displayed on the top of the `credit card` form
+- Go back to the `CheckoutForm` component
+- Set the `loading` state to `false`(Because we finalize the transaction and want to finish the `loading` state)
+
+  ```js
+  export default function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+
+      if (error) {
+        setError(error);
+      }
+
+      setLoading(false);
+    }
+
+    return (...);
+  }
+  ```
+
+- Stop the `nProgress` with the `done` method
+
+  ```js
+  export default function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      console.log('We gotta do some work..');
+      nProgress.start();
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement(CardElement),
+      });
+
+      if (error) {
+        setError(error);
+      }
+
+      setLoading(false);
+      nProgress.done();
+    }
+
+    return (...);
+  }
+  ```
+
+  We will finish the other part of the logic on the other sections of this module
+
+### Creating our Order and OrderItem data types
+
+Now we are going to the `backend` side of the application to begin to work in our custom `mutation` for the `order` after doing the `checkout` process on the `frontend` side of the application but the first step will be to create those `data types` that will store our `order`.
+
+The `order data type` will have a `charge`(That will be some kind of `id` that we get on the `checkout` process), the `total` amount of the purchase, the `user` that will be related to this `order` and the `products` that the `user` buy; you may think that this will only be a relation between the `order` and `products` but we need to store the actual `product` that the `user` is buying so will not accept changes like the `name` or `image` in the `product` so we can't relate it with the `products data type` so we don't have the latest version of the `product`; we need the actual `product` that the `user` is buying. For this, we will create an `OrderItem data type`.
+
+- On your editor; go to the `backend/schema`
+- Copy the content of the `Product.js` file
+- Create a new file call `OrderItem.js`
+- On this newly created file; paste the content of the `Product.js` file
+- Update the `list` name from `Product` to `OrderItem`
+  `export const OrderItem = list({...});`
+- We will reference to a `ProductImage` for the `images` and is not a 2-way relationship so remove `.product` from the `ref` property of the `photo`
+  ```js
+  export const OrderItem = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({...}),
+      photo: relationship({
+        ref: 'ProductImage',
+        ui: {...},
+      }),
+      ...
+    },
+  });
+  ```
+- Eliminate the `status` field
+- Below of the `price` field add the following
+  ```js
+  export const OrderItem = list({
+    fields: {
+      name: text({ isRequired: true }),
+      description: text({...}),
+      photo: relationship({
+        ref: 'ProductImage',
+        ui: {...},
+      }),
+      price: integer(),
+      quantity: integer(),
+      order: relationship({ ref: 'Order.items' }),
+    },
+  });
+  ```
+  The `quantity` will store the amount of items that the `user` purchase and the `order` will be a relashionship with the `Order data type` on its `item` field(The `Order` is not created yet)
+- Eliminate the imports that we don't use
+- Go to the `keystone.ts` file
+- Import the `OrderItem` file
+  `import { OrderItem } from './schemas/OrderItem';`
+- Add the `OrderItem` to the `createSchema` configuration object on the `list` property
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+        OrderItem,
+      }),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...}),
+    })
+  );
+  ```
+- Now go to the `OrderItem` file
+- Copy the content of the file
+- On the `schema` directory create a new file call `Order.js`
+- Paste the content of the `OrderItem` file in this newly created file
+- Update the `list` item from `OrderItem` to `Order`
+  `export const Order = list({...});`
+- Remove all the content of the `fields` property
+- Add the following fields
+  ```js
+  export const Order = list({
+    fields: {
+      total: integer(),
+      items: relationship({ ref: 'OrderItem.order', many: true }),
+      user: relationship({ ref: 'User.orders' }),
+      charge: text(),
+    },
+  });
+  ```
+  We will have a `total` that will represent the amount that the `user` pay; the `items` that is a relasionship withe the `OrderItem` and can have multiple items on one `order`; the `user` that make the purchase and the `charge` that will some `id` that we get
+- Now go to the `User.ts`
+- We need to complete the relationship with the `order` so we will need to add an `orders` field and specify that an `user` can have `many orders`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({...}),
+      orders: relationship({ ref: 'Order.user', many: true }),
+    },
+  });
+  ```
+- Go to the `keystone.ts` file
+- Import `Order`
+  `import { Order } from './schemas/Order';`
+- Add the `Order` to the `createSchema` configuration object on the `list` property
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+        OrderItem,
+        Order,
+      }),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...}),
+    })
+  );
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone frontpage](http://localhost:3000/)
+- You should see an `Order Items` and `Order` on the sidebar
+- Click on the `Order Items` option
+- Click on the `Create Order Item`
+- Fill the form and create the `OrderItem`
+- You should successfully create an `OrderItem`
+- Click on the `Orders` option in the sidebar
+- Click on the `Create Order` button
+- Fill the form(On the items add the `OrderItem` that you create early)
+- You should be able to create an `Order`
+- Click on the `Order Item` sidebar option
+- Click on the `Order Item` that you created before
+- It should be related to the `Order` that you just created
+- Click on the `Order Items` options again
+- You see that the list of `OrderItems` has the `id`. This may be confusing for our `users` so we will add a `label` on the field and on that `label` we will use a `virtual` field that is something that is calculated on demand and not actually a value store on the `database`. Go to the `Order.js` file and import `virtual`
+  `import { integer, relationship, text, virtual } from '@keystone-next/fields';`
+- Add the following on the `fields` property
+  ```js
+  export const Order = list({
+    fields: {
+      label: virtual({
+        graphQLReturnType: 'String',
+        resolver(item: { total: number }): string {
+          return `${formatMoney(item.total)}`;
+        },
+      }),
+      ...
+    },
+  });
+  ```
+  - `graphQLReturnType: 'String'`: This will tell the type that will be returning for this `label` because is not defined on the `database`
+  - `resolver(item: { total: number }): string {...}`: The `resolver` property will have a function that receives an `item`(In this case the `OrderItem` itself) and return the value that you need. In this case, we use the `total` and format to have the value on dollars and not cents
+- On your terminal; restart your `backend` local server
+- Go to the `Order Item` list page
+- You should see the `total` amount of the `order` on the list of items
+
+### Writing our client-side checkout handler logic
+
+Now we can begin to do the custom `mutation` to create the `charge`. Remember real quick the flow:
+
+- The `user` fill the `checkout` form with its `credit card` information and send it to `stripe`
+- `Stripe` response with an object that has a `token`
+- We take the `token` to our `backend`
+- Then we send the `token` with the `charge` information to `stripe`
+- `Stripe` will respond with the approved
+
+Now let begin with the custom `mutation` process:
+
+- On your editor; go to the `index.ts` file on the `backend/mutations` directory
+- The `mutation` will be call `checkout` that recive a `token` that is `required` and return an `Order`. Add the following on the `typeDefs` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`
+      type Mutation {
+        addToCart(productId: ID): CartItem
+        checkout(token: String!): Order
+      }
+    `,
+    resolvers: {...},
+  });
+  ```
+- On the `mutations` directory create a file call `checkout.ts`
+- On this newly created file export a function call `checkout`
+
+  ```js
+  function checkout() {}
+
+  export default checkout;
+  ```
+
+- Go back to the `index.ts` file and import the `checkout` function
+  `import checkout from './checkout';`
+- Add on the `Mutation` object on the `resolver` property
+  ```js
+  export const extendGraphqlSchema = graphQLSchemaExtension({
+    typeDefs: graphql`...`,
+    resolvers: {
+      Mutation: {
+        addToCart,
+        checkout,
+      },
+    },
+  });
+  ```
+- Go to the `addToCart.ts` file and copy the content
+- Go to the newly create `checkout.ts` file and paste the content(Eliminate the content that you add before)
+- In the `checkout.ts` file; replace the `addToCard` function name to `checkout`
+- Eliminate the content of the `checkout` function
+- Import `OrderCreateInput` from
+  `import { CartItemCreateInput, OrderCreateInput, } from '../.keystone/schema-types';`
+- Replace the parameters with the following
+  ```js
+  async function checkout(
+    root: any,
+    { token }: { token: string },
+    context: KeystoneContext
+  ): Promise<OrderCreateInput> {}
+  ```
+  The `checkout` function will recive the `root` parameter; the `token`(That is an `string`) and the `conttext` variable(That is a `KeystoneContext` type) and will return a `promise` when is resolve will return an `order`
+- Update the `export` at the bottom
+  `export default checkout;`
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Click on the `docs` tab and on the input `search` type `checkout`
+- You should see the `checkout` information on the `docs`
+- Go back to the `checkout` file
+- Now we will make sure that the `user` is signed in and the `context` variable will hel us with this so create a constant call `userId` that `context.session.itemId` is it value
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+  }
+  ```
+- Create a condition that triggers an `error` when there's not any `userId`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {
+      throw new Error('Sorry! You must be signed in to create an order');
+    }
+  }
+  ```
+
+- Now we need to `query` the current `user` because the current `user` has the `cart` on it and this will help us to make all the calculations that we need. Create a constant call `user` that has the following value
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {
+      throw new Error('Sorry! You must be signed in to create an order');
+    }
+
+    const user = await context.lists.User.findOne({
+      where: { id: userId },
+      resolveFields: `
+        id
+        name
+        email
+        cart {
+          id
+          quantity
+          product {
+            name
+            price
+            description
+            id
+            photo {
+              id
+              image {
+                id
+                publicUrlTransformed
+              }
+            }
+          }
+        }
+      `,
+    });
+  }
+  ```
+
+  To get the `user` value we will use the `context` variable that has the `user` schema on it(`list` for `keystone`) and we use the `mongoose` function call `findOne`(Return the item depending on a unique condition) where the `id` of the `user` will be the `userId` that we previously get. The `resolvers` fields will be the things that we are going to show as a result of the `query`
+
+- We need the highlights that we got on another `queries` that we use so we need to use again the `String.raw` trick. To create a constant call `graphql` that its value is `String.raw`
+  `const graphql = String.raw;`
+- Add `graphql` to the `string` of the `resolverFields` property
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {
+      throw new Error('Sorry! You must be signed in to create an order');
+    }
+
+    const user = await context.lists.User.findOne({
+      where: { id: userId },
+      resolveFields: graphql`...`,
+    });
+  }
+  ```
+
+- Console the `user` variable
+- On your terminal; restart your local server
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Add the following `mutation`(At this moment don't matter the `token` that you send)
+  ```js
+  mutation {
+    checkout(token: "ABC123") {
+      id
+    }
+  }
+  ```
+- Click the play button
+- Go to the terminal and you should see the `user` information
+- Go back to the `checkout` file
+- We could have a `cartItem` on the `user` that doesn't have any items but exist and we need to filter those values so we will `filter` the `user cart` to eliminate the `cartItem` without `products`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+  }
+  ```
+
+- Now we can calculate the `amount` of the `charge`. To create a constant call `amount` that its value is a `reduce` of the `cartItems`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {
+      return tally + cartItem.quantity * cartItem.product.price;
+    }, 0);
+  }
+  ```
+
+- Console de `amount` variable
+- Go to your terminal and restart your local server
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Run the `mutation` that you did before
+- Go to your terminal and you should see the `amount` value log
+- Now we need to configure `stripe` to work on our `server` side and for this we will need the `stripe` secret key so go to your `stripe` dashboard and copy your secret key(DO NOT SHARE IT WITH ANYBODY)
+- Go to the `.env` file in the `backend` directory and add the following `enviroment variable` with your secret `stripe` key
+  `STRIPE_SECRET="my_secret_key"`
+- Go to the `lib` directory and create a new file call `stripe.ts`
+- On this newly created file import `Stripe` from `stripe`
+  `import Stripe from 'stripe';`
+- Add a constant call `stripeConfig` with the following value
+  ```js
+  const stripeConfig = new Stripe(process.env.STRIPE_SECRET || '', {
+    apiVersion: '2020-08-27',
+  });
+  ```
+  The first value will be our secret key and the second will be our API version(`stripe` changes the API all the time and we need to set the specific version that we want to use)
+- Export the `stripeConfig`
+  `export default stripeConfig;`
+- Go back to the `checkout` file
+- Import `stripeConfig`
+  `import stripeConfig from '../lib/stripe';`
+- On the `checkout` function we will need to create the `charge` with the `paymentIntents.create` method from `stripe`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {...}, 0);
+    const charge = await stripeConfig.paymentIntents.create({});
+  }
+  ```
+
+- Now send the following on the `charge` configuration object
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {...}, 0);
+    const charge = await stripeConfig.paymentIntents.create({
+      amount,
+      currency: 'USD',
+      confirm: true,
+      payment_method: token,
+    });
+  }
+  ```
+
+  - `amount`: The `amount` of the `charge`. `Stripe` deal with cents so we don't need to transform the value
+  - `currency: 'USD'`: The type of the `currency`
+  - `confirm: true`: When this is set to `true` you immediately confirm the `charge` because previously you have to create a payment intend and wait for the `stripe` response but in most case, you will want to `charge` the `card` initially
+  - `payment_method: token`: Here is where you add the `token` that we get
+
+- Add a `catch` in case there is an `error` with the `charge`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = await context.lists.User.findOne({...});
+
+    const cartItems = user.cart.filter((cartItem) => cartItem.product);
+    const amount = cartItems.reduce(function (tally: number, cartItem: CartItemCreateInput) {...}, 0);
+    const charge = await stripeConfig.paymentIntents.create({
+      amount,
+      currency: 'USD',
+      confirm: true,
+      payment_method: token,
+    })
+    .catch((err) => {
+      console.log(err);
+      throw new Error(err.message);
+    });;
+  }
+  ```
+
+  This implementation will be finish in one of the later sections
+
+### Linking up our frontend to the custom backend checkout mutation
+
+We need to test the code that we are so far for the `checkout` process on both `frontend` and `backend`. So let do this!!
+
+- On your editor; go to the `frontend/components` directory
+- On the `Checkout` component; console the `paymentMethod` variable
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal, go to the `frontend` directory and start your local server
+- On your browser; go to the [homepage](http://localhost:7777/)
+- Open the `card`
+- Fill the `credit card` form
+- Click the `checkout` button
+- Open the `dev tools`
+- You should see the `paymentMethod` object
+- Copy the `id`
+- On your editor; go to the `checkout` file on the `backend/mutations` directory
+- Console the `charge` constant
+- Go to the [GraphQL playground](http://localhost:3000/api/graphql)
+- Use the `checkout mutation` that you use before but paste the `id` in the `token` property(This `tokens` are good for one try so if something when bad you will need to generate another one)
+- Click the play button
+- Go to the `backend` local server logs on the terminal
+- You should see the successful `charge` response from `stripe`
+- On your browser; go to your `stripe` dashboard
+- Click on the `payments` option at the left
+- You should see the `payment` that you just did
+- Now we can add the `checkout mutation` to the `Checkout` component on the `frontend`. So go to the `Checkcout` component and import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `CREATE_ORDER_MUTATION` that its value will be `gql`
+  ```js
+  const CREATE_ORDER_MUTATION = gql``;
+  ```
+- Add the `checkout mutation` that will recive a `token` variable and return the following
+  ```js
+  const CREATE_ORDER_MUTATION = gql`
+    mutation CREATE_ORDER_MUTATION($token: String!) {
+      checkout(token: $token) {
+        id
+        charge
+        total
+        items {
+          id
+          name
+        }
+      }
+    }
+  `;
+  ```
+- Import `useMutation` from `@apollo/client`
+  `import { useMutation } from '@apollo/client';`
+- Go to the `CheckoutForm` and use the `useMutation` hook to use the `checkout mutation`
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const [checkout, { error: graphQLError }] = useMutation(
+      CREATE_ORDER_MUTATION
+    );
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+  Since we already have an `error` variable we need to destructure the `error` that the `useMutation` hook return to give it another name also we don't have the `token` yet so we can't add the `variables` here yet
+
+- Bellow the `error` message add the same but with the `graphQLError` message
+  ```js
+  function CheckoutForm() {
+    ...
+    return (
+      <CheckoutFormStyles onSubmit={handleSubmit}>
+        {error && <p style={{ fontSize: 12 }}>{error.message}</p>}
+        {graphQLError && <p style={{ fontSize: 12 }}>{graphQLError.message}</p>}
+        <CardElement />
+        <SickButton>Check out now</SickButton>
+      </CheckoutFormStyles>
+    );
+  }
+  ```
+- On the `error` condition on the `handleSubmit` function we will need to `stop` the `nProgress` load and add a `return` so the `checkout` process doesn't continue
+
+  ```js
+  function CheckoutForm() {
+    ....
+
+   async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    nProgress.start();
+    const { error, paymentMethod } = await stripe.createPaymentMethod({...});
+    console.log(paymentMethod);
+
+    if (error) {
+      setError(error);
+      nProgress.done();
+      return;
+    }
+
+    setLoading(false);
+    nProgress.done();
+  }
+
+    return (...);
+  }
+  ```
+
+- Now we can send the `token` via our custom `mutation`; so create a constant call `order` and use the `checkout` function as its value sending the `token` variable and console the `order` variable
+
+  ```js
+  function CheckoutForm() {
+    ....
+
+   async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    nProgress.start();
+    const { error, paymentMethod } = await stripe.createPaymentMethod({...});
+    console.log(paymentMethod);
+
+    if (error) {
+      setError(error);
+      nProgress.done();
+      return;
+    }
+
+    const order = await checkout({
+      variables: {
+        token: paymentMethod.id,
+      },
+    });
+
+    console.log(order);
+    setLoading(false);
+    nProgress.done();
+  }
+
+
+    return (...);
+  }
+  ```
+
+- On your browser go to the [homepage](http://localhost:7777/) and refresh the page
+- Open the `cart`
+- Fill the `credit card` form
+- Click the `checkout` button
+- Go to your `stripe` dashboard
+- Click on the `payment` section at the left
+- You should have a new `payment` with the value that you just submit
+
+### Creating our Order and OrderItems in our mutation
+
+Now we can continue with the creation of the `order` after a successful `payment`
+
+- On your editor go to the `backend/mutations` directory and enter to the `checkout.js` file
+- At this moment we need to convert our `cartItems` to `orderItems` so we will need to loop over the `cartItems` that we have at the moment and make a new object. Bellow of the `charge` create an object called `orderItems` that its value will be a `map` result of the `cartItems`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map();
+  }
+  ```
+
+- Add the following to the `map` function
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map((cartItem) => {
+      const orderItem = {
+        name: cartItem.product.name,
+        description: cartItem.product.description,
+        price: cartItem.product.price,
+        quantity: cartItem.quantity,
+        photo: { connect: { id: cartItem.product.photo.id } },
+      };
+      return orderItem;
+    });
+  }
+  ```
+
+  Here we add a callback function that will use every `cartItem` and make a new object that will represent each `orderItem`
+
+- Then we need to create the `order` and return it so bellow of the `orderItems` add a constant call `order` with the `createOne` function that we use before as its value but targeting the `Order` schema
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({});
+  }
+  ```
+
+- On the `createOne` configuration object add the following
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({
+      data: {
+        total: charge.amount,
+        charge: charge.id,
+        items: { create: orderItems },
+        user: { connect: { id: session.itemId } },
+      },
+      resolveFields: false,
+    });
+  }
+  ```
+
+  We add the `data` object that will represent all the values that we will add to the new `order` using the `charge` information; creating the `orderItems` with the information that we get before and relating those with the `order`(When we use the `create` property it will `create` the item first; in this case, the `orderItem` then will provide to create and relate the `order` with those items) and relate the `order` with the `user`.
+
+- Then we need to clean any old `cartItems` so create a constant call `cartItemIds` that its value will be a `map` function of the `cart` of the current `user` to return each `id` of every `cart` item
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({...});
+    const cartItemIds = user.cart.map((cartItem) => cartItem.id);
+  }
+  ```
+
+- Use the `deleteMany`(This is an asynchronous function) function on the `CartItem` schema sending the `ids` that we get before
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({...});
+    const cartItemIds = user.cart.map((cartItem) => cartItem.id);
+    await context.lists.CartItem.deleteMany({
+      ids: cartItemIds,
+    });
+  }
+  ```
+
+- Finally return the `order`
+
+  ```js
+  async function checkout(...): Promise<OrderCreateInput> {
+    const userId = context.session.itemId;
+
+    if (!userId) {...}
+
+    const user = (await context.lists.User.findOne({...}));
+    console.dir(user, { depth: null });
+
+    const cartItems = user.cart.filter(...);
+
+    const amount = cartItems.reduce(...);
+    console.log(amount);
+
+    const charge = await stripeConfig.paymentIntents.create({...});
+    console.log(charge);
+
+    const orderItems = cartItems.map(...);
+    const order = await context.lists.Order.createOne({...});
+    const cartItemIds = user.cart.map((cartItem) => cartItem.id);
+    await context.lists.CartItem.deleteMany({...});
+
+    return order
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser go to the [homepage](http://localhost:7777/)
+- Open the `cart`
+- Fill the `credit card` form and submit the form
+- On your terminal, you should not see errors. Wait until the process finish
+- You should go to your [keystone admin](http://localhost:3000/)
+- Click on the `Orders` option at the left
+- You should see your new `order`
+- Go to the `stripe` dashboard
+- Click on the `payment` option
+- You should see the `payment` that you just did
+- On the `homepage` of the page you can refresh the page and the items on the `cart` should be gone
+
+### Finishing up the checkout UI and flow
+
+Here we will take care of some of the final things to have a complete checkout process on the application
+
+- First; we need to prevent that we make sure that we don't have any extra items on the `cart` when we finish the `checkout` process(We already do it on the `backend`). On your editor go to the `Nav.js` file on the `frontend/components/` directory
+- On the `CartCount` component; update the `count` prop value like this
+
+  ```js
+  export default function Nav() {
+    ...
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+              <CartCount
+                count={user.cart.reduce(
+                  (tally, cartItem) =>
+                    tally + (cartItem.product ? cartItem.quantity : 0),
+                  0
+                )}
+              />
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+  Here we will add the `count` if we got some items on the current `cart`(This won't happen because we clean up the `cart` on the `checkout` mutation)
+
+- Now we need to change the page after the successful `payment` so go to the `Checkout` component and import the `useRouter` hook
+  `import { useRouter } from 'next/dist/client/router';`
+- Then on the `CheckoutForm` function; create a constant call `router` that its value will be the `useRouter` hook
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const router = useRouter();
+    const [checkout, { error: graphQLError }] = useMutation(...);
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Use the `push` method of the `router` constant below the `order` creation
+
+  ```js
+  function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      nProgress.start();
+
+      const { error, paymentMethod } = await stripe.createPaymentMethod({... });
+
+      if (error) {...}
+
+      const order = await checkout({...});
+
+      router.push({
+        pathname: '/order/[id]',
+        query: { id: order.data.checkout.id },
+      });
+
+      setLoading(false);
+      nProgress.done();
+    }
+
+    return (...);
+  }
+  ```
+
+  On the `push` configuration object; as we saw before; we send the `path` of the `page` in the `pathname` property but the only difference that we have with the other time that we use the `push` method is that we add a `query param` at the end of the `path` because we need to receive an `id`(in this case the `order id` that is created when the `payment` process is successful) and the actual value that we will add to the `path` will be on the `query` property of the configuration object
+
+- We need to close the `cart` after a succeful `payment` so import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Get the `closeCart` function from the `useCart` hook
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const router = useRouter();
+    const { closeCart } = useCart();
+    const [checkout, { error: graphQLError }] = useMutation(...);
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Use the `closeCart` function below the `router` constant where we call the `push` method
+
+  ```js
+  function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      nProgress.start();
+
+      const { error, paymentMethod } = await stripe.createPaymentMethod({... });
+
+      if (error) {...}
+
+      const order = await checkout({...});
+
+      router.push({
+        pathname: '/order/[id]',
+        query: { id: order.data.checkout.id },
+      });
+
+      closeCart();
+      setLoading(false);
+      nProgress.done();
+    }
+
+    return (...);
+  }
+  ```
+
+- Now we need to `refetch` the `user cart` so import `CURRENT_USER_QUERY`
+  `import { CURRENT_USER_QUERY } from './User';`
+- On the `CheckoutForm` add the `refetchQueries` property to the `useMutation` hook
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const router = useRouter();
+    const { closeCart } = useCart();
+    const [checkout, { error: graphQLError }] = useMutation(
+      CREATE_ORDER_MUTATION,
+      {
+        refetchQueries: [{ query: CURRENT_USER_QUERY }],
+      }
+    );
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and run your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In the browser; go to the [homepage](http://localhost:7777/)
+- Add some items to the `cart`
+- Complete the `credit card` form and submit
+- The `payment` should be successful; the `cart` should close and you will redirect to a single `order` page(It doesn't exist for the moment that page but you can check that the URL is `order` plus the `id` and you can check the `id` on the `keystone` admin in the `order` section)
