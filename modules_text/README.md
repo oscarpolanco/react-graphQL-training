@@ -10878,3 +10878,174 @@ Now we can continue with the creation of the `order` after a successful `payment
 - Click on the `payment` option
 - You should see the `payment` that you just did
 - On the `homepage` of the page you can refresh the page and the items on the `cart` should be gone
+
+### Finishing up the checkout UI and flow
+
+Here we will take care of some of the final things to have a complete checkout process on the application
+
+- First; we need to prevent that we make sure that we don't have any extra items on the `cart` when we finish the `checkout` process(We already do it on the `backend`). On your editor go to the `Nav.js` file on the `frontend/components/` directory
+- On the `CartCount` component; update the `count` prop value like this
+
+  ```js
+  export default function Nav() {
+    ...
+    return (
+      <NavStyles>
+        <Link href="/products">product</Link>
+        {user && (
+          <>
+            <Link href="/sell">sell</Link>
+            <Link href="/order">orders</Link>
+            <Link href="/account">account</Link>
+            <SignOut />
+            <button type="button" onClick={openCart}>
+              My Cart
+              <CartCount
+                count={user.cart.reduce(
+                  (tally, cartItem) =>
+                    tally + (cartItem.product ? cartItem.quantity : 0),
+                  0
+                )}
+              />
+            </button>
+          </>
+        )}
+        {!user && (...)}
+      </NavStyles>
+    );
+  }
+  ```
+
+  Here we will add the `count` if we got some items on the current `cart`(This won't happen because we clean up the `cart` on the `checkout` mutation)
+
+- Now we need to change the page after the successful `payment` so go to the `Checkout` component and import the `useRouter` hook
+  `import { useRouter } from 'next/dist/client/router';`
+- Then on the `CheckoutForm` function; create a constant call `router` that its value will be the `useRouter` hook
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const router = useRouter();
+    const [checkout, { error: graphQLError }] = useMutation(...);
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Use the `push` method of the `router` constant below the `order` creation
+
+  ```js
+  function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      nProgress.start();
+
+      const { error, paymentMethod } = await stripe.createPaymentMethod({... });
+
+      if (error) {...}
+
+      const order = await checkout({...});
+
+      router.push({
+        pathname: '/order/[id]',
+        query: { id: order.data.checkout.id },
+      });
+
+      setLoading(false);
+      nProgress.done();
+    }
+
+    return (...);
+  }
+  ```
+
+  On the `push` configuration object; as we saw before; we send the `path` of the `page` in the `pathname` property but the only difference that we have with the other time that we use the `push` method is that we add a `query param` at the end of the `path` because we need to receive an `id`(in this case the `order id` that is created when the `payment` process is successful) and the actual value that we will add to the `path` will be on the `query` property of the configuration object
+
+- We need to close the `cart` after a succeful `payment` so import the `useCart` hook
+  `import { useCart } from '../lib/cartState';`
+- Get the `closeCart` function from the `useCart` hook
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const router = useRouter();
+    const { closeCart } = useCart();
+    const [checkout, { error: graphQLError }] = useMutation(...);
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- Use the `closeCart` function below the `router` constant where we call the `push` method
+
+  ```js
+  function CheckoutForm() {
+    ...
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      nProgress.start();
+
+      const { error, paymentMethod } = await stripe.createPaymentMethod({... });
+
+      if (error) {...}
+
+      const order = await checkout({...});
+
+      router.push({
+        pathname: '/order/[id]',
+        query: { id: order.data.checkout.id },
+      });
+
+      closeCart();
+      setLoading(false);
+      nProgress.done();
+    }
+
+    return (...);
+  }
+  ```
+
+- Now we need to `refetch` the `user cart` so import `CURRENT_USER_QUERY`
+  `import { CURRENT_USER_QUERY } from './User';`
+- On the `CheckoutForm` add the `refetchQueries` property to the `useMutation` hook
+
+  ```js
+  function CheckoutForm() {
+    const [error, setError] = useState();
+    const [loading, setLoading] = useState(false);
+    const stripe = useStripe();
+    const elements = useElements();
+    const router = useRouter();
+    const { closeCart } = useCart();
+    const [checkout, { error: graphQLError }] = useMutation(
+      CREATE_ORDER_MUTATION,
+      {
+        refetchQueries: [{ query: CURRENT_USER_QUERY }],
+      }
+    );
+
+    async function handleSubmit(e) {...}
+
+    return (...);
+  }
+  ```
+
+- On your terminal; go to the `backend` directory and run your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In the browser; go to the [homepage](http://localhost:7777/)
+- Add some items to the `cart`
+- Complete the `credit card` form and submit
+- The `payment` should be successful; the `cart` should close and you will redirect to a single `order` page(It doesn't exist for the moment that page but you can check that the URL is `order` plus the `id` and you can check the `id` on the `keystone` admin in the `order` section)
