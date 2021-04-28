@@ -11049,3 +11049,269 @@ Here we will take care of some of the final things to have a complete checkout p
 - Add some items to the `cart`
 - Complete the `credit card` form and submit
 - The `payment` should be successful; the `cart` should close and you will redirect to a single `order` page(It doesn't exist for the moment that page but you can check that the URL is `order` plus the `id` and you can check the `id` on the `keystone` admin in the `order` section)
+
+### Displaying a single order
+
+We are going to display the `order` that the `user` creates completing the `payment` process.
+
+- On your editor; go to the `frontend/pages` directory and create a folder call `order`
+- Inside of the `order` folder create a file call `[id].js`
+- On thi newly created file; export a function call `SingleOrderPage` that recive the `query` prop and print the `id` that is inside of the `query` prop
+  ```js
+  export default function SingleOrderPage({ query }) {
+    return <div>{query.id}</div>;
+  }
+  ```
+- On your editor; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [keystone admin](http://localhost:3000/)
+- Click on the `Orders` option at the left
+- Copy the `id` of one of the `orders`
+- Go to [single order page](http://localhost:7777/order/) using the `id` that you just copy at the end of the URL
+- You should see the `id` that you use on the URL display it on the content of the page
+- Now we need to use the `id` of the `order` to make a `query` so import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `SINGLE_ORDER_QUERY` that its value is `gql`
+  ```js
+  const SINGLE_ORDER_QUERY = gql``;
+  ```
+- Now use the `Order query` to get the `order` values and the `query` should receive an `id` and return the following fields
+  ```js
+  const SINGLE_ORDER_QUERY = gql`
+    query SINGLE_ORDER_QUERY($id: ID!) {
+      order: Order(where: { id: $id }) {
+        id
+        charge
+        total
+        user {
+          id
+        }
+        items {
+          id
+          name
+          description
+          price
+          quantity
+          photo {
+            image {
+              publicUrlTransformed
+            }
+          }
+        }
+      }
+    }
+  `;
+  ```
+- Import the `useQuery` hook from `@apollo/client`
+  `import { useQuery } from '@apollo/client';`
+- Use the `useQuery` hook on the `SingleOrderPage` function sending the `query` and the `variable` that the `query` need
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {
+      variables: { id: query.id },
+    });
+
+    return <div>{query.id}</div>;
+  }
+  ```
+
+- Import the `ErrorMessage` component
+  `import ErrorMessage from '../../components/ErrorMessage';`
+- Use the `loading` and `error` component to display it respective message
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {...});
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    return <div>{query.id}</div>;
+  }
+  ```
+
+- Destructure `order` from the `data` variable
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {...});
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    const { order } = data;
+
+    return <div>{query.id}</div>;
+  }
+  ```
+
+- Import `OrderStyles`
+  `import OrderStyles from '../../components/styles/OrderStyles';`
+- Replace the `div` with `OrderStyles`
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {...});
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    const { order } = data;
+
+    return <OrderStyles>{query.id}</OrderStyles>;
+  }
+  ```
+
+- Import `Head` from `next/head`
+  `import Head from 'next/head';`
+- Remove `{query.id}` and use the `Head` component to put the `title` of the page
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>
+          <title>Sick Fits - {order.id}</title>
+        </Head>
+      </OrderStyles>
+    );
+  }
+  ```
+
+- Add the following content for the `order` and `charge`
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>
+          <span>Order Id:</span>
+          <span>{order.id}</span>
+        </p>
+        <p>
+          <span>Charge:</span>
+          <span>{order.charge}</span>
+        </p>
+      </OrderStyles>
+    );
+  }
+  ```
+
+- Import the `formatMoney` function and use it for the `total` amount for the `order`
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>...</p>
+        <p>...</p>
+        <p>
+          <span>Order Total:</span>
+          <span>{formatMoney(order.total)}</span>
+        </p>
+      </OrderStyles>
+    );
+  }
+  ```
+- Add the amount of `items` that where purchase
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+        <p>
+          <span>Item Count:</span>
+          <span>{order.items.length}</span>
+        </p>
+      </OrderStyles>
+    );
+  }
+  ```
+- Add a `div` with a class called `items` and its content will have a `map` of the `order items`
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+        <div className="items">
+          {order.items.map((item) => ())}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- Inside of the `map` function add as `div` with the `order-item` class and a `key` that will be the `item.id`
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        ...
+        <div className="items">
+          {order.items.map((item) => (
+            <div className="order-item" key={item.id}></div>
+          ))}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- Add an `img` tag with the following properties
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        ...
+        <div className="items">
+          {order.items.map((item) => (
+            <div className="order-item" key={item.id}>
+              <img src={item.photo.image.publicUrlTransformed} alt={item.title} />
+            </div>
+          ))}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- Then add a `div` with an `items-details` class with the following `item` details
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        ...
+        <div className="items">
+          {order.items.map((item) => (
+            <div className="order-item" key={item.id}>
+              <img src={item.photo.image.publicUrlTransformed} alt={item.title} />
+              <div className="items-details">
+                <h2>{item.name}</h2>
+                <p>QTY: {item.quantity}</p>
+                <p>Each: {formatMoney(item.price)}</p>
+                <p>Subtotal: {formatMoney(item.price * item.quantity)}</p>
+                <p>{item.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- In your browser; go to the `single order` page and refresh it
+- You should see all the `order` information
