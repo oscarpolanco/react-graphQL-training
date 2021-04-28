@@ -15,7 +15,7 @@ export default function Nav() {
       {user && (
         <>
           <Link href="/sell">sell</Link>
-          <Link href="/order">orders</Link>
+          <Link href="/orders">orders</Link>
           <Link href="/account">account</Link>
           <SignOut />
           <button type="button" onClick={openCart}>
