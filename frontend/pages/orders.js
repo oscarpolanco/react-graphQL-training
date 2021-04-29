@@ -39,7 +39,12 @@ const OrderUl = styled.ul`
 `;
 
 function countItemsInAnOrder(order) {
-  return order.items.reduce((tally, item) => tally + item.quantity, 0);
+  const totalOfItems = order.items.reduce(
+    (tally, item) => tally + item.quantity,
+    0
+  );
+
+  return totalOfItems > 1 ? `${totalOfItems} items` : `${totalOfItems} item`;
 }
 
 export default function OrdersPage() {
@@ -49,6 +54,7 @@ export default function OrdersPage() {
   if (error) return <ErrorMessage error={error} />;
 
   const { orders } = data;
+  console.log(orders);
 
   return (
     <div>
@@ -62,7 +68,7 @@ export default function OrdersPage() {
             <Link href={`/order/${order.id}`}>
               <a>
                 <div className="order-meta">
-                  <p>{countItemsInAnOrder(order)} items</p>
+                  <p>{countItemsInAnOrder(order)}</p>
                   <p>
                     {order.items.length} Product
                     {order.items.length === 1 ? '' : 's'}
