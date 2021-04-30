@@ -1,5 +1,6 @@
 import styled from 'styled-components';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import { useState } from 'react';
 import { useCart } from '../lib/cartState';
 
 const Dot = styled.div`
@@ -43,7 +44,13 @@ const AnimationStyles = styled.span`
 `;
 
 export default function CartCount({ count }) {
+  const [transitionFinish, setTransitionFinish] = useState(false);
   const { openCart } = useCart();
+
+  if (transitionFinish && count > 0) {
+    setTransitionFinish(false);
+    openCart();
+  }
 
   return (
     <AnimationStyles>
@@ -54,7 +61,7 @@ export default function CartCount({ count }) {
           classNames="count"
           key={count}
           timeout={{ enter: 400, exit: 400 }}
-          onExited={openCart}
+          onExited={() => setTransitionFinish(true)}
         >
           <Dot>{count}</Dot>
         </CSSTransition>

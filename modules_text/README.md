@@ -8572,10 +8572,40 @@ This was a challenge propose when the `cart` counter animation finish that consi
   }
   ```
 
-- Add a prop call `onExited` in the `CSSTransition` component that it value is the `openCart` function
+- Import `useState` from `React`
+  `import { useState } from 'react';`
+- Now we need to add a state to handle the `open` functionality`only when the transition goes up and not on zero(When the`user`complete the purchase there will be a transition that represents the empty`cart`)
 
   ```js
   export default function CartCount({ count }) {
+    const [transitionFinish, setTransitionFinish] = useState(false);
+    const { openCart } = useCart();
+
+    return (...);
+  }
+  ```
+
+- Add the following condition to `open` the `cart` just when a `transition` finish and is not with a value of `0`
+
+  ```js
+  export default function CartCount({ count }) {
+    const [transitionFinish, setTransitionFinish] = useState(false);
+    const { openCart } = useCart();
+
+    if (transitionFinish && count > 0) {
+      setTransitionFinish(false);
+      openCart();
+    }
+
+    return (...);
+  }
+  ```
+
+- Add a prop call `onExited` in the `CSSTransition` component that it value is the `setTransitionFinish` function
+
+  ```js
+  export default function CartCount({ count }) {
+    const [transitionFinish, setTransitionFinish] = useState(false);
     const { openCart } = useCart();
 
     return (
@@ -8587,7 +8617,7 @@ This was a challenge propose when the `cart` counter animation finish that consi
             classNames="count"
             key={count}
             timeout={{ enter: 400, exit: 400 }}
-            onExited={openCart}
+            onExited={() => setTransitionFinish(true)}
           >
             <Dot>{count}</Dot>
           </CSSTransition>
