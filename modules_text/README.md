@@ -64,10 +64,10 @@ There is one directory that we need to be specific on `Next js` that is the `pag
 
 ```bash
 - pages/
--- order.js
+-- orders.js
 ```
 
-`Next js` will use the `order` component when you are on the `http://localhost:7777/order`. This is called` file system base routing`
+`Next js` will use the `orders` component when you are on the `http://localhost:7777/orders`. This is called` file system base routing`
 
 Now let's begin creating our pages:
 
@@ -94,7 +94,7 @@ Now create the following `pages` that we will use on the application. Use the sa
 |     Pages     | functions names |
 | :-----------: | :-------------: |
 | `account.js`  |  `AccountPage`  |
-|  `order.js`   |   `OrderPage`   |
+|  `orders.js`  |  `OrdersPage`   |
 | `products.js` | `ProductsPage`  |
 |   `sell.js`   |   `SellPage`    |
 
@@ -298,11 +298,11 @@ We already have a `Page` component and this will wrap all the components that ne
 
 #### Navigate the app throw links
 
-On our application, we want to be able to move page to page as quickly as possible and the `anchor` doesn't help us with that because it refreshes the page every time but `Next` can help us with this by using a `Link` component. `Next` use a combination of `HTML 5 push state` that changes the `URL` as well as the ability to trigger and rerender pages when that `URL` has changed. In order to use that `Next` feature I do the following:
+On our application, we want to be able to move page to page as quickly as possible and the `anchor` doesn't help us with that because it refreshes the page every time but `Next` can help us with this by using a `Link` component. `Next` use a combination of `HTML 5 push state` that changes the `URL` as well as the ability to trigger and re-render pages when that `URL` has changed. In order to use that `Next` feature I do the following:
 
 - On the `Header` component import the `Link` component from `next/link'`
   `import Link from 'next/link';`
-- Sustitute the `anchor` tag with the `Link` component
+- Substitute the `anchor` tag with the `Link` component
   `<Link href="/">Sick fits</Link>`
 - Go to your browser and refresh the page
 - Click on the `Slick fits` link
@@ -5572,7 +5572,7 @@ Thankfully for us `keystone` does a pretty good job of handling all the logic be
 - Open the `dev tools` of the browser
 - You should see the `user` information on the console(Remember that you previously logged in on `keystone`)
 - Go back to the `Nav` component
-- Put a condition to show the `sell`, `order` and `account` only if the `user` is `sign in`
+- Put a condition to show the `sell`, `orders` and `account` only if the `user` is `sign in`
   ```js
   export default function Nav() {
     const user = useUser();
@@ -5583,7 +5583,7 @@ Thankfully for us `keystone` does a pretty good job of handling all the logic be
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
           </>
         )}
@@ -5602,7 +5602,7 @@ Thankfully for us `keystone` does a pretty good job of handling all the logic be
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
           </>
         )}
@@ -6098,7 +6098,7 @@ At this moment we can `sign in` a valid `user` to our application and update som
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
             <SignOut />
           </>
@@ -7805,7 +7805,7 @@ On `context` we will have a `provider` that will live in a high-level place on t
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
             <SignOut />
             <button type="button" onClick={openCart}>
@@ -8266,7 +8266,7 @@ Now we can add items to the `cart` on the` frontend` side of the application but
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
             <SignOut />
             <button type="button" onClick={openCart}>
@@ -8293,7 +8293,7 @@ Now we can add items to the `cart` on the` frontend` side of the application but
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
             <SignOut />
             <button type="button" onClick={openCart}>
@@ -8572,10 +8572,40 @@ This was a challenge propose when the `cart` counter animation finish that consi
   }
   ```
 
-- Add a prop call `onExited` in the `CSSTransition` component that it value is the `openCart` function
+- Import `useState` from `React`
+  `import { useState } from 'react';`
+- Now we need to add a state to handle the `open` functionality`only when the transition goes up and not on zero(When the`user`complete the purchase there will be a transition that represents the empty`cart`)
 
   ```js
   export default function CartCount({ count }) {
+    const [transitionFinish, setTransitionFinish] = useState(false);
+    const { openCart } = useCart();
+
+    return (...);
+  }
+  ```
+
+- Add the following condition to `open` the `cart` just when a `transition` finish and is not with a value of `0`
+
+  ```js
+  export default function CartCount({ count }) {
+    const [transitionFinish, setTransitionFinish] = useState(false);
+    const { openCart } = useCart();
+
+    if (transitionFinish && count > 0) {
+      setTransitionFinish(false);
+      openCart();
+    }
+
+    return (...);
+  }
+  ```
+
+- Add a prop call `onExited` in the `CSSTransition` component that it value is the `setTransitionFinish` function
+
+  ```js
+  export default function CartCount({ count }) {
+    const [transitionFinish, setTransitionFinish] = useState(false);
     const { openCart } = useCart();
 
     return (
@@ -8587,7 +8617,7 @@ This was a challenge propose when the `cart` counter animation finish that consi
             classNames="count"
             key={count}
             timeout={{ enter: 400, exit: 400 }}
-            onExited={openCart}
+            onExited={() => setTransitionFinish(true)}
           >
             <Dot>{count}</Dot>
           </CSSTransition>
@@ -10895,7 +10925,7 @@ Here we will take care of some of the final things to have a complete checkout p
         {user && (
           <>
             <Link href="/sell">sell</Link>
-            <Link href="/order">orders</Link>
+            <Link href="/orders">orders</Link>
             <Link href="/account">account</Link>
             <SignOut />
             <button type="button" onClick={openCart}>
@@ -11049,3 +11079,579 @@ Here we will take care of some of the final things to have a complete checkout p
 - Add some items to the `cart`
 - Complete the `credit card` form and submit
 - The `payment` should be successful; the `cart` should close and you will redirect to a single `order` page(It doesn't exist for the moment that page but you can check that the URL is `order` plus the `id` and you can check the `id` on the `keystone` admin in the `order` section)
+
+### Displaying a single order
+
+We are going to display the `order` that the `user` creates completing the `payment` process.
+
+- On your editor; go to the `frontend/pages` directory and create a folder call `order`
+- Inside of the `order` folder create a file call `[id].js`
+- On thi newly created file; export a function call `SingleOrderPage` that recive the `query` prop and print the `id` that is inside of the `query` prop
+  ```js
+  export default function SingleOrderPage({ query }) {
+    return <div>{query.id}</div>;
+  }
+  ```
+- On your editor; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- In your browser; go to the [keystone admin](http://localhost:3000/)
+- Click on the `Orders` option at the left
+- Copy the `id` of one of the `orders`
+- Go to [single order page](http://localhost:7777/order/) using the `id` that you just copy at the end of the URL
+- You should see the `id` that you use on the URL display it on the content of the page
+- Now we need to use the `id` of the `order` to make a `query` so import `gql` from `graphql-tag`
+  `import gql from 'graphql-tag';`
+- Create a constant call `SINGLE_ORDER_QUERY` that its value is `gql`
+  ```js
+  const SINGLE_ORDER_QUERY = gql``;
+  ```
+- Now use the `Order query` to get the `order` values and the `query` should receive an `id` and return the following fields
+  ```js
+  const SINGLE_ORDER_QUERY = gql`
+    query SINGLE_ORDER_QUERY($id: ID!) {
+      order: Order(where: { id: $id }) {
+        id
+        charge
+        total
+        user {
+          id
+        }
+        items {
+          id
+          name
+          description
+          price
+          quantity
+          photo {
+            image {
+              publicUrlTransformed
+            }
+          }
+        }
+      }
+    }
+  `;
+  ```
+- Import the `useQuery` hook from `@apollo/client`
+  `import { useQuery } from '@apollo/client';`
+- Use the `useQuery` hook on the `SingleOrderPage` function sending the `query` and the `variable` that the `query` need
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {
+      variables: { id: query.id },
+    });
+
+    return <div>{query.id}</div>;
+  }
+  ```
+
+- Import the `ErrorMessage` component
+  `import ErrorMessage from '../../components/ErrorMessage';`
+- Use the `loading` and `error` component to display it respective message
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {...});
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    return <div>{query.id}</div>;
+  }
+  ```
+
+- Destructure `order` from the `data` variable
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {...});
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    const { order } = data;
+
+    return <div>{query.id}</div>;
+  }
+  ```
+
+- Import `OrderStyles`
+  `import OrderStyles from '../../components/styles/OrderStyles';`
+- Replace the `div` with `OrderStyles`
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    const { data, loading, error } = useQuery(SINGLE_ORDER_QUERY, {...});
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    const { order } = data;
+
+    return <OrderStyles>{query.id}</OrderStyles>;
+  }
+  ```
+
+- Import `Head` from `next/head`
+  `import Head from 'next/head';`
+- Remove `{query.id}` and use the `Head` component to put the `title` of the page
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>
+          <title>Sick Fits - {order.id}</title>
+        </Head>
+      </OrderStyles>
+    );
+  }
+  ```
+
+- Add the following content for the `order` and `charge`
+
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>
+          <span>Order Id:</span>
+          <span>{order.id}</span>
+        </p>
+        <p>
+          <span>Charge:</span>
+          <span>{order.charge}</span>
+        </p>
+      </OrderStyles>
+    );
+  }
+  ```
+
+- Import the `formatMoney` function and use it for the `total` amount for the `order`
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>...</p>
+        <p>...</p>
+        <p>
+          <span>Order Total:</span>
+          <span>{formatMoney(order.total)}</span>
+        </p>
+      </OrderStyles>
+    );
+  }
+  ```
+- Add the amount of `items` that where purchase
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+        <p>
+          <span>Item Count:</span>
+          <span>{order.items.length}</span>
+        </p>
+      </OrderStyles>
+    );
+  }
+  ```
+- Add a `div` with a class called `items` and its content will have a `map` of the `order items`
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        <Head>...</Head>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+        <p>...</p>
+        <div className="items">
+          {order.items.map((item) => ())}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- Inside of the `map` function add as `div` with the `order-item` class and a `key` that will be the `item.id`
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        ...
+        <div className="items">
+          {order.items.map((item) => (
+            <div className="order-item" key={item.id}></div>
+          ))}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- Add an `img` tag with the following properties
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        ...
+        <div className="items">
+          {order.items.map((item) => (
+            <div className="order-item" key={item.id}>
+              <img src={item.photo.image.publicUrlTransformed} alt={item.title} />
+            </div>
+          ))}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- Then add a `div` with an `items-details` class with the following `item` details
+  ```js
+  export default function SingleOrderPage({ query }) {
+    ...
+    return (
+      <OrderStyles>
+        ...
+        <div className="items">
+          {order.items.map((item) => (
+            <div className="order-item" key={item.id}>
+              <img src={item.photo.image.publicUrlTransformed} alt={item.title} />
+              <div className="items-details">
+                <h2>{item.name}</h2>
+                <p>QTY: {item.quantity}</p>
+                <p>Each: {formatMoney(item.price)}</p>
+                <p>Subtotal: {formatMoney(item.price * item.quantity)}</p>
+                <p>{item.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </OrderStyles>
+    );
+  }
+  ```
+- In your browser; go to the `single order` page and refresh it
+- You should see all the `order` information
+
+### Displaying all orders
+
+Now we are going to display all `orders` from a `user` on the `orders` page.
+
+- On your editor; go to the `[id].js` file on the `frontend/pages/order` directory
+- Copy all content
+- Go to the `orders.js` file on the `frontend/pages` directory
+- Paste the content that you copy before on the `orders` file
+- Update `SINGLE_ORDER_QUERY` to `USER_ORDERS_QUERY`
+- Then update the `query` that will no longer receive an `id` and will use `allOrders` instead of `order`
+  ```js
+  const USER_ORDERS_QUERY = gql`
+    query USER__ORDERS_QUERY {
+      orders: allOrders {
+        id
+        charge
+        total
+        user {
+          id
+        }
+        items {
+          id
+          name
+          description
+          price
+          quantity
+          photo {
+            image {
+              publicUrlTransformed
+            }
+          }
+        }
+      }
+    }
+  `;
+  ```
+- Update the `SingleOrderPage` name to `OrdersPage` and remove the `query` prop
+  `export default function OrdersPage() {...}`
+- Remove the variable from the `useQuery` hook configuration object
+
+  ```js
+  export default function OrdersPage() {
+    const { data, loading, error } = useQuery(USER_ORDERS_QUERY);
+    ...
+    return (...);
+  }
+  ```
+
+- Update the `order` variable name to `orders`
+
+  ```js
+  export default function OrdersPage() {
+    const { data, loading, error } = useQuery(USER_ORDERS_QUERY);
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    const { orders } = data;
+
+    return (...);
+  }
+  ```
+
+- Then remoove all the content on the `return`
+- Add a `div` on the `return` with the `Head` component as it content with the following content
+
+  ```js
+  export default function OrdersPage() {
+    const { data, loading, error } = useQuery(USER_ORDERS_QUERY);
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <ErrorMessage error={error} />;
+
+    const { orders } = data;
+
+    return (
+      <div>
+        <Head>
+          <title>Your Orders ({orders.length})</title>
+        </Head>
+      </div>
+    );
+  }
+  ```
+
+- Then import `styled` from `styled-components`
+  `import styled from 'styled-components';`
+- Create a variable call `orderUrl` that will be an styled `ul`
+  ```js
+  const OrderUl = styled.ul``;
+  ```
+- Add the following styles
+  ```js
+  const OrderUl = styled.ul`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-gap: 4rem;
+  `;
+  ```
+  This will add as many columns that it can on the same row depending on the size and the `4rem` separation
+- Import `OrderItemStyles`
+  `import OrderItemStyles from '../components/styles/OrderItemStyles';`
+- Now use the `OrderUl` bellow of the `Head` component with `map` of all `orders`
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => ()}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- Import `Link` from `next/link`
+  `import Link from 'next/link';`
+- Use `OrderItemStyles` on the `map` function with the `Link` component as it content(The `href` of the `Link` component shuold be the `single order` url of the current item)
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}></Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- Add an `anchor` tag to have only one child on the `Link` component and inside of the `anchor` put a `div` with a `order-meta` class
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}>
+                <a>
+                  <div className="order-meta">
+                  </div>
+                </a>
+              </Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- Now we will need how many items in total are in the `order` so create a function call `countItemsInAnOrder` that recive an `order`
+  `function countItemsInAnOrder(order) {}`
+- Use a `reduce` to get the total of items in this newly created function
+  ```js
+  function countItemsInAnOrder(order) {
+    return order.items.reduce((tally, item) => tally + item.quantity, 0);
+  }
+  ```
+- Add a `p` tag on the `order-meta div` and its content will be the `countItemsInAnOrder` sending an `order`
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}>
+                <a>
+                  <div className="order-meta">
+                    <p>{countItemsInAnOrder(order)} items</p>
+                  </div>
+                </a>
+              </Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- We will need the amount of `products` that are on the `order`
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}>
+                <a>
+                  <div className="order-meta">
+                    <p>{countItemsInAnOrder(order)} items</p>
+                    <p>
+                      {order.items.length} Product
+                      {order.items.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                </a>
+              </Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+  We conditionally put an `s` on the `Product` word depending if we got more than one `product` on the `order`
+- Now use the `formatMoney` function to get the total of the `order`
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}>
+                <a>
+                  <div className="order-meta">
+                    <p>{countItemsInAnOrder(order)} items</p>
+                    <p>
+                      {order.items.length} Product
+                      {order.items.length === 1 ? '' : 's'}
+                    </p>
+                    <p>{formatMoney(order.total)}</p>
+                  </div>
+                </a>
+              </Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- Add another `div` with the `images` class and loop on every item in the `order`
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}>
+                <a>
+                  <div className="order-meta">...</div>
+                  <div className="images">
+                    {order.items.map((item) => ()}
+                  </div>
+                </a>
+              </Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- Add an `image` tag with the following properties
+  ```js
+  export default function OrdersPage() {
+    ...
+    return (
+      <div>
+        <Head>...</Head>
+        <OrderUl>
+          {orders.map((order) => (
+            <OrderItemStyles>
+              <Link href={`/order/${order.id}`}>
+                <a>
+                  <div className="order-meta">...</div>
+                  <div className="images">
+                    {order.items.map((item) => (
+                      <img
+                        key={`image-${item.id}`}
+                        src={item.photo?.image?.publicUrlTransformed}
+                        alt={item.name}
+                      />
+                    )}
+                  </div>
+                </a>
+              </Link>
+            </OrderItemStyles>
+          )}
+        </OrderUl>
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- Go to the [orders page](http://localhost:7777/orders)
+- You should see a list of the `orders` that you created before
