@@ -11821,3 +11821,87 @@ We are going to work with the `roles` because the way that we are going to manag
 - Create a `role` call `Admin` and check all the `checkbox` then add your `user` on it
 - Submit the form
 - You should see that the `role` is created and related to your `user`
+
+### Basic access control via session
+
+Now that we assign `role` to the `user` we can `query` from the `authenticated user` the `role field` that will have all our `can` checkboxes that we added before. At this moment we will need to have access to the `array` of `permissions` on the `session` (The little bit of information that we get access to when we are doing any `server` side check) so here is what you need to do:
+
+- On your editor; go to the `backend` directory to the `keystone.ts` file
+- On the `session` property we `query` a little bit of information of the current log in `user` and we can add here more information if we need to. So add the `name` and `email` to the current `query`
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({...}),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: `id name email`,
+      }),
+    })
+  );
+  ```
+  Now with this, we will have access to the `name` and `email` of the `user` on every `session` and this information can be used by `keystone` on its functions like the `addToCart` custom `mutation` that will grab the `user` information from the `context` instead of doing a `query`
+- Now we need to include the `role` but you will need to put all the `fields` of the `role` because `graphQL` don't have any way to say that we need all the values; we will need to explicitly write it but we add another way to do this. On the `fields.ts` file you will see at the end that we put a `list` of the `keys` in the `permissions fields` and export them so we can interpolate on the `User` string on the `session` so import `permissionsList` on the `keystone.ts` file
+  `import { permissionsList } from './schemas/fields';`
+- Change to `backticks` the `query` value on the `session` properti and use the `permissionsList` like this
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({...}),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: `id name email role { ${permissionsList.join(' ')} }`,
+      }),
+    })
+  );
+  ```
+  This will add every item of the `array` in a single string separated by a space
+- Now that we got the `role` included on the `session` we will need to write our first own `access` function(At its simplest, the access control returns a `yes` or `no` value depending on the `users session`). On the `backend` directory create a new file call `access.ts`
+- On this newly created file export a function call `isSignedIn`
+  `export function isSignedIn() {}`
+- This kind of function will allways have access to the `context` and inside of the `context` is the `user session` so destructure the `context` to get the `session` on the `isSignedIn` parameter
+  `export function isSignedIn({ session }) {}`
+- Since is `typescript` we need to do some typing so import `ListAccessArgs` from `./types`
+  `import { ListAccessArgs } from './types';`
+- Define the `session` argument as `ListAccessArgs`
+  `export function isSignedIn({ session }: ListAccessArgs) {}`
+- Finally return a `boolean` to let know that we `user` is log in or not
+  ```js
+  export function isSignedIn({ session }: ListAccessArgs) {
+    return !!session;
+  }
+  ```
+- Now we need to hook the `access` function to one of our `lists`. On every single `list` of every single `data type` that we have; you can define an `access` value to either the entire `list` or an `individual field` and that will tell us if we can `create`, `read`, `update` or `delete` in that specific `data type`. So go to the `schema` directory to the `Product.ts` file and import the `isSignedIn` function
+  `import { isSignedIn } from '../access';`
+- At the top to the configuration object add a `access` property
+  ```js
+  export const Product = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Then add the following properties to the `access` object using the `isSignedIn` function as it value
+  ```js
+  export const Product = list({
+    access: {
+      create: isSignedIn,
+      read: isSignedIn,
+      update: isSignedIn,
+      delete: isSignedIn,
+    },
+    fields: {...},
+  });
+  ```
+  This property will have a `boolean` property to define what we can do with this specific `data type`(Later we will update with some other function that has some more logic on it)
+- On your terminal go to the `backend` directory and start your local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Make an `AllProducts query`
+- You should receive the `data` normally as before
+- Open a window on incognito and go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Make the same `AllProducts query`
+- You should receive an error because you are not on `session`
