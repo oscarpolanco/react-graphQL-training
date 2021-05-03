@@ -11655,3 +11655,169 @@ Now we are going to display all `orders` from a `user` on the `orders` page.
 - On another tab of your terminal; go to the `frontend` directory and start your local server
 - Go to the [orders page](http://localhost:7777/orders)
 - You should see a list of the `orders` that you created before
+
+## Module 12: Roles Permissions and restricting access
+
+On some of the applications that you may work on, you will need to set rules for the `users` in order to show part of the application or what actions a given `user` can perform on the application. In this section we will handle some of this logic regarding the following topics:
+
+- Permissions: The `permission` is going to be the set of rules that we define for the actions in the application.
+  Ex:
+  - Checkboxes; can someone do something or not
+  - Can see all `users`
+  - can edit `products`
+- Roles: When you have many `permission` you can bundle them into form a `role` in other words a `roles` is a collection of multiples `permissions`
+  Ex:
+  - An `admin` can:
+    - Manage `users`
+    - Manage `products`
+  - An `editor` can:
+    - Read `products`
+    - Can't delete `products`
+- Access permission function: They are functions that base or the `role` that you have will give you access to a part of the application or prevent that you get to that application
+- Access filter function: Some times some `roles` will have access to some parts of the application but are not allow to view all the information that is on that part of the application so we use those functions to show only that information or functionality that a given `role` need
+
+### Creating the roles and permissions schema + UI
+
+We are going to work with the `roles` because the way that we are going to manage who has what `role` is having a `schema` that we can associate different users to a certain `role`. Here is the step that you need to follow:
+
+- On your editor; go to the `backend/schema` directory and create a new file call `Role.ts`
+- On this newly create file import `list` from `@keystone-next/keystone/schema`
+  `import { list } from '@keystone-next/keystone/schema';`
+- Then export a constan call `Role` that it value is the `list` method
+  `export const Role = list({});`
+- On the configuration object of the `list` method add a propety call `field` with an object as it value
+  ```js
+  export const Role = list({
+    fields: {},
+  });
+  ```
+- Import `text` from `@keystone-next/fields`
+  `import { relationship, text } from '@keystone-next/fields';`
+- Now create a `field` call `name` that will be a `text` field and will be `required`
+  ```js
+  export const Role = list({
+    fields: {
+      name: text({ isRequired: true }),
+    },
+  });
+  ```
+- Import `relationship` from `@keystone-next/fields`
+  `import { relationship, text } from '@keystone-next/fields';`
+- Then create a `field` call `assignedTo` that will be a `relathionship` betewn the `role` and `users`(remember that each `role` can have `many users`) with a only `read` input on the `ui`
+  ```js
+  export const Role = list({
+    fields: {
+      name: text({ isRequired: true }),
+      assignedTo: relationship({
+        ref: 'User.role',
+        many: true,
+        ui: {
+          itemView: { fieldMode: 'read' },
+        },
+      }),
+    },
+  });
+  ```
+- Go to the `User.ts` file on the `schema` directory
+- Bellow the `orders field` create a new `field` call `role` that will be a `relationship` betwen the `user` aand the `role`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({...}),
+      orders: relationship({ ref: 'Order.user', many: true }),
+      role: relationship({
+        ref: 'Role.assignedTo',
+      }),
+    },
+  });
+  ```
+- Go to the `keystone.ts` file and impor the `Role schema`
+  `import { Role } from './schemas/Role';`
+- Add the `Role schema` on the `lists` property of the `keystone` configuration object
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+        OrderItem,
+        Order,
+        Role,
+      }),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...})
+  );
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone admin page](http://localhost:3000/)
+- You should see the `Roles` option on the `sidebar`
+- Now we are going to need a bunch of additional `fields` that are going to be the actual permissions. So copy the following content:
+
+  ```js
+  import { checkbox } from '@keystone-next/fields';
+
+  export const permissionFields = {
+    canManageProducts: checkbox({
+      defaultValue: false,
+      label: 'User can Update and delete any product',
+    }),
+    canSeeOtherUsers: checkbox({
+      defaultValue: false,
+      label: 'User can query other users',
+    }),
+    canManageUsers: checkbox({
+      defaultValue: false,
+      label: 'User can Edit other users',
+    }),
+    canManageRoles: checkbox({
+      defaultValue: false,
+      label: 'User can CRUD roles',
+    }),
+    canManageCart: checkbox({
+      defaultValue: false,
+      label: 'User can see and manage cart and cart items',
+    }),
+    canManageOrders: checkbox({
+      defaultValue: false,
+      label: 'User can see and manage orders',
+    }),
+  };
+
+  export type Permission = keyof typeof permissionFields;
+
+  export const permissionsList: Permission[] = Object.keys(
+    permissionFields
+  ) as Permission[];
+  ```
+
+  Here we have a bunch of `permission fields` for things that the `user` may or may not do and each of those will have a `default` value and the `description`; some of `typing` and return a list of all of `permissions`.
+
+- On the `schema` directory create a new file call `fields.ts` and paste the previous content
+- Then go to the `Roles.ts` file and import the `fields` file
+  `import { permissionFields } from './fields';`
+- Spread the `permissionFields` below the `name field`
+  ```js
+  export const Role = list({
+    fields: {
+      name: text({ isRequired: true }),
+      ...permissionFields,
+      assignedTo: relationship({...}),
+    },
+  });
+  ```
+- On your terminal restart the `backend` local server
+- Go to the [keystone admin](http://localhost:3000/)
+- You should see the `Roles` op tion on the sidebar
+- Click the `Roles` option
+- Click on `Create Role`
+- Create a `role` call `Admin` and check all the `checkbox` then add your `user` on it
+- Submit the form
+- You should see that the `role` is created and related to your `user`
