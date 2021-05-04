@@ -11905,3 +11905,44 @@ Now that we assign `role` to the `user` we can `query` from the `authenticated u
 - Open a window on incognito and go to the [graphQL playground](http://localhost:3000/api/graphql)
 - Make the same `AllProducts query`
 - You should receive an error because you are not on `session`
+
+### Permission access functions
+
+Now we are going to build a function that checks if somebody has a specific `permission` where we have an object with every` permission` as property and each property will be its own function.
+
+- On your editor; go to the `backend` directory
+- Go to the `access.ts` file
+- Create a constant call `permission` that will have an object as a value
+  `export const permissions = {};`
+- Now we will need to add a property to the object with the same name as the `fields` that we created on the` fields.ts` in this case we will use `canManageProducts` and its value will be a function
+  `` `js export const permissions = { canManageProducts: function () {}, }; `` ''
+- Then add the `session` property to the` canManageProducts` function and return the value of the `canManageProducts` that is on the` session` object
+  `` `js export const permissions = { canManageProducts: function () { return session? .data? .role? .canManageProducts; }, }; `` ''
+  This will tell us if a `user` has the` canManageProducts permission`
+- For every `permission` we will need a function like the one that we created before but actually, we don't want to write all those functions so as you guess we got a way around this; we will generate those functions for every single `permission`. As you remember on the `fields.ts` file we import all the` keys` from all `permissions` so import` permissionsList` on the `access.ts` file
+  `import {permissionsList} from './schemas/fields';`
+- Now create a consist call `generatedPermissions` that it value will be`Object.fromEntries ();`
+  `const generatedPermissions = Object.fromEntries ();`
+  The `fromEntries` method will take an` array` of `arrays` and the first and second position of every` array` will represent a `key - value` pair; for example
+  ```js
+  const test = Object.fromEntries([['name', 'test'], ['age', '100']]);
+  console.log(test);
+  { 'name': 'test', 'age': '100'}
+  ```
+- Map on the `permissionsList` object to create the `key - value` pair `array`
+  ```js
+  const generatedPermissions = Object.fromEntries(
+    permissionsList.map((permission) => [
+      permission,
+      function ({ session }: ListAccessArgs) {
+        return !!session?.data?.role?.[permission];
+      },
+    ])
+  );
+  ```
+- Then eliminate the `canManageProducts` of the `permission` object and sparte the `generatedPermissions` object
+  ```js
+  export const permissions = {
+    ...generatedPermissions,
+  };
+  ```
