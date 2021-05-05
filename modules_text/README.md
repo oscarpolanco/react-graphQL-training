@@ -11946,3 +11946,148 @@ Now we are going to build a function that checks if somebody has a specific `per
     ...generatedPermissions,
   };
   ```
+
+### More flexible rule based functions
+
+Now we are going to be working with `rule-based functions`. The `rule-based functions` are logical functions that can be used for list access for the different types; let us return a `boolean` and a set of `filters` that limit what the `user` can do or see on a determined type. Let begin with the process:
+
+- On your editor go to the `backend` directory
+- Enter to the `access.ts` file
+- At the bottom of the file export a constant call `rules` that will be an object
+  `export const rules = {};`
+- Add a `canManageProducts` property that will be a function that receive `session`(Add the `ListAccessArgs` as we did before)
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {},
+  };
+  ```
+- Now we are going to check if they have the permission of `canManageProducts` so create an condition that use the `permission` variable to check if the `canManageProducts` is avalable for the current `user` using the `session` and if is the case return `true`
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+    },
+  };
+  ```
+- Then if don't have the `permission`, we need to check if the current `user` is the owner of the item returning the following
+
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { user: { id: session.itemId } };
+    },
+  };
+  ```
+
+  This last return statement is like the `where` filter that we use on the `graphQL` API so here we will return a `truthy` value when it finds an item `where` the `user id` is related to the current `product`
+
+- Go to the `Product.ts` file on the `schema` directory
+- Import `rules`
+  `import { isSignedIn, rules } from '../access';`
+- Use the `canManageProducts` from `rules` on the `update` and `delete` properties on the `access` object
+  ```js
+  export const Product = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canReadProduct,
+      update: rules.canManageProducts,
+      delete: rules.canManageProducts,
+    },
+    fields: {...},
+  });
+  ```
+- Now on your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone admin](http://localhost:3000/)(Make sure you are logged in with your `admin user`)
+- Click on the `Products` option on the sidebar
+- Choose a `product`
+- Update the `product` and save
+- You should be able to edit the information about the `product`
+- Now we need to update the `product` if you are not an `admin` but own the `product` and for this, we will need to relate the `products` with the `user` that create the `product` so get back to the `Product.ts` file
+- On the `fields` object create a `relationship field` that make a reference to a `products field` on the `User` schema and the following default value
+  ```js
+  export const Product = list({
+    access: {...},
+    fields: {
+      ...
+      user: relationship({
+        ref: 'User.products',
+        defaultValue: ({ context }) => ({
+          connect: { id: context.session.itemId },
+        }),
+      }),
+    },
+  });
+  ```
+  When a `product` is created will make a relation with the `User` schema and will put as a default value the current `user id`
+- Go to the `User.ts` file
+- Add a `products field` that is related to the `user field` on the `User` schema and can have `many` items
+  ```js
+  export const User = list({
+    fields: {
+      ...
+      products: relationship({
+        ref: 'Product.user',
+        many: true,
+      }),
+    },
+  });
+  ```
+- Now on your terminal; restart the `backend` local server
+- Go to the [keystone admin](http://localhost:3000/)(Make sure you are logged in with your `admin user`)
+- Click on the `Products` option on the sidebar
+- Choose one of the `products`
+- Add a no `admin user` to the `product` that you choose
+- Open an incognito window and go to the [keystone admin](http://localhost:3000/)
+- Log in with the no `admin user`(The one that you relate a `product` before)
+- Click on the `Products` option on the sidebar
+- Choose the `product` related to your current `user`
+- Update the `product` and save
+- You should be able to update the `product` information
+- Go to another `product` and update its information and save
+- You should not be able to update the `product` information
+- Now we will need to filter what the user can see using the `status` if you are not an `admin user`. Go to the `access.ts` file
+- On the `rules` object create a new function call `canReadProduct` that receive the `session`
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {...},
+    canReadProducts({ session }: ListAccessArgs) {}
+  };
+  ```
+- On the `canReadProduct` function ask if the current `user` have the `canReadProduct` permission and if it have it return `true` representing that it can see all `products`
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {...},
+    canReadProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+    }
+  };
+  ```
+- Then if it doesn't have the `canManageProducts` should be able to look only at the ones that have an `available` status
+
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {...},
+    canReadProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { status: 'AVAILABLE' };
+    }
+  };
+  ```
+
+- On your terminal; restart the `backend` local server
+- Go to the browser with the `admin user`
+- Choose a `product`
+- Change the status of a `product` to `draft` and save
+- Go to the browser with the no `admin user`
+- Go to the `product` list and you should see one `product` less than the `admin user` on the other browser
