@@ -12091,3 +12091,64 @@ Now we are going to be working with `rule-based functions`. The `rule-based func
 - Change the status of a `product` to `draft` and save
 - Go to the browser with the no `admin user`
 - Go to the `product` list and you should see one `product` less than the `admin user` on the other browser
+
+### Getting meta - Roles base roles and hiding UI
+
+We are going to create `roles` and `permissions` for managing the `roles` and `permissions`. Here are the steps:
+
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone admin page](http://localhost:3000/)
+- Click on the `Roles` option
+- Create a new `role` call `Editor`; that can `update` and `delete` any `product`; can `query` other `users` and can `edit` other `users`
+- Add the new `role` to an existing `user`(Different than your `admin user`)
+- Save the changes
+- Now we need to hide manage the access of the `roles` page so on your editor; go to the `Roles.ts` file on the `backend/schema` directory
+- On the `Role` list add the `access` property
+  ```js
+  export const Role = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Import `permissions`
+  `import { permissions } from '../access';`
+- Add the `create`, `read`, `update` and `delete` property with a `permissions.canManageRoles` value on the `access` property
+  ```js
+  export const Role = list({
+    access: {
+      create: permissions.canManageRoles,
+      read: permissions.canManageRoles,
+      update: permissions.canManageRoles,
+      delete: permissions.canManageRoles,
+    },
+    fields: {...},
+  });
+  ```
+- Now we need to hide the `ui` depending the `user` so add a `ui` property bellow the `access` property
+  ```js
+  export const Role = list({
+    access: {...},
+    ui: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties on the `ui` object
+  ```js
+  export const Role = list({
+    access: {...},
+    ui: {
+      hideCreate: (args) => !permissions.canManageRoles(args),
+      hideDelete: (args) => !permissions.canManageRoles(args),
+      isHidden: (args) => !permissions.canManageRoles(args),
+    },
+    fields: {...},
+  });
+  ```
+  Each of these properties `hide` the different elements of the `roles` page on `keystone`. Is important to limit the `access` first then you `hide` the elements
+- Go to your terminal and restart your local server
+- Go to the [keystone admin page](http://localhost:3000/)(The browser that you are logged in with the `admin user`)
+- Click on the `Role` option at the left
+- You should see all `roles`
+- Open an incognito window and go to the [keystone admin page](http://localhost:3000/)
+- Login with a no `admin user`
+- You should not see any `Roles` option at the left
