@@ -11655,3 +11655,884 @@ Now we are going to display all `orders` from a `user` on the `orders` page.
 - On another tab of your terminal; go to the `frontend` directory and start your local server
 - Go to the [orders page](http://localhost:7777/orders)
 - You should see a list of the `orders` that you created before
+
+## Module 12: Roles Permissions and restricting access
+
+On some of the applications that you may work on, you will need to set rules for the `users` in order to show part of the application or what actions a given `user` can perform on the application. In this section we will handle some of this logic regarding the following topics:
+
+- Permissions: The `permission` is going to be the set of rules that we define for the actions in the application.
+  Ex:
+  - Checkboxes; can someone do something or not
+  - Can see all `users`
+  - can edit `products`
+- Roles: When you have many `permission` you can bundle them into form a `role` in other words a `roles` is a collection of multiples `permissions`
+  Ex:
+  - An `admin` can:
+    - Manage `users`
+    - Manage `products`
+  - An `editor` can:
+    - Read `products`
+    - Can't delete `products`
+- Access permission function: They are functions that base or the `role` that you have will give you access to a part of the application or prevent that you get to that application
+- Access filter function: Some times some `roles` will have access to some parts of the application but are not allow to view all the information that is on that part of the application so we use those functions to show only that information or functionality that a given `role` need
+
+### Creating the roles and permissions schema + UI
+
+We are going to work with the `roles` because the way that we are going to manage who has what `role` is having a `schema` that we can associate different users to a certain `role`. Here is the step that you need to follow:
+
+- On your editor; go to the `backend/schema` directory and create a new file call `Role.ts`
+- On this newly create file import `list` from `@keystone-next/keystone/schema`
+  `import { list } from '@keystone-next/keystone/schema';`
+- Then export a constan call `Role` that it value is the `list` method
+  `export const Role = list({});`
+- On the configuration object of the `list` method add a propety call `field` with an object as it value
+  ```js
+  export const Role = list({
+    fields: {},
+  });
+  ```
+- Import `text` from `@keystone-next/fields`
+  `import { relationship, text } from '@keystone-next/fields';`
+- Now create a `field` call `name` that will be a `text` field and will be `required`
+  ```js
+  export const Role = list({
+    fields: {
+      name: text({ isRequired: true }),
+    },
+  });
+  ```
+- Import `relationship` from `@keystone-next/fields`
+  `import { relationship, text } from '@keystone-next/fields';`
+- Then create a `field` call `assignedTo` that will be a `relathionship` betewn the `role` and `users`(remember that each `role` can have `many users`) with a only `read` input on the `ui`
+  ```js
+  export const Role = list({
+    fields: {
+      name: text({ isRequired: true }),
+      assignedTo: relationship({
+        ref: 'User.role',
+        many: true,
+        ui: {
+          itemView: { fieldMode: 'read' },
+        },
+      }),
+    },
+  });
+  ```
+- Go to the `User.ts` file on the `schema` directory
+- Bellow the `orders field` create a new `field` call `role` that will be a `relationship` betwen the `user` aand the `role`
+  ```js
+  export const User = list({
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({...}),
+      orders: relationship({ ref: 'Order.user', many: true }),
+      role: relationship({
+        ref: 'Role.assignedTo',
+      }),
+    },
+  });
+  ```
+- Go to the `keystone.ts` file and impor the `Role schema`
+  `import { Role } from './schemas/Role';`
+- Add the `Role schema` on the `lists` property of the `keystone` configuration object
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({
+        User,
+        Product,
+        ProductImage,
+        CartItem,
+        OrderItem,
+        Order,
+        Role,
+      }),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {...})
+  );
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone admin page](http://localhost:3000/)
+- You should see the `Roles` option on the `sidebar`
+- Now we are going to need a bunch of additional `fields` that are going to be the actual permissions. So copy the following content:
+
+  ```js
+  import { checkbox } from '@keystone-next/fields';
+
+  export const permissionFields = {
+    canManageProducts: checkbox({
+      defaultValue: false,
+      label: 'User can Update and delete any product',
+    }),
+    canSeeOtherUsers: checkbox({
+      defaultValue: false,
+      label: 'User can query other users',
+    }),
+    canManageUsers: checkbox({
+      defaultValue: false,
+      label: 'User can Edit other users',
+    }),
+    canManageRoles: checkbox({
+      defaultValue: false,
+      label: 'User can CRUD roles',
+    }),
+    canManageCart: checkbox({
+      defaultValue: false,
+      label: 'User can see and manage cart and cart items',
+    }),
+    canManageOrders: checkbox({
+      defaultValue: false,
+      label: 'User can see and manage orders',
+    }),
+  };
+
+  export type Permission = keyof typeof permissionFields;
+
+  export const permissionsList: Permission[] = Object.keys(
+    permissionFields
+  ) as Permission[];
+  ```
+
+  Here we have a bunch of `permission fields` for things that the `user` may or may not do and each of those will have a `default` value and the `description`; some of `typing` and return a list of all of `permissions`.
+
+- On the `schema` directory create a new file call `fields.ts` and paste the previous content
+- Then go to the `Roles.ts` file and import the `fields` file
+  `import { permissionFields } from './fields';`
+- Spread the `permissionFields` below the `name field`
+  ```js
+  export const Role = list({
+    fields: {
+      name: text({ isRequired: true }),
+      ...permissionFields,
+      assignedTo: relationship({...}),
+    },
+  });
+  ```
+- On your terminal restart the `backend` local server
+- Go to the [keystone admin](http://localhost:3000/)
+- You should see the `Roles` op tion on the sidebar
+- Click the `Roles` option
+- Click on `Create Role`
+- Create a `role` call `Admin` and check all the `checkbox` then add your `user` on it
+- Submit the form
+- You should see that the `role` is created and related to your `user`
+
+### Basic access control via session
+
+Now that we assign `role` to the `user` we can `query` from the `authenticated user` the `role field` that will have all our `can` checkboxes that we added before. At this moment we will need to have access to the `array` of `permissions` on the `session` (The little bit of information that we get access to when we are doing any `server` side check) so here is what you need to do:
+
+- On your editor; go to the `backend` directory to the `keystone.ts` file
+- On the `session` property we `query` a little bit of information of the current log in `user` and we can add here more information if we need to. So add the `name` and `email` to the current `query`
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({...}),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: `id name email`,
+      }),
+    })
+  );
+  ```
+  Now with this, we will have access to the `name` and `email` of the `user` on every `session` and this information can be used by `keystone` on its functions like the `addToCart` custom `mutation` that will grab the `user` information from the `context` instead of doing a `query`
+- Now we need to include the `role` but you will need to put all the `fields` of the `role` because `graphQL` don't have any way to say that we need all the values; we will need to explicitly write it but we add another way to do this. On the `fields.ts` file you will see at the end that we put a `list` of the `keys` in the `permissions fields` and export them so we can interpolate on the `User` string on the `session` so import `permissionsList` on the `keystone.ts` file
+  `import { permissionsList } from './schemas/fields';`
+- Change to `backticks` the `query` value on the `session` properti and use the `permissionsList` like this
+  ```js
+  export default withAuth(
+    config({
+      server: {...},
+      db: {...},
+      lists: createSchema({...}),
+      extendGraphqlSchema,
+      ui: {...},
+      session: withItemData(statelessSessions(sessionConfig), {
+        User: `id name email role { ${permissionsList.join(' ')} }`,
+      }),
+    })
+  );
+  ```
+  This will add every item of the `array` in a single string separated by a space
+- Now that we got the `role` included on the `session` we will need to write our first own `access` function(At its simplest, the access control returns a `yes` or `no` value depending on the `users session`). On the `backend` directory create a new file call `access.ts`
+- On this newly created file export a function call `isSignedIn`
+  `export function isSignedIn() {}`
+- This kind of function will allways have access to the `context` and inside of the `context` is the `user session` so destructure the `context` to get the `session` on the `isSignedIn` parameter
+  `export function isSignedIn({ session }) {}`
+- Since is `typescript` we need to do some typing so import `ListAccessArgs` from `./types`
+  `import { ListAccessArgs } from './types';`
+- Define the `session` argument as `ListAccessArgs`
+  `export function isSignedIn({ session }: ListAccessArgs) {}`
+- Finally return a `boolean` to let know that we `user` is log in or not
+  ```js
+  export function isSignedIn({ session }: ListAccessArgs) {
+    return !!session;
+  }
+  ```
+- Now we need to hook the `access` function to one of our `lists`. On every single `list` of every single `data type` that we have; you can define an `access` value to either the entire `list` or an `individual field` and that will tell us if we can `create`, `read`, `update` or `delete` in that specific `data type`. So go to the `schema` directory to the `Product.ts` file and import the `isSignedIn` function
+  `import { isSignedIn } from '../access';`
+- At the top to the configuration object add a `access` property
+  ```js
+  export const Product = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Then add the following properties to the `access` object using the `isSignedIn` function as it value
+  ```js
+  export const Product = list({
+    access: {
+      create: isSignedIn,
+      read: isSignedIn,
+      update: isSignedIn,
+      delete: isSignedIn,
+    },
+    fields: {...},
+  });
+  ```
+  This property will have a `boolean` property to define what we can do with this specific `data type`(Later we will update with some other function that has some more logic on it)
+- On your terminal go to the `backend` directory and start your local server
+- Go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Make an `AllProducts query`
+- You should receive the `data` normally as before
+- Open a window on incognito and go to the [graphQL playground](http://localhost:3000/api/graphql)
+- Make the same `AllProducts query`
+- You should receive an error because you are not on `session`
+
+### Permission access functions
+
+Now we are going to build a function that checks if somebody has a specific `permission` where we have an object with every` permission` as property and each property will be its own function.
+
+- On your editor; go to the `backend` directory
+- Go to the `access.ts` file
+- Create a constant call `permission` that will have an object as a value
+  `export const permissions = {};`
+- Now we will need to add a property to the object with the same name as the `fields` that we created on the` fields.ts` in this case we will use `canManageProducts` and its value will be a function
+  `` `js export const permissions = { canManageProducts: function () {}, }; `` ''
+- Then add the `session` property to the` canManageProducts` function and return the value of the `canManageProducts` that is on the` session` object
+  `` `js export const permissions = { canManageProducts: function () { return session? .data? .role? .canManageProducts; }, }; `` ''
+  This will tell us if a `user` has the` canManageProducts permission`
+- For every `permission` we will need a function like the one that we created before but actually, we don't want to write all those functions so as you guess we got a way around this; we will generate those functions for every single `permission`. As you remember on the `fields.ts` file we import all the` keys` from all `permissions` so import` permissionsList` on the `access.ts` file
+  `import {permissionsList} from './schemas/fields';`
+- Now create a consist call `generatedPermissions` that it value will be`Object.fromEntries ();`
+  `const generatedPermissions = Object.fromEntries ();`
+  The `fromEntries` method will take an` array` of `arrays` and the first and second position of every` array` will represent a `key - value` pair; for example
+  ```js
+  const test = Object.fromEntries([['name', 'test'], ['age', '100']]);
+  console.log(test);
+  { 'name': 'test', 'age': '100'}
+  ```
+- Map on the `permissionsList` object to create the `key - value` pair `array`
+  ```js
+  const generatedPermissions = Object.fromEntries(
+    permissionsList.map((permission) => [
+      permission,
+      function ({ session }: ListAccessArgs) {
+        return !!session?.data?.role?.[permission];
+      },
+    ])
+  );
+  ```
+- Then eliminate the `canManageProducts` of the `permission` object and sparte the `generatedPermissions` object
+  ```js
+  export const permissions = {
+    ...generatedPermissions,
+  };
+  ```
+
+### More flexible rule based functions
+
+Now we are going to be working with `rule-based functions`. The `rule-based functions` are logical functions that can be used for list access for the different types; let us return a `boolean` and a set of `filters` that limit what the `user` can do or see on a determined type. Let begin with the process:
+
+- On your editor go to the `backend` directory
+- Enter to the `access.ts` file
+- At the bottom of the file export a constant call `rules` that will be an object
+  `export const rules = {};`
+- Add a `canManageProducts` property that will be a function that receive `session`(Add the `ListAccessArgs` as we did before)
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {},
+  };
+  ```
+- Now we are going to check if they have the permission of `canManageProducts` so create an condition that use the `permission` variable to check if the `canManageProducts` is avalable for the current `user` using the `session` and if is the case return `true`
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+    },
+  };
+  ```
+- Then if don't have the `permission`, we need to check if the current `user` is the owner of the item returning the following
+
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { user: { id: session.itemId } };
+    },
+  };
+  ```
+
+  This last return statement is like the `where` filter that we use on the `graphQL` API so here we will return a `truthy` value when it finds an item `where` the `user id` is related to the current `product`
+
+- Go to the `Product.ts` file on the `schema` directory
+- Import `rules`
+  `import { isSignedIn, rules } from '../access';`
+- Use the `canManageProducts` from `rules` on the `update` and `delete` properties on the `access` object
+  ```js
+  export const Product = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canReadProduct,
+      update: rules.canManageProducts,
+      delete: rules.canManageProducts,
+    },
+    fields: {...},
+  });
+  ```
+- Now on your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone admin](http://localhost:3000/)(Make sure you are logged in with your `admin user`)
+- Click on the `Products` option on the sidebar
+- Choose a `product`
+- Update the `product` and save
+- You should be able to edit the information about the `product`
+- Now we need to update the `product` if you are not an `admin` but own the `product` and for this, we will need to relate the `products` with the `user` that create the `product` so get back to the `Product.ts` file
+- On the `fields` object create a `relationship field` that make a reference to a `products field` on the `User` schema and the following default value
+  ```js
+  export const Product = list({
+    access: {...},
+    fields: {
+      ...
+      user: relationship({
+        ref: 'User.products',
+        defaultValue: ({ context }) => ({
+          connect: { id: context.session.itemId },
+        }),
+      }),
+    },
+  });
+  ```
+  When a `product` is created will make a relation with the `User` schema and will put as a default value the current `user id`
+- Go to the `User.ts` file
+- Add a `products field` that is related to the `user field` on the `User` schema and can have `many` items
+  ```js
+  export const User = list({
+    fields: {
+      ...
+      products: relationship({
+        ref: 'Product.user',
+        many: true,
+      }),
+    },
+  });
+  ```
+- Now on your terminal; restart the `backend` local server
+- Go to the [keystone admin](http://localhost:3000/)(Make sure you are logged in with your `admin user`)
+- Click on the `Products` option on the sidebar
+- Choose one of the `products`
+- Add a no `admin user` to the `product` that you choose
+- Open an incognito window and go to the [keystone admin](http://localhost:3000/)
+- Log in with the no `admin user`(The one that you relate a `product` before)
+- Click on the `Products` option on the sidebar
+- Choose the `product` related to your current `user`
+- Update the `product` and save
+- You should be able to update the `product` information
+- Go to another `product` and update its information and save
+- You should not be able to update the `product` information
+- Now we will need to filter what the user can see using the `status` if you are not an `admin user`. Go to the `access.ts` file
+- On the `rules` object create a new function call `canReadProduct` that receive the `session`
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {...},
+    canReadProducts({ session }: ListAccessArgs) {}
+  };
+  ```
+- On the `canReadProduct` function ask if the current `user` have the `canReadProduct` permission and if it have it return `true` representing that it can see all `products`
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {...},
+    canReadProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+    }
+  };
+  ```
+- Then if it doesn't have the `canManageProducts` should be able to look only at the ones that have an `available` status
+
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {...},
+    canReadProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { status: 'AVAILABLE' };
+    }
+  };
+  ```
+
+- On your terminal; restart the `backend` local server
+- Go to the browser with the `admin user`
+- Choose a `product`
+- Change the status of a `product` to `draft` and save
+- Go to the browser with the no `admin user`
+- Go to the `product` list and you should see one `product` less than the `admin user` on the other browser
+
+### Getting meta - Roles base roles and hiding UI
+
+We are going to create `roles` and `permissions` for managing the `roles` and `permissions`. Here are the steps:
+
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [keystone admin page](http://localhost:3000/)
+- Click on the `Roles` option
+- Create a new `role` call `Editor`; that can `update` and `delete` any `product`; can `query` other `users` and can `edit` other `users`
+- Add the new `role` to an existing `user`(Different than your `admin user`)
+- Save the changes
+- Now we need to hide manage the access of the `roles` page so on your editor; go to the `Roles.ts` file on the `backend/schema` directory
+- On the `Role` list add the `access` property
+  ```js
+  export const Role = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Import `permissions`
+  `import { permissions } from '../access';`
+- Add the `create`, `read`, `update` and `delete` property with a `permissions.canManageRoles` value on the `access` property
+  ```js
+  export const Role = list({
+    access: {
+      create: permissions.canManageRoles,
+      read: permissions.canManageRoles,
+      update: permissions.canManageRoles,
+      delete: permissions.canManageRoles,
+    },
+    fields: {...},
+  });
+  ```
+- Now we need to hide the `ui` depending the `user` so add a `ui` property bellow the `access` property
+  ```js
+  export const Role = list({
+    access: {...},
+    ui: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties on the `ui` object
+  ```js
+  export const Role = list({
+    access: {...},
+    ui: {
+      hideCreate: (args) => !permissions.canManageRoles(args),
+      hideDelete: (args) => !permissions.canManageRoles(args),
+      isHidden: (args) => !permissions.canManageRoles(args),
+    },
+    fields: {...},
+  });
+  ```
+  Each of these properties `hide` the different elements of the `roles` page on `keystone`. Is important to limit the `access` first then you `hide` the elements
+- Go to your terminal and restart your local server
+- Go to the [keystone admin page](http://localhost:3000/)(The browser that you are logged in with the `admin user`)
+- Click on the `Role` option at the left
+- You should see all `roles`
+- Open an incognito window and go to the [keystone admin page](http://localhost:3000/)
+- Login with a no `admin user`
+- You should not see any `Roles` option at the left
+
+### Cart and order based rules
+
+Now we are going to do a `rule` for the `cart`, the `order`, and the `cartItems`.
+
+- Go to the `access.ts` file on the `backend` directory
+- On the `rules` object create a function call `canOrder`
+  `canOrder({ session }: ListAccessArgs) {}`
+- Add the `permission` condition like the previous functions and the following `query` if you got the `permission`
+
+  ```js
+  canOrder({ session }: ListAccessArgs) {
+    if (permissions.canManageCart({ session })) {
+      return true;
+    }
+
+    return { user: { id: session.itemId } };
+  },
+  ```
+
+- Go to the `CartItem.ts` file on the `schema` directory
+- Import the `rules` object and the `isSignedIn` function
+  `import { isSignedIn, rules } from '../access';`
+- Add the `access` property on the `CartItem` list
+  ```js
+  export const CartItem = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties to the `access` object
+  ```js
+  export const CartItem = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canOrder,
+      update: rules.canOrder,
+      delete: rules.canOrder,
+    },
+    fields: {...},
+  });
+  ```
+  The `user` can `create` if he is logged in and can `update`, `read`, and `delete` only is he hace the `canManageCart permission`
+- Go to the `Order.ts`
+- Import the `rules` object and the `isSignedIn` function
+  `import { isSignedIn, rules } from '../access';`
+- Add the `access` property to the `Order` list
+  ```js
+  export const Order = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties on the `access` object
+  ```js
+  export const Order = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canOrder,
+      update: () => false,
+      delete: () => false,
+    },
+    fields: {...},
+  });
+  ```
+  The `user` only can `create orders` is the `user` is logged in and can `read` if it has the `canManageCart permission`; the `user` will not be allowed to `update` or `delete` an `order` under any circumstance.
+- Now we will work with the `OrderItems` and we will have a little issue becuase we want that the `user` only see the `OrderItems` associate with an `order` that belong to the current `user` but we actually don't have a relation betwen the `OrderItems` and the `User` schema so we will have 2 options: Create that relationship or create a new rule that use the `order` that is related to the `user` to handle this issue. We will choose the second one. Go to the `access.ts` file
+- On the `rules` object create a function call `canManageOrderItems`
+  `canManageOrderItems({ session }: ListAccessArgs) {}`
+- Add the `permission` condition
+  ```js
+  canManageOrderItems({ session }: ListAccessArgs) {
+    if (permissions.canManageCart({ session })) {
+      return true;
+    }
+  }
+  ```
+- Now instead of filtering the `user` on the last return statement; add the `order` to the `query`
+
+  ```js
+  canManageOrderItems({ session }: ListAccessArgs) {
+    if (permissions.canManageCart({ session })) {
+      return true;
+    }
+
+    return { order: { user: { id: session.itemId } } };
+  }
+  ```
+
+  Here we `query` the `order` then the `user` and
+
+- Go to the `OrderItem.ts` file check it `id`
+- Add the `access` property to the `OrderItem` list
+  ```js
+  export const OrderItem = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Import `isSignedIn` and `rules`
+  `import { isSignedIn, rules } from '../access';`
+- Add the folloowing properties to the `access` object
+  ```js
+  export const OrderItem = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canManageOrderItems,
+      update: () => false,
+      delete: () => false,
+    },
+    fields: {...},
+  });
+  ```
+  Here the `users` can `create` the `orderItems` only if they are logged in and `read` only the items related to the `orders` that are own by the current `user`
+- Now go to your terminal; on the `backend` directory start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [keystone admin](http://localhost:3000/)(Log in with your `admin user`)
+- Click on the `Orders` option on the sidebar
+- You should see all `orders` created by all `users`
+- Click on the `Order Items` option on the sidebar
+- You should see all `Order Items` related to all `orders` of all `users`
+- Open a new incognito browser and go to the [homepage](http://localhost:7777/)
+- Login as a no `admin user`
+- Add items to the `cart`
+- Fill the `credit card` form and submit
+- An `order` should be created
+- On the incognito browser; go to the [keystone admin](http://localhost:3000/)
+- Login as the no `admin user` that you use before
+- Click on the `Order` option on the sidebar
+- You should see the `orders` that belong to that `user` including the last one that you just did
+- Click on the `Order Items` option on the sidebar
+- You should see only the `Order Items` related to the `orders` that you saw before
+- If you try to `query` something like `allOrders` in a totally sign out state; it will throw an error but no like we want to because we want to let know that they don't have access to that resource. So go to the `access.ts` file
+- Add the condition with the `isSignedIn` that returns `false` if the `user` is not logged in on all `rules` functions
+
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { user: { id: session.itemId } };
+    },
+    canOrder({ session }: ListAccessArgs) {
+      if (!isSignedIn({ session })) {
+        return false;
+      }
+
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      return { user: { id: session.itemId } };
+    },
+    canManageOrderItems({ session }: ListAccessArgs) {
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      return { order: { user: { id: session.itemId } } };
+    },
+    canReadProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { status: 'AVAILABLE' };
+    },
+  };
+  ```
+
+- Restart your `backend` local server
+- On the incognito browser go to the [graphQL playground](http://localhost:3000/api/graphql)(Make sure that you are not logged in)
+- Add the following `query`
+  ```js
+  query {
+    allOrders {
+      id
+    }
+  }
+  ```
+- Click the `play` button
+- You should see a `don't have access to this resource` error
+
+### User and field base permissions
+
+Now we are going to control the `users` list so we can limit it `access` and the `ui` associate with the list but is a little tricky because somebody should be able to `create` an `user`(That signing up) but can't update it `role` unless it has the `permission` to do it(in other words an `admin`). Let begin:
+
+- Go to the `access.ts` file in the `backend` directory
+- On the `rules` object; copy the `canOrder` function and paste it on the bottom of the object
+- Update the name of the function that you just paste to `canManageUsers`; update the `permission` condition to ask for the `canManageUsers permission` and update the last return statement to just `query` the `id` because we already have the `user`
+
+  ```js
+  canManageUsers({ session }: ListAccessArgs) {
+    if (!isSignedIn({ session })) {
+      return false;
+    }
+
+    if (permissions.canManageUsers({ session })) {
+      return true;
+    }
+
+    // Otherwise they may only update themselves!
+    return { id: session.itemId };
+  }
+  ```
+
+- Go to the `User.ts` file on the `schema` directory
+- Import `permissions` and `rules`
+  `import { permissions, rules } from '../access';`
+- Add the `access` property to the `User` list
+  ```js
+  export const User = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties to the `access` object
+  ```js
+  export const User = list({
+    access: {
+      create: () => true,
+      read: rules.canManageUsers,
+      update: rules.canManageUsers,
+      delete: permissions.canManageUsers,
+    },
+    fields: {...},
+  });
+  ```
+  All `users` can `create` an `user` anytime; only the `users` with the correct `permission` can `read` and `update` all `users` otherwise can only update themselves and only the `users` with the `canManageUsers` checkbox can `delete` an `user`
+- Now add the `ui` property to the `User` list
+  ```js
+  export const User = list({
+    access: {...},
+    ui: {}
+    fields: {...},
+  });
+  ```
+- Add the folloowing properties to the `ui` object
+  ```js
+  export const User = list({
+    access: {...},
+    ui: {
+      hideCreate: (args) => !permissions.canManageUsers(args),
+      hideDelete: (args) => !permissions.canManageUsers(args),
+    }
+    fields: {...},
+  });
+  ```
+  Here we will hide the `backend` UI for regular `users`
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [Keystone admin page](http://localhost:3000/)(Make sure you are logged in as an `admin`)
+- Click on the `Users` options on the sidebar
+- You should see a list of all `users`
+- Open an incognito window and go to the [Keystone admin page](http://localhost:3000/)
+- Login as a no `admin user`
+- Click on the `Users` option on the sidebar
+- You should only see yourself on the list
+- Now get back to the `User.ts` file
+- We need to prevent that a normal `user` update it `role` so on the `role field` in the `User` list add the `access` property with the following
+  ```js
+  export const User = list({
+    access: {...},
+    ui: {...},
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({...}),
+      orders: relationship({ ref: 'Order.user', many: true }),
+      role: relationship({
+        ref: 'Role.assignedTo',
+        access: {
+          create: permissions.canManageUsers,
+          update: permissions.canManageUsers,
+        },
+      }),
+      products: relationship({...}),
+    },
+  });
+  ```
+  This will only allow the `users` that have the checkbox to change the `role` of a `user`
+- On your terminal; restart your backend local server
+- Go to the browser that you are logged in as an `admin`
+- Click on one of the `users`
+- You should see the `role` field available
+- Go to the browser with the no `admin user`
+- Click on your `user` in the list
+- You should see that the `role` is not available
+
+### Product image permissions
+
+We don't need to create any new `rule` for the `product images` so let get to work on this
+
+- Go to the `ProductImage.ts` file on the `backend/schema` directory
+- Import `isSignedIn` and `permissions`
+  `import { isSignedIn, permissions } from '../access';`
+- Add the `access` property on the `ProductImage` list
+- Add the following properties on the `access` object
+  ```js
+  export const ProductImage = list({
+    access: {
+      create: isSignedIn,
+      read: () => true,
+      update: permissions.canManageProducts,
+      delete: permissions.canManageProducts,
+    },
+    fields: {...},
+    ui: {...},
+  });
+  ```
+  Every `user` that is logged in can `create` a `product image`; every `user` no matter if is logged in or not can `read` a `product image` and any `user` with the checkbox of the `canManageProducts permission` can `update` and `delete` a `product image`
+
+### Creating a gated sign in component
+
+At this moment if you go to the `sell` page on a sign out state you will see the `create` item form but it won't work because we handle the `creation` on the `backend` to check for tha logged in `user` so we will need to manage that the `user` don't see this form he is not logged in.
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `PleaseSignIn.js`
+- Export a function call `PleaseSignIn` that recive `children`
+  `export default function PleaseSignIn({ children }) {}`
+- Import the `useUser` hook and the `SignIn` component
+  ```js
+  import { useUser } from './User';
+  import SignIn from './SignIn';
+  ```
+- Create a constan call `me` with the `useUser` hook as it value
+  ```js
+  export default function PleaseSignIn({ children }) {
+    const me = useUser();
+  }
+  ```
+- Make a condition that returns the `SignIn` component if the `user` is not logged in
+  ```js
+  export default function PleaseSignIn({ children }) {
+    const me = useUser();
+    if (!me) return <SignIn />;
+  }
+  ```
+- Return `children` if the `user` is logged in
+
+  ```js
+  export default function PleaseSignIn({ children }) {
+    const me = useUser();
+    if (!me) return <SignIn />;
+
+    return children;
+  }
+  ```
+
+- Go to the `sell.js` file on the `pages` directory
+- Import the `PleaseSignIn` component
+  `import PleaseSignIn from '../components/PleaseSignIn';`
+- Wrap the `CreateProduct` component using the `PleaseSignIn` component
+  ```js
+  export default function SellPage() {
+    return (
+      <div>
+        <PleaseSignIn>
+          <CreateProduct />
+        </PleaseSignIn>
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [sell page](http://localhost:7777/sell)(Logout of your current `user`)
+- You should see the `sign in` form
+- Use the `sign in` form to get a `user session`
+- You should see that on a successful `login` the form will change to the `create` form
