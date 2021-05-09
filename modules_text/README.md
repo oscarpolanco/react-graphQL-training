@@ -12477,3 +12477,62 @@ We don't need to create any new `rule` for the `product images` so let get to wo
   });
   ```
   Every `user` that is logged in can `create` a `product image`; every `user` no matter if is logged in or not can `read` a `product image` and any `user` with the checkbox of the `canManageProducts permission` can `update` and `delete` a `product image`
+
+### Creating a gated sign in component
+
+At this moment if you go to the `sell` page on a sign out state you will see the `create` item form but it won't work because we handle the `creation` on the `backend` to check for tha logged in `user` so we will need to manage that the `user` don't see this form he is not logged in.
+
+- On your editor; go to the `frontend/components` directory
+- Create a new file call `PleaseSignIn.js`
+- Export a function call `PleaseSignIn` that recive `children`
+  `export default function PleaseSignIn({ children }) {}`
+- Import the `useUser` hook and the `SignIn` component
+  ```js
+  import { useUser } from './User';
+  import SignIn from './SignIn';
+  ```
+- Create a constan call `me` with the `useUser` hook as it value
+  ```js
+  export default function PleaseSignIn({ children }) {
+    const me = useUser();
+  }
+  ```
+- Make a condition that returns the `SignIn` component if the `user` is not logged in
+  ```js
+  export default function PleaseSignIn({ children }) {
+    const me = useUser();
+    if (!me) return <SignIn />;
+  }
+  ```
+- Return `children` if the `user` is logged in
+
+  ```js
+  export default function PleaseSignIn({ children }) {
+    const me = useUser();
+    if (!me) return <SignIn />;
+
+    return children;
+  }
+  ```
+
+- Go to the `sell.js` file on the `pages` directory
+- Import the `PleaseSignIn` component
+  `import PleaseSignIn from '../components/PleaseSignIn';`
+- Wrap the `CreateProduct` component using the `PleaseSignIn` component
+  ```js
+  export default function SellPage() {
+    return (
+      <div>
+        <PleaseSignIn>
+          <CreateProduct />
+        </PleaseSignIn>
+      </div>
+    );
+  }
+  ```
+- On your terminal; go to the `backend` directory and start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [sell page](http://localhost:7777/sell)(Logout of your current `user`)
+- You should see the `sign in` form
+- Use the `sign in` form to get a `user session`
+- You should see that on a successful `login` the form will change to the `create` form
