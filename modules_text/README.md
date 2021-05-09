@@ -12454,3 +12454,26 @@ Now we are going to control the `users` list so we can limit it `access` and the
 - Go to the browser with the no `admin user`
 - Click on your `user` in the list
 - You should see that the `role` is not available
+
+### Product image permissions
+
+We don't need to create any new `rule` for the `product images` so let get to work on this
+
+- Go to the `ProductImage.ts` file on the `backend/schema` directory
+- Import `isSignedIn` and `permissions`
+  `import { isSignedIn, permissions } from '../access';`
+- Add the `access` property on the `ProductImage` list
+- Add the following properties on the `access` object
+  ```js
+  export const ProductImage = list({
+    access: {
+      create: isSignedIn,
+      read: () => true,
+      update: permissions.canManageProducts,
+      delete: permissions.canManageProducts,
+    },
+    fields: {...},
+    ui: {...},
+  });
+  ```
+  Every `user` that is logged in can `create` a `product image`; every `user` no matter if is logged in or not can `read` a `product image` and any `user` with the checkbox of the `canManageProducts permission` can `update` and `delete` a `product image`
