@@ -12152,3 +12152,199 @@ We are going to create `roles` and `permissions` for managing the `roles` and `p
 - Open an incognito window and go to the [keystone admin page](http://localhost:3000/)
 - Login with a no `admin user`
 - You should not see any `Roles` option at the left
+
+### Cart and order based rules
+
+Now we are going to do a `rule` for the `cart`, the `order`, and the `cartItems`.
+
+- Go to the `access.ts` file on the `backend` directory
+- On the `rules` object create a function call `canOrder`
+  `canOrder({ session }: ListAccessArgs) {}`
+- Add the `permission` condition like the previous functions and the following `query` if you got the `permission`
+
+  ```js
+  canOrder({ session }: ListAccessArgs) {
+    if (permissions.canManageCart({ session })) {
+      return true;
+    }
+
+    return { user: { id: session.itemId } };
+  },
+  ```
+
+- Go to the `CartItem.ts` file on the `schema` directory
+- Import the `rules` object and the `isSignedIn` function
+  `import { isSignedIn, rules } from '../access';`
+- Add the `access` property on the `CartItem` list
+  ```js
+  export const CartItem = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties to the `access` object
+  ```js
+  export const CartItem = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canOrder,
+      update: rules.canOrder,
+      delete: rules.canOrder,
+    },
+    fields: {...},
+  });
+  ```
+  The `user` can `create` if he is logged in and can `update`, `read`, and `delete` only is he hace the `canManageCart permission`
+- Go to the `Order.ts`
+- Import the `rules` object and the `isSignedIn` function
+  `import { isSignedIn, rules } from '../access';`
+- Add the `access` property to the `Order` list
+  ```js
+  export const Order = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties on the `access` object
+  ```js
+  export const Order = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canOrder,
+      update: () => false,
+      delete: () => false,
+    },
+    fields: {...},
+  });
+  ```
+  The `user` only can `create orders` is the `user` is logged in and can `read` if it has the `canManageCart permission`; the `user` will not be allowed to `update` or `delete` an `order` under any circumstance.
+- Now we will work with the `OrderItems` and we will have a little issue becuase we want that the `user` only see the `OrderItems` associate with an `order` that belong to the current `user` but we actually don't have a relation betwen the `OrderItems` and the `User` schema so we will have 2 options: Create that relationship or create a new rule that use the `order` that is related to the `user` to handle this issue. We will choose the second one. Go to the `access.ts` file
+- On the `rules` object create a function call `canManageOrderItems`
+  `canManageOrderItems({ session }: ListAccessArgs) {}`
+- Add the `permission` condition
+  ```js
+  canManageOrderItems({ session }: ListAccessArgs) {
+    if (permissions.canManageCart({ session })) {
+      return true;
+    }
+  }
+  ```
+- Now instead of filtering the `user` on the last return statement; add the `order` to the `query`
+
+  ```js
+  canManageOrderItems({ session }: ListAccessArgs) {
+    if (permissions.canManageCart({ session })) {
+      return true;
+    }
+
+    return { order: { user: { id: session.itemId } } };
+  }
+  ```
+
+  Here we `query` the `order` then the `user` and
+
+- Go to the `OrderItem.ts` file check it `id`
+- Add the `access` property to the `OrderItem` list
+  ```js
+  export const OrderItem = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Import `isSignedIn` and `rules`
+  `import { isSignedIn, rules } from '../access';`
+- Add the folloowing properties to the `access` object
+  ```js
+  export const OrderItem = list({
+    access: {
+      create: isSignedIn,
+      read: rules.canManageOrderItems,
+      update: () => false,
+      delete: () => false,
+    },
+    fields: {...},
+  });
+  ```
+  Here the `users` can `create` the `orderItems` only if they are logged in and `read` only the items related to the `orders` that are own by the current `user`
+- Now go to your terminal; on the `backend` directory start your local server
+- On another tab of your terminal; go to the `frontend` directory and start your local server
+- On your browser; go to the [keystone admin](http://localhost:3000/)(Log in with your `admin user`)
+- Click on the `Orders` option on the sidebar
+- You should see all `orders` created by all `users`
+- Click on the `Order Items` option on the sidebar
+- You should see all `Order Items` related to all `orders` of all `users`
+- Open a new incognito browser and go to the [homepage](http://localhost:7777/)
+- Login as a no `admin user`
+- Add items to the `cart`
+- Fill the `credit card` form and submit
+- An `order` should be created
+- On the incognito browser; go to the [keystone admin](http://localhost:3000/)
+- Login as the no `admin user` that you use before
+- Click on the `Order` option on the sidebar
+- You should see the `orders` that belong to that `user` including the last one that you just did
+- Click on the `Order Items` option on the sidebar
+- You should see only the `Order Items` related to the `orders` that you saw before
+- If you try to `query` something like `allOrders` in a totally sign out state; it will throw an error but no like we want to because we want to let know that they don't have access to that resource. So go to the `access.ts` file
+- Add the condition with the `isSignedIn` that returns `false` if the `user` is not logged in on all `rules` functions
+
+  ```js
+  export const rules = {
+    canManageProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { user: { id: session.itemId } };
+    },
+    canOrder({ session }: ListAccessArgs) {
+      if (!isSignedIn({ session })) {
+        return false;
+      }
+
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      return { user: { id: session.itemId } };
+    },
+    canManageOrderItems({ session }: ListAccessArgs) {
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      return { order: { user: { id: session.itemId } } };
+    },
+    canReadProducts({ session }: ListAccessArgs) {
+      if (permissions.canManageCart({ session })) {
+        return true;
+      }
+
+      if (permissions.canManageProducts({ session })) {
+        return true;
+      }
+
+      return { status: 'AVAILABLE' };
+    },
+  };
+  ```
+
+- Restart your `backend` local server
+- On the incognito browser go to the [graphQL playground](http://localhost:3000/api/graphql)(Make sure that you are not logged in)
+- Add the following `query`
+  ```js
+  query {
+    allOrders {
+      id
+    }
+  }
+  ```
+- Click the `play` button
+- You should see a `don't have access to this resource` error
