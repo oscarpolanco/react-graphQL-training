@@ -12348,3 +12348,109 @@ Now we are going to do a `rule` for the `cart`, the `order`, and the `cartItems`
   ```
 - Click the `play` button
 - You should see a `don't have access to this resource` error
+
+### User and field base permissions
+
+Now we are going to control the `users` list so we can limit it `access` and the `ui` associate with the list but is a little tricky because somebody should be able to `create` an `user`(That signing up) but can't update it `role` unless it has the `permission` to do it(in other words an `admin`). Let begin:
+
+- Go to the `access.ts` file in the `backend` directory
+- On the `rules` object; copy the `canOrder` function and paste it on the bottom of the object
+- Update the name of the function that you just paste to `canManageUsers`; update the `permission` condition to ask for the `canManageUsers permission` and update the last return statement to just `query` the `id` because we already have the `user`
+
+  ```js
+  canManageUsers({ session }: ListAccessArgs) {
+    if (!isSignedIn({ session })) {
+      return false;
+    }
+
+    if (permissions.canManageUsers({ session })) {
+      return true;
+    }
+
+    // Otherwise they may only update themselves!
+    return { id: session.itemId };
+  }
+  ```
+
+- Go to the `User.ts` file on the `schema` directory
+- Import `permissions` and `rules`
+  `import { permissions, rules } from '../access';`
+- Add the `access` property to the `User` list
+  ```js
+  export const User = list({
+    access: {},
+    fields: {...},
+  });
+  ```
+- Add the following properties to the `access` object
+  ```js
+  export const User = list({
+    access: {
+      create: () => true,
+      read: rules.canManageUsers,
+      update: rules.canManageUsers,
+      delete: permissions.canManageUsers,
+    },
+    fields: {...},
+  });
+  ```
+  All `users` can `create` an `user` anytime; only the `users` with the correct `permission` can `read` and `update` all `users` otherwise can only update themselves and only the `users` with the `canManageUsers` checkbox can `delete` an `user`
+- Now add the `ui` property to the `User` list
+  ```js
+  export const User = list({
+    access: {...},
+    ui: {}
+    fields: {...},
+  });
+  ```
+- Add the folloowing properties to the `ui` object
+  ```js
+  export const User = list({
+    access: {...},
+    ui: {
+      hideCreate: (args) => !permissions.canManageUsers(args),
+      hideDelete: (args) => !permissions.canManageUsers(args),
+    }
+    fields: {...},
+  });
+  ```
+  Here we will hide the `backend` UI for regular `users`
+- On your terminal; go to the `backend` directory and start your local server
+- Go to the [Keystone admin page](http://localhost:3000/)(Make sure you are logged in as an `admin`)
+- Click on the `Users` options on the sidebar
+- You should see a list of all `users`
+- Open an incognito window and go to the [Keystone admin page](http://localhost:3000/)
+- Login as a no `admin user`
+- Click on the `Users` option on the sidebar
+- You should only see yourself on the list
+- Now get back to the `User.ts` file
+- We need to prevent that a normal `user` update it `role` so on the `role field` in the `User` list add the `access` property with the following
+  ```js
+  export const User = list({
+    access: {...},
+    ui: {...},
+    fields: {
+      name: text({ isRequired: true }),
+      email: text({ isRequired: true, isUnique: true }),
+      password: password(),
+      cart: relationship({...}),
+      orders: relationship({ ref: 'Order.user', many: true }),
+      role: relationship({
+        ref: 'Role.assignedTo',
+        access: {
+          create: permissions.canManageUsers,
+          update: permissions.canManageUsers,
+        },
+      }),
+      products: relationship({...}),
+    },
+  });
+  ```
+  This will only allow the `users` that have the checkbox to change the `role` of a `user`
+- On your terminal; restart your backend local server
+- Go to the browser that you are logged in as an `admin`
+- Click on one of the `users`
+- You should see the `role` field available
+- Go to the browser with the no `admin user`
+- Click on your `user` in the list
+- You should see that the `role` is not available
